@@ -32,6 +32,8 @@ export default function Home() {
 
   // Load data from Firebase on component mount
   useEffect(() => {
+    let isMounted = true
+
     const loadData = async () => {
       try {
         setLoading(true)
@@ -47,50 +49,71 @@ export default function Home() {
           firebaseService.getWorkDays()
         ])
         
-        setEmployees(employeesData as Employee[])
-        setWorkDays(workDaysData as WorkDay[])
-        setSyncStatus('synced')
+        if (isMounted) {
+          setEmployees(employeesData as Employee[])
+          setWorkDays(workDaysData as WorkDay[])
+          setSyncStatus('synced')
+        }
       } catch (error: any) {
         console.error('Error loading data:', error)
-        setSyncStatus('error')
-        setErrorMessage(error.message || 'Failed to connect to database')
+        if (isMounted) {
+          setSyncStatus('error')
+          setErrorMessage(error.message || 'Failed to connect to database')
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     loadData()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   // Set up real-time listeners
   useEffect(() => {
+    let isMounted = true
+
     const unsubscribeEmployees = firebaseService.subscribeToEmployees(
       (employeesData) => {
-        setEmployees(employeesData as Employee[])
-        setSyncStatus('synced')
-        setErrorMessage('')
+        if (isMounted) {
+          setEmployees(employeesData as Employee[])
+          setSyncStatus('synced')
+          setErrorMessage('')
+        }
       },
       (error: any) => {
-        console.error('Employees subscription error:', error)
-        setSyncStatus('error')
-        setErrorMessage(`Employees sync error: ${error.message}`)
+        if (isMounted) {
+          console.error('Employees subscription error:', error)
+          setSyncStatus('error')
+          setErrorMessage(`Employees sync error: ${error.message}`)
+        }
       }
     )
 
     const unsubscribeWorkDays = firebaseService.subscribeToWorkDays(
       (workDaysData) => {
-        setWorkDays(workDaysData as WorkDay[])
-        setSyncStatus('synced')
-        setErrorMessage('')
+        if (isMounted) {
+          setWorkDays(workDaysData as WorkDay[])
+          setSyncStatus('synced')
+          setErrorMessage('')
+        }
       },
       (error: any) => {
-        console.error('Work days subscription error:', error)
-        setSyncStatus('error')
-        setErrorMessage(`Work days sync error: ${error.message}`)
+        if (isMounted) {
+          console.error('Work days subscription error:', error)
+          setSyncStatus('error')
+          setErrorMessage(`Work days sync error: ${error.message}`)
+        }
       }
     )
 
     return () => {
+      isMounted = false
       if (unsubscribeEmployees) unsubscribeEmployees()
       if (unsubscribeWorkDays) unsubscribeWorkDays()
     }

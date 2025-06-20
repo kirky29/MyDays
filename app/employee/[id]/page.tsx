@@ -33,10 +33,27 @@ export default function EmployeeDetail() {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
+
+  // Reset state when employeeId changes (browser navigation)
+  useEffect(() => {
+    setEmployee(null)
+    setWorkDays([])
+    setPayments([])
+    setLoading(true)
+    setSyncStatus('syncing')
+    setErrorMessage('')
+    setSelectedWorkDays([])
+    setShowPaymentModal(false)
+  }, [employeeId])
 
   // Load employee and work days data
   useEffect(() => {
+    let isMounted = true
+
     const loadEmployeeData = async () => {
+      if (!employeeId || isNavigating) return
+
       try {
         setLoading(true)
         setSyncStatus('syncing')
@@ -49,6 +66,9 @@ export default function EmployeeDetail() {
           firebaseService.getPayments()
         ])
         
+        // Check if component is still mounted
+        if (!isMounted) return
+        
         const employees = employeesData as Employee[]
         const allWorkDays = workDaysData as WorkDay[]
         const allPayments = paymentsData as Payment[]
@@ -56,42 +76,57 @@ export default function EmployeeDetail() {
         // Find the specific employee
         const foundEmployee = employees.find(emp => emp.id === employeeId)
         if (!foundEmployee) {
-          setErrorMessage('Employee not found')
-          setSyncStatus('error')
+          if (isMounted) {
+            setErrorMessage('Employee not found')
+            setSyncStatus('error')
+          }
           return
         }
         
-        setEmployee(foundEmployee)
-        
-        // Filter work days for this employee
-        const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
-        setWorkDays(employeeWorkDays)
-        
-        // Filter payments for this employee
-        const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
-        setPayments(employeePayments)
-        
-        setSyncStatus('synced')
+        if (isMounted) {
+          setEmployee(foundEmployee)
+          
+          // Filter work days for this employee
+          const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
+          setWorkDays(employeeWorkDays)
+          
+          // Filter payments for this employee
+          const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
+          setPayments(employeePayments)
+          
+          setSyncStatus('synced')
+        }
       } catch (error: any) {
         console.error('Error loading employee data:', error)
-        setSyncStatus('error')
-        setErrorMessage(error.message || 'Failed to load employee data')
+        if (isMounted) {
+          setSyncStatus('error')
+          setErrorMessage(error.message || 'Failed to load employee data')
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     if (employeeId) {
       loadEmployeeData()
     }
-  }, [employeeId])
+
+    return () => {
+      isMounted = false
+    }
+  }, [employeeId, isNavigating])
 
   // Set up real-time listeners
   useEffect(() => {
-    if (!employeeId) return
+    if (!employeeId || isNavigating) return
+
+    let isMounted = true
 
     const unsubscribeEmployees = firebaseService.subscribeToEmployees(
       (employeesData) => {
+        if (!isMounted) return
         const employees = employeesData as Employee[]
         const foundEmployee = employees.find(emp => emp.id === employeeId)
         if (foundEmployee) {
@@ -101,6 +136,7 @@ export default function EmployeeDetail() {
         }
       },
       (error: any) => {
+        if (!isMounted) return
         console.error('Employees subscription error:', error)
         setSyncStatus('error')
         setErrorMessage(`Employees sync error: ${error.message}`)
@@ -109,6 +145,7 @@ export default function EmployeeDetail() {
 
     const unsubscribeWorkDays = firebaseService.subscribeToWorkDays(
       (workDaysData) => {
+        if (!isMounted) return
         const allWorkDays = workDaysData as WorkDay[]
         const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
         setWorkDays(employeeWorkDays)
@@ -116,6 +153,7 @@ export default function EmployeeDetail() {
         setErrorMessage('')
       },
       (error: any) => {
+        if (!isMounted) return
         console.error('Work days subscription error:', error)
         setSyncStatus('error')
         setErrorMessage(`Work days sync error: ${error.message}`)
@@ -124,6 +162,7 @@ export default function EmployeeDetail() {
 
     const unsubscribePayments = firebaseService.subscribeToPayments(
       (paymentsData) => {
+        if (!isMounted) return
         const allPayments = paymentsData as Payment[]
         const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
         setPayments(employeePayments)
@@ -131,6 +170,7 @@ export default function EmployeeDetail() {
         setErrorMessage('')
       },
       (error: any) => {
+        if (!isMounted) return
         console.error('Payments subscription error:', error)
         setSyncStatus('error')
         setErrorMessage(`Payments sync error: ${error.message}`)
@@ -138,11 +178,17 @@ export default function EmployeeDetail() {
     )
 
     return () => {
+      isMounted = false
       if (unsubscribeEmployees) unsubscribeEmployees()
       if (unsubscribeWorkDays) unsubscribeWorkDays()
       if (unsubscribePayments) unsubscribePayments()
     }
-  }, [employeeId])
+  }, [employeeId, isNavigating])
+
+  const handleBackNavigation = () => {
+    setIsNavigating(true)
+    router.push('/')
+  }
 
   const toggleWorkDay = async (date: string) => {
     const existingDay = workDays.find(day => day.date === date)
@@ -217,7 +263,7 @@ export default function EmployeeDetail() {
           firebaseService.deleteWorkDaysForEmployee(employee.id),
           firebaseService.deletePaymentsForEmployee(employee.id)
         ])
-        router.push('/')
+        handleBackNavigation()
       } catch (error: any) {
         console.error('Error deleting employee:', error)
         setSyncStatus('error')
@@ -283,7 +329,7 @@ export default function EmployeeDetail() {
         <div className="text-center">
           <h1 className="text-xl font-semibold text-gray-800 mb-4">Employee Not Found</h1>
           <button
-            onClick={() => router.push('/')}
+            onClick={handleBackNavigation}
             className="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
           >
             Back to Employees
@@ -349,7 +395,7 @@ export default function EmployeeDetail() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button
-          onClick={() => router.push('/')}
+          onClick={handleBackNavigation}
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
