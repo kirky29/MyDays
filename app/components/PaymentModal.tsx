@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { PAYMENT_TYPES, PaymentType, Payment } from '../../lib/firebase'
+import { firebaseService, PAYMENT_TYPES, PaymentType, Payment } from '../../lib/firebase'
 
 interface WorkDay {
   id: string
@@ -36,6 +36,7 @@ export default function PaymentModal({
   const [paymentType, setPaymentType] = useState<PaymentType>('Bank Transfer')
   const [notes, setNotes] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string>('')
 
   if (!isOpen) return null
 
@@ -46,7 +47,15 @@ export default function PaymentModal({
     if (selectedWorkDays.length === 0) return
 
     setIsProcessing(true)
+    setError('')
+    
     try {
+      console.log('Starting payment process...', {
+        employeeId: employee.id,
+        selectedWorkDays: selectedWorkDays.length,
+        totalAmount
+      })
+
       const payment: Payment = {
         id: Date.now().toString(),
         employeeId: employee.id,
@@ -58,25 +67,33 @@ export default function PaymentModal({
         createdAt: new Date().toISOString()
       }
 
-      // Import firebaseService dynamically to avoid circular imports
-      const { firebaseService } = await import('../../lib/firebase')
+      console.log('Payment object created:', payment)
       
-      // Add payment record
+      // Add payment record first
+      console.log('Adding payment to Firebase...')
       await firebaseService.addPayment(payment)
+      console.log('Payment added successfully')
 
       // Mark work days as paid
-      const updatePromises = selectedWorkDays.map(workDay => {
+      console.log('Updating work days as paid...')
+      const updatePromises = selectedWorkDays.map(async (workDay) => {
         const updatedWorkDay = { ...workDay, paid: true }
+        console.log('Updating work day:', workDay.id, 'as paid')
         return firebaseService.addWorkDay(updatedWorkDay)
       })
 
       await Promise.all(updatePromises)
+      console.log('All work days updated successfully')
       
       onPaymentComplete()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing payment:', error)
-      alert('Failed to process payment. Please try again.')
+      const errorMessage = error.message || 'Unknown error occurred'
+      setError(`Payment failed: ${errorMessage}`)
+      
+      // Show error for 5 seconds then clear
+      setTimeout(() => setError(''), 5000)
     } finally {
       setIsProcessing(false)
     }
@@ -100,6 +117,25 @@ export default function PaymentModal({
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Payment Error</h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <p>{error}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Employee Info */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-semibold text-gray-800 mb-2">{employee.name}</h3>
