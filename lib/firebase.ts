@@ -20,8 +20,31 @@ export const db = getFirestore(app);
 // Collection names
 export const COLLECTIONS = {
   EMPLOYEES: 'employees',
-  WORK_DAYS: 'workDays'
+  WORK_DAYS: 'workDays',
+  PAYMENTS: 'payments'
 } as const;
+
+// Payment types
+export const PAYMENT_TYPES = [
+  'Bank Transfer',
+  'PayPal',
+  'Cash',
+  'Other'
+] as const;
+
+export type PaymentType = typeof PAYMENT_TYPES[number];
+
+// Payment interface
+export interface Payment {
+  id: string
+  employeeId: string
+  workDayIds: string[]
+  amount: number
+  paymentType: PaymentType
+  notes?: string
+  date: string
+  createdAt: string
+}
 
 // Firebase service functions with enhanced error handling
 export const firebaseService = {
@@ -90,6 +113,51 @@ export const firebaseService = {
     }
   },
 
+  // Payment functions
+  async addPayment(payment: Payment) {
+    try {
+      await setDoc(doc(db, COLLECTIONS.PAYMENTS, payment.id), payment);
+      return { success: true };
+    } catch (error) {
+      console.error('Error adding payment:', error);
+      throw error;
+    }
+  },
+
+  async getPayments() {
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTIONS.PAYMENTS));
+      return querySnapshot.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error('Error getting payments:', error);
+      throw error;
+    }
+  },
+
+  async getPaymentsForEmployee(employeeId: string) {
+    try {
+      const q = query(collection(db, COLLECTIONS.PAYMENTS), where("employeeId", "==", employeeId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error('Error getting payments for employee:', error);
+      throw error;
+    }
+  },
+
+  async deletePaymentsForEmployee(employeeId: string) {
+    try {
+      const q = query(collection(db, COLLECTIONS.PAYMENTS), where("employeeId", "==", employeeId));
+      const querySnapshot = await getDocs(q);
+      const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting payments for employee:', error);
+      throw error;
+    }
+  },
+
   // Real-time listeners with error handling
   subscribeToEmployees(callback: (employees: any[]) => void, errorCallback?: (error: any) => void) {
     try {
@@ -125,6 +193,25 @@ export const firebaseService = {
       );
     } catch (error) {
       console.error('Error setting up work days subscription:', error);
+      if (errorCallback) errorCallback(error);
+    }
+  },
+
+  subscribeToPayments(callback: (payments: any[]) => void, errorCallback?: (error: any) => void) {
+    try {
+      return onSnapshot(
+        collection(db, COLLECTIONS.PAYMENTS), 
+        (snapshot) => {
+          const payments = snapshot.docs.map(doc => doc.data());
+          callback(payments);
+        },
+        (error) => {
+          console.error('Error in payments subscription:', error);
+          if (errorCallback) errorCallback(error);
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up payments subscription:', error);
       if (errorCallback) errorCallback(error);
     }
   },

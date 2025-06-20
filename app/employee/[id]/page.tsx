@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
-import { firebaseService } from '../../../lib/firebase'
+import { firebaseService, Payment, PAYMENT_TYPES } from '../../../lib/firebase'
+import PaymentModal from '../../components/PaymentModal'
 
 interface Employee {
   id: string
@@ -26,9 +27,12 @@ export default function EmployeeDetail() {
   
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [workDays, setWorkDays] = useState<WorkDay[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('syncing')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([])
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   // Load employee and work days data
   useEffect(() => {
@@ -38,14 +42,16 @@ export default function EmployeeDetail() {
         setSyncStatus('syncing')
         setErrorMessage('')
         
-        // Load all employees and work days
-        const [employeesData, workDaysData] = await Promise.all([
+        // Load all employees, work days, and payments
+        const [employeesData, workDaysData, paymentsData] = await Promise.all([
           firebaseService.getEmployees(),
-          firebaseService.getWorkDays()
+          firebaseService.getWorkDays(),
+          firebaseService.getPayments()
         ])
         
         const employees = employeesData as Employee[]
         const allWorkDays = workDaysData as WorkDay[]
+        const allPayments = paymentsData as Payment[]
         
         // Find the specific employee
         const foundEmployee = employees.find(emp => emp.id === employeeId)
@@ -60,6 +66,11 @@ export default function EmployeeDetail() {
         // Filter work days for this employee
         const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
         setWorkDays(employeeWorkDays)
+        
+        // Filter payments for this employee
+        const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
+        setPayments(employeePayments)
+        
         setSyncStatus('synced')
       } catch (error: any) {
         console.error('Error loading employee data:', error)
@@ -111,9 +122,25 @@ export default function EmployeeDetail() {
       }
     )
 
+    const unsubscribePayments = firebaseService.subscribeToPayments(
+      (paymentsData) => {
+        const allPayments = paymentsData as Payment[]
+        const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
+        setPayments(employeePayments)
+        setSyncStatus('synced')
+        setErrorMessage('')
+      },
+      (error: any) => {
+        console.error('Payments subscription error:', error)
+        setSyncStatus('error')
+        setErrorMessage(`Payments sync error: ${error.message}`)
+      }
+    )
+
     return () => {
       if (unsubscribeEmployees) unsubscribeEmployees()
       if (unsubscribeWorkDays) unsubscribeWorkDays()
+      if (unsubscribePayments) unsubscribePayments()
     }
   }, [employeeId])
 
@@ -143,21 +170,21 @@ export default function EmployeeDetail() {
     }
   }
 
-  const togglePayment = async (date: string) => {
-    const existingDay = workDays.find(day => day.date === date)
-    
-    if (existingDay) {
-      try {
-        setSyncStatus('syncing')
-        setErrorMessage('')
-        const updatedWorkDay = { ...existingDay, paid: !existingDay.paid }
-        await firebaseService.addWorkDay(updatedWorkDay)
-      } catch (error: any) {
-        console.error('Error updating payment:', error)
-        setSyncStatus('error')
-        setErrorMessage(`Failed to update payment: ${error.message}`)
-      }
-    }
+  const toggleWorkDaySelection = (workDayId: string) => {
+    setSelectedWorkDays(prev => 
+      prev.includes(workDayId) 
+        ? prev.filter(id => id !== workDayId)
+        : [...prev, workDayId]
+    )
+  }
+
+  const selectAllUnpaid = () => {
+    const unpaidWorkDays = workDays.filter(day => day.worked && !day.paid)
+    setSelectedWorkDays(unpaidWorkDays.map(day => day.id))
+  }
+
+  const clearSelection = () => {
+    setSelectedWorkDays([])
   }
 
   const calculateStats = () => {
@@ -181,13 +208,14 @@ export default function EmployeeDetail() {
   const deleteEmployee = async () => {
     if (!employee) return
     
-    if (confirm(`Are you sure you want to delete ${employee.name}? This will also delete all their work records.`)) {
+    if (confirm(`Are you sure you want to delete ${employee.name}? This will also delete all their work records and payment history.`)) {
       try {
         setSyncStatus('syncing')
         setErrorMessage('')
         await Promise.all([
           firebaseService.deleteEmployee(employee.id),
-          firebaseService.deleteWorkDaysForEmployee(employee.id)
+          firebaseService.deleteWorkDaysForEmployee(employee.id),
+          firebaseService.deletePaymentsForEmployee(employee.id)
         ])
         router.push('/')
       } catch (error: any) {
@@ -205,19 +233,23 @@ export default function EmployeeDetail() {
       await firebaseService.enableNetwork()
       
       // Reload data
-      const [employeesData, workDaysData] = await Promise.all([
+      const [employeesData, workDaysData, paymentsData] = await Promise.all([
         firebaseService.getEmployees(),
-        firebaseService.getWorkDays()
+        firebaseService.getWorkDays(),
+        firebaseService.getPayments()
       ])
       
       const employees = employeesData as Employee[]
       const allWorkDays = workDaysData as WorkDay[]
+      const allPayments = paymentsData as Payment[]
       
       const foundEmployee = employees.find(emp => emp.id === employeeId)
       if (foundEmployee) {
         setEmployee(foundEmployee)
         const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
+        const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
         setWorkDays(employeeWorkDays)
+        setPayments(employeePayments)
         setSyncStatus('synced')
       }
     } catch (error: any) {
@@ -225,6 +257,11 @@ export default function EmployeeDetail() {
       setSyncStatus('error')
       setErrorMessage(`Connection failed: ${error.message}`)
     }
+  }
+
+  const handlePaymentComplete = () => {
+    setSelectedWorkDays([])
+    // Data will be updated via real-time listeners
   }
 
   if (loading) {
@@ -257,6 +294,8 @@ export default function EmployeeDetail() {
   }
 
   const stats = calculateStats()
+  const unpaidWorkDays = workDays.filter(day => day.worked && !day.paid)
+  const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
@@ -367,8 +406,50 @@ export default function EmployeeDetail() {
         </div>
       </div>
 
+      {/* Bulk Payment Section */}
+      {unpaidWorkDays.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-700">Bulk Payment</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={selectAllUnpaid}
+                className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-md hover:bg-blue-200 transition-colors"
+              >
+                Select All Unpaid
+              </button>
+              <button
+                onClick={clearSelection}
+                className="text-sm bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          {selectedWorkDays.length > 0 && (
+            <div className="bg-green-50 rounded-lg p-4 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-green-800">
+                  {selectedWorkDays.length} day(s) selected
+                </span>
+                <span className="text-lg font-bold text-green-600">
+                  £{(selectedWorkDays.length * employee.dailyWage).toFixed(2)}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full mt-3 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+              >
+                Process Payment
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Work History */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-700 mb-4">Work History</h2>
         
         {workDays.length === 0 ? (
@@ -380,41 +461,85 @@ export default function EmployeeDetail() {
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .map(workDay => (
                 <div key={workDay.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <div>
-                      <div className="font-medium text-gray-800">
-                        {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {format(parseISO(workDay.date), 'MMM d, yyyy')}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedWorkDays.includes(workDay.id)}
+                        onChange={() => toggleWorkDaySelection(workDay.id)}
+                        disabled={workDay.paid}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                      <div>
+                        <div className="font-medium text-gray-800">
+                          {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {format(parseISO(workDay.date), 'MMM d, yyyy')}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium text-green-600">£{employee.dailyWage}</span>
-                      <button
-                        onClick={() => togglePayment(workDay.date)}
-                        disabled={syncStatus === 'syncing'}
-                        className={`px-3 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${
-                          workDay.paid
-                            ? 'bg-warning text-white'
-                            : 'bg-primary text-white hover:bg-blue-600'
-                        }`}
-                      >
-                        {workDay.paid ? '✓ Paid' : 'Mark Paid'}
-                      </button>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        workDay.paid 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {workDay.paid ? 'Paid' : 'Unpaid'}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Status:</span>
-                    <span className={`font-medium ${workDay.paid ? 'text-green-600' : 'text-orange-600'}`}>
-                      {workDay.paid ? 'Paid' : 'Unpaid'}
-                    </span>
                   </div>
                 </div>
               ))}
           </div>
         )}
       </div>
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Payment History</h2>
+          <div className="space-y-3">
+            {payments
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map(payment => (
+                <div key={payment.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium text-gray-800">
+                        £{payment.amount.toFixed(2)} - {payment.paymentType}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {format(parseISO(payment.date), 'MMM d, yyyy')}
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {format(parseISO(payment.createdAt), 'MMM d, h:mm a')}
+                    </span>
+                  </div>
+                  {payment.notes && (
+                    <div className="text-sm text-gray-600 mt-2">
+                      <span className="font-medium">Notes:</span> {payment.notes}
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500 mt-2">
+                    {payment.workDayIds.length} work day(s) paid
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        employee={employee}
+        selectedWorkDays={selectedWorkDayObjects}
+        onPaymentComplete={handlePaymentComplete}
+      />
     </div>
   )
 } 

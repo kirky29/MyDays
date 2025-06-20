@@ -13,6 +13,11 @@ service cloud.firestore {
     match /workDays/{document} {
       allow read, write: if true;
     }
+    
+    // Allow read/write access to payments collection
+    match /payments/{document} {
+      allow read, write: if true;
+    }
   }
 }
 
