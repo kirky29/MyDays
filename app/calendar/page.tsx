@@ -42,6 +42,7 @@ export default function CalendarPage() {
   const [selectedDayData, setSelectedDayData] = useState<DayViewData | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedEmployeeForPayment, setSelectedEmployeeForPayment] = useState<Employee | null>(null)
+  const [selectedWorkDaysForPayment, setSelectedWorkDaysForPayment] = useState<WorkDay[]>([])
 
   // Load data from Firebase
   useEffect(() => {
@@ -205,7 +206,15 @@ export default function CalendarPage() {
   }
 
   const openPaymentModal = (employee: Employee) => {
+    // Get all unpaid work days for this employee
+    const unpaidWorkDays = workDays.filter(day => 
+      day.employeeId === employee.id && 
+      day.worked && 
+      !day.paid
+    )
+    
     setSelectedEmployeeForPayment(employee)
+    setSelectedWorkDaysForPayment(unpaidWorkDays)
     setShowPaymentModal(true)
     setSelectedDayData(null) // Close day view
   }
@@ -530,14 +539,18 @@ export default function CalendarPage() {
         {/* Payment Modal */}
         {showPaymentModal && selectedEmployeeForPayment && (
           <PaymentModal
+            isOpen={showPaymentModal}
             employee={selectedEmployeeForPayment}
+            selectedWorkDays={selectedWorkDaysForPayment}
             onClose={() => {
               setShowPaymentModal(false)
               setSelectedEmployeeForPayment(null)
+              setSelectedWorkDaysForPayment([])
             }}
-            onPaymentAdded={() => {
+            onPaymentComplete={() => {
               setShowPaymentModal(false)
               setSelectedEmployeeForPayment(null)
+              setSelectedWorkDaysForPayment([])
             }}
           />
         )}
