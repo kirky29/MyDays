@@ -1,0 +1,28 @@
+# Firebase Firestore Security Rules
+# Copy these rules to your Firebase Console > Firestore Database > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to employees collection
+    match /employees/{document} {
+      allow read, write: if true;
+    }
+    
+    // Allow read/write access to workDays collection
+    match /workDays/{document} {
+      allow read, write: if true;
+    }
+  }
+}
+
+# Instructions to set up these rules:
+# 1. Go to Firebase Console: https://console.firebase.google.com
+# 2. Select your project: my-days-599be
+# 3. Go to Firestore Database in the left sidebar
+# 4. Click on the "Rules" tab
+# 5. Replace the existing rules with the rules above
+# 6. Click "Publish" to save the rules
+
+# Note: These rules allow full access to anyone. For production use,
+# you should implement proper authentication and more restrictive rules. 

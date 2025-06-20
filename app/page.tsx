@@ -26,6 +26,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('syncing')
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   // Load data from Firebase on component mount
   useEffect(() => {
@@ -33,6 +34,10 @@ export default function Home() {
       try {
         setLoading(true)
         setSyncStatus('syncing')
+        setErrorMessage('')
+        
+        // Enable network connection
+        await firebaseService.enableNetwork()
         
         // Load initial data
         const [employeesData, workDaysData] = await Promise.all([
@@ -43,9 +48,10 @@ export default function Home() {
         setEmployees(employeesData as Employee[])
         setWorkDays(workDaysData as WorkDay[])
         setSyncStatus('synced')
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading data:', error)
         setSyncStatus('error')
+        setErrorMessage(error.message || 'Failed to connect to database')
       } finally {
         setLoading(false)
       }
@@ -56,19 +62,35 @@ export default function Home() {
 
   // Set up real-time listeners
   useEffect(() => {
-    const unsubscribeEmployees = firebaseService.subscribeToEmployees((employeesData) => {
-      setEmployees(employeesData as Employee[])
-      setSyncStatus('synced')
-    })
+    const unsubscribeEmployees = firebaseService.subscribeToEmployees(
+      (employeesData) => {
+        setEmployees(employeesData as Employee[])
+        setSyncStatus('synced')
+        setErrorMessage('')
+      },
+      (error: any) => {
+        console.error('Employees subscription error:', error)
+        setSyncStatus('error')
+        setErrorMessage(`Employees sync error: ${error.message}`)
+      }
+    )
 
-    const unsubscribeWorkDays = firebaseService.subscribeToWorkDays((workDaysData) => {
-      setWorkDays(workDaysData as WorkDay[])
-      setSyncStatus('synced')
-    })
+    const unsubscribeWorkDays = firebaseService.subscribeToWorkDays(
+      (workDaysData) => {
+        setWorkDays(workDaysData as WorkDay[])
+        setSyncStatus('synced')
+        setErrorMessage('')
+      },
+      (error: any) => {
+        console.error('Work days subscription error:', error)
+        setSyncStatus('error')
+        setErrorMessage(`Work days sync error: ${error.message}`)
+      }
+    )
 
     return () => {
-      unsubscribeEmployees()
-      unsubscribeWorkDays()
+      if (unsubscribeEmployees) unsubscribeEmployees()
+      if (unsubscribeWorkDays) unsubscribeWorkDays()
     }
   }, [])
 
@@ -83,25 +105,29 @@ export default function Home() {
     
     try {
       setSyncStatus('syncing')
+      setErrorMessage('')
       await firebaseService.addEmployee(employee)
       setNewEmployeeName('')
       setNewEmployeeWage('')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding employee:', error)
       setSyncStatus('error')
+      setErrorMessage(`Failed to add employee: ${error.message}`)
     }
   }
 
   const deleteEmployee = async (id: string) => {
     try {
       setSyncStatus('syncing')
+      setErrorMessage('')
       await Promise.all([
         firebaseService.deleteEmployee(id),
         firebaseService.deleteWorkDaysForEmployee(id)
       ])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting employee:', error)
       setSyncStatus('error')
+      setErrorMessage(`Failed to delete employee: ${error.message}`)
     }
   }
 
@@ -110,6 +136,7 @@ export default function Home() {
     
     try {
       setSyncStatus('syncing')
+      setErrorMessage('')
       if (existingDay) {
         const updatedWorkDay = { ...existingDay, worked: !existingDay.worked }
         await firebaseService.addWorkDay(updatedWorkDay)
@@ -123,9 +150,10 @@ export default function Home() {
         }
         await firebaseService.addWorkDay(newWorkDay)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating work day:', error)
       setSyncStatus('error')
+      setErrorMessage(`Failed to update work day: ${error.message}`)
     }
   }
 
@@ -135,11 +163,13 @@ export default function Home() {
     if (existingDay) {
       try {
         setSyncStatus('syncing')
+        setErrorMessage('')
         const updatedWorkDay = { ...existingDay, paid: !existingDay.paid }
         await firebaseService.addWorkDay(updatedWorkDay)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating payment:', error)
         setSyncStatus('error')
+        setErrorMessage(`Failed to update payment: ${error.message}`)
       }
     }
   }
@@ -168,6 +198,28 @@ export default function Home() {
     ).length
     
     return paidDays * employee.dailyWage
+  }
+
+  const retryConnection = async () => {
+    try {
+      setSyncStatus('syncing')
+      setErrorMessage('')
+      await firebaseService.enableNetwork()
+      
+      // Reload data
+      const [employeesData, workDaysData] = await Promise.all([
+        firebaseService.getEmployees(),
+        firebaseService.getWorkDays()
+      ])
+      
+      setEmployees(employeesData as Employee[])
+      setWorkDays(workDaysData as WorkDay[])
+      setSyncStatus('synced')
+    } catch (error: any) {
+      console.error('Error retrying connection:', error)
+      setSyncStatus('error')
+      setErrorMessage(`Connection failed: ${error.message}`)
+    }
   }
 
   if (loading) {
@@ -204,6 +256,33 @@ export default function Home() {
           </span>
         </div>
       </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Sync Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{errorMessage}</p>
+              </div>
+              <div className="mt-3">
+                <button
+                  onClick={retryConnection}
+                  className="text-sm bg-red-100 text-red-800 px-3 py-1 rounded-md hover:bg-red-200 transition-colors"
+                >
+                  Retry Connection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">
         My Days - Work Tracker
