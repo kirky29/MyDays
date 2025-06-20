@@ -4,11 +4,16 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { firebaseService } from '../lib/firebase'
+import ReportModal from './components/ReportModal'
 
 interface Employee {
   id: string
   name: string
   dailyWage: number
+  email?: string
+  phone?: string
+  startDate?: string
+  notes?: string
 }
 
 interface WorkDay {
@@ -29,6 +34,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('syncing')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [payments, setPayments] = useState<any[]>([])
 
   // Load data from Firebase on component mount
   useEffect(() => {
@@ -44,14 +52,16 @@ export default function Home() {
         await firebaseService.enableNetwork()
         
         // Load initial data
-        const [employeesData, workDaysData] = await Promise.all([
+        const [employeesData, workDaysData, paymentsData] = await Promise.all([
           firebaseService.getEmployees(),
-          firebaseService.getWorkDays()
+          firebaseService.getWorkDays(),
+          firebaseService.getPayments()
         ])
         
         if (isMounted) {
           setEmployees(employeesData as Employee[])
           setWorkDays(workDaysData as WorkDay[])
+          setPayments(paymentsData as any[])
           setSyncStatus('synced')
         }
       } catch (error: any) {
@@ -112,20 +122,40 @@ export default function Home() {
       }
     )
 
+    const unsubscribePayments = firebaseService.subscribeToPayments(
+      (paymentsData) => {
+        if (isMounted) {
+          setPayments(paymentsData as any[])
+          setSyncStatus('synced')
+          setErrorMessage('')
+        }
+      },
+      (error: any) => {
+        if (isMounted) {
+          console.error('Payments subscription error:', error)
+          setSyncStatus('error')
+          setErrorMessage(`Payments sync error: ${error.message}`)
+        }
+      }
+    )
+
     return () => {
       isMounted = false
       if (unsubscribeEmployees) unsubscribeEmployees()
       if (unsubscribeWorkDays) unsubscribeWorkDays()
+      if (unsubscribePayments) unsubscribePayments()
     }
   }, [])
 
   const addEmployee = async () => {
     if (!newEmployeeName.trim() || !newEmployeeWage) return
     
+    const employeeId = Date.now().toString()
     const employee: Employee = {
-      id: Date.now().toString(),
+      id: employeeId,
       name: newEmployeeName.trim(),
-      dailyWage: parseFloat(newEmployeeWage)
+      dailyWage: parseFloat(newEmployeeWage),
+      startDate: format(new Date(), 'yyyy-MM-dd')
     }
     
     try {
@@ -134,6 +164,12 @@ export default function Home() {
       await firebaseService.addEmployee(employee)
       setNewEmployeeName('')
       setNewEmployeeWage('')
+      
+      // Auto-navigate to the new employee's profile
+      setTimeout(() => {
+        window.location.href = `/employee/${employeeId}`
+      }, 500) // Small delay to ensure the employee is saved
+      
     } catch (error: any) {
       console.error('Error adding employee:', error)
       setSyncStatus('error')
@@ -229,13 +265,15 @@ export default function Home() {
       await firebaseService.enableNetwork()
       
       // Reload data
-      const [employeesData, workDaysData] = await Promise.all([
+      const [employeesData, workDaysData, paymentsData] = await Promise.all([
         firebaseService.getEmployees(),
-        firebaseService.getWorkDays()
+        firebaseService.getWorkDays(),
+        firebaseService.getPayments()
       ])
       
       setEmployees(employeesData as Employee[])
       setWorkDays(workDaysData as WorkDay[])
+      setPayments(paymentsData as any[])
       setSyncStatus('synced')
     } catch (error: any) {
       console.error('Error retrying connection:', error)
@@ -248,6 +286,11 @@ export default function Home() {
     // Use window.location for clean navigation
     window.location.href = `/employee/${employeeId}`
   }
+
+  // Filter employees based on search term
+  const filteredEmployees = employees.filter(employee =>
+    employee.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   if (loading) {
     return (
@@ -311,9 +354,20 @@ export default function Home() {
         </div>
       )}
 
-      <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">
-        My Days - Work Tracker
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          My Days - Work Tracker
+        </h1>
+        <button
+          onClick={() => setShowReportModal(true)}
+          className="flex items-center space-x-1 bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+          <span>Reports</span>
+        </button>
+      </div>
 
       {/* Add Employee Section */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -338,17 +392,49 @@ export default function Home() {
             disabled={syncStatus === 'syncing'}
             className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {syncStatus === 'syncing' ? 'Adding...' : 'Add Employee'}
+            {syncStatus === 'syncing' ? 'Adding...' : 'Add Employee & Set Up Profile'}
           </button>
         </div>
       </div>
 
-      {/* Employee List */}
+      {/* Employee Search */}
       {employees.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">Employees</h2>
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Employee List */}
+      {filteredEmployees.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-700">
+              Employees {searchTerm && `(${filteredEmployees.length} of ${employees.length})`}
+            </h2>
+          </div>
           <div className="space-y-4">
-            {employees.map(employee => {
+            {filteredEmployees.map(employee => {
               const stats = calculateEmployeeStats(employee.id)
               return (
                 <div key={employee.id} className="border border-gray-200 rounded-lg p-4">
@@ -357,13 +443,18 @@ export default function Home() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-800 text-lg">{employee.name}</h3>
                       <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                      {employee.startDate && (
+                        <p className="text-xs text-gray-500">
+                          Started: {format(new Date(employee.startDate), 'MMM d, yyyy')}
+                        </p>
+                      )}
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => navigateToEmployee(employee.id)}
                         className="bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors"
                       >
-                        View Details
+                        View Profile
                       </button>
                       <button
                         onClick={() => deleteEmployee(employee.id)}
@@ -421,8 +512,21 @@ export default function Home() {
         </div>
       )}
 
+      {/* Show message when no employees match search */}
+      {employees.length > 0 && filteredEmployees.length === 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+          <p className="text-gray-600">No employees found matching "{searchTerm}"</p>
+          <button
+            onClick={() => setSearchTerm('')}
+            className="mt-2 text-primary hover:text-blue-600 text-sm underline"
+          >
+            Clear search
+          </button>
+        </div>
+      )}
+
       {/* Quick Work Day Tracker */}
-      {employees.length > 0 && (
+      {filteredEmployees.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <h2 className="text-lg font-semibold mb-4 text-gray-700">Quick Work Day Tracker</h2>
           
@@ -438,7 +542,7 @@ export default function Home() {
 
           {/* Employee Work Status */}
           <div className="space-y-3">
-            {employees.map(employee => {
+            {filteredEmployees.map(employee => {
               const workDay = getWorkDay(employee.id, selectedDate)
               return (
                 <div key={employee.id} className="border border-gray-200 rounded-md p-3">
@@ -497,6 +601,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        employees={employees}
+        workDays={workDays}
+        payments={payments}
+      />
     </div>
   )
 } 
