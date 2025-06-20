@@ -33,11 +33,31 @@ export default function EmployeeDetail() {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [dataLoaded, setDataLoaded] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
-  // Single useEffect to handle all data loading and subscriptions
+  // Handle browser navigation events
   useEffect(() => {
-    if (!employeeId) return
+    const handlePopState = () => {
+      // Force a complete page reload when browser back/forward is used
+      window.location.reload()
+    }
+
+    // Add event listener for browser navigation
+    window.addEventListener('popstate', handlePopState)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
+
+  // Set mounted state
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Data loading effect
+  useEffect(() => {
+    if (!employeeId || !mounted) return
 
     let isMounted = true
     let unsubscribeEmployees: (() => void) | undefined
@@ -46,17 +66,26 @@ export default function EmployeeDetail() {
 
     const loadData = async () => {
       try {
+        console.log('Loading data for employee:', employeeId)
         setLoading(true)
         setSyncStatus('syncing')
         setErrorMessage('')
-        setDataLoaded(false)
         
-        // Load initial data
-        const [employeesData, workDaysData, paymentsData] = await Promise.all([
+        // Load initial data with timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 8000)
+        )
+        
+        const dataPromise = Promise.all([
           firebaseService.getEmployees(),
           firebaseService.getWorkDays(),
           firebaseService.getPayments()
         ])
+        
+        const [employeesData, workDaysData, paymentsData] = await Promise.race([
+          dataPromise,
+          timeoutPromise
+        ]) as any[]
         
         if (!isMounted) return
         
@@ -76,8 +105,9 @@ export default function EmployeeDetail() {
         setWorkDays(allWorkDays.filter(day => day.employeeId === employeeId))
         setPayments(allPayments.filter(payment => payment.employeeId === employeeId))
         setSyncStatus('synced')
-        setDataLoaded(true)
         setLoading(false)
+        
+        console.log('Data loaded successfully')
         
       } catch (error: any) {
         console.error('Error loading data:', error)
@@ -89,8 +119,10 @@ export default function EmployeeDetail() {
       }
     }
 
-    // Set up real-time listeners
+    // Set up real-time listeners after initial load
     const setupListeners = () => {
+      if (!isMounted) return
+      
       try {
         unsubscribeEmployees = firebaseService.subscribeToEmployees(
           (employeesData) => {
@@ -147,10 +179,11 @@ export default function EmployeeDetail() {
       }
     }
 
-    // Load data first, then set up listeners
+    // Load data first
     loadData().then(() => {
       if (isMounted) {
-        setupListeners()
+        // Set up listeners after a short delay
+        setTimeout(setupListeners, 500)
       }
     })
 
@@ -160,10 +193,11 @@ export default function EmployeeDetail() {
       if (unsubscribeWorkDays) unsubscribeWorkDays()
       if (unsubscribePayments) unsubscribePayments()
     }
-  }, [employeeId])
+  }, [employeeId, mounted])
 
   const handleBackNavigation = () => {
-    router.push('/')
+    // Use window.location instead of router to ensure clean navigation
+    window.location.href = '/'
   }
 
   const toggleWorkDay = async (date: string) => {
@@ -248,7 +282,7 @@ export default function EmployeeDetail() {
     }
   }
 
-  const retryConnection = async () => {
+  const retryConnection = () => {
     window.location.reload()
   }
 
@@ -256,8 +290,22 @@ export default function EmployeeDetail() {
     setSelectedWorkDays([])
   }
 
+  // Don't render anything until mounted (prevents hydration issues)
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-md">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Initializing...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Show loading state
-  if (loading || !dataLoaded) {
+  if (loading) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-md">
         <div className="flex items-center justify-center min-h-screen">
@@ -273,7 +321,7 @@ export default function EmployeeDetail() {
               onClick={retryConnection}
               className="mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
             >
-              Reload page if stuck
+              Reload if stuck
             </button>
           </div>
         </div>
@@ -303,7 +351,7 @@ export default function EmployeeDetail() {
   const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-md" key={employeeId}>
+    <div className="container mx-auto px-4 py-6 max-w-md">
       {/* Sync Status Indicator */}
       <div className="mb-4 flex items-center justify-center">
         <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
