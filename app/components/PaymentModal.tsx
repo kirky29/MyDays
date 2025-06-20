@@ -56,22 +56,27 @@ export default function PaymentModal({
         totalAmount
       })
 
-      const payment: Payment = {
+      // Create payment object with proper handling of optional fields
+      const paymentData: any = {
         id: Date.now().toString(),
         employeeId: employee.id,
         workDayIds: selectedWorkDays.map(day => day.id),
         amount: totalAmount,
         paymentType,
-        notes: notes.trim() || undefined,
         date: format(new Date(), 'yyyy-MM-dd'),
         createdAt: new Date().toISOString()
       }
 
-      console.log('Payment object created:', payment)
+      // Only add notes if it's not empty
+      if (notes.trim()) {
+        paymentData.notes = notes.trim()
+      }
+
+      console.log('Payment object created:', paymentData)
       
       // Add payment record first
       console.log('Adding payment to Firebase...')
-      await firebaseService.addPayment(payment)
+      await firebaseService.addPayment(paymentData)
       console.log('Payment added successfully')
 
       // Mark work days as paid

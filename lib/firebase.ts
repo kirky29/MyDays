@@ -114,7 +114,7 @@ export const firebaseService = {
   },
 
   // Payment functions
-  async addPayment(payment: Payment) {
+  async addPayment(payment: Payment | any) {
     try {
       await setDoc(doc(db, COLLECTIONS.PAYMENTS, payment.id), payment);
       return { success: true };
