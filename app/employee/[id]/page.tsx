@@ -20,7 +20,17 @@ interface WorkDay {
   paid: boolean
 }
 
-export default function EmployeeDetail() {
+// Wrapper component that forces remount on route change
+function EmployeeDetailWrapper() {
+  const params = useParams()
+  const employeeId = params.id as string
+  
+  // Force complete remount when employeeId changes
+  return <EmployeeDetail key={employeeId} />
+}
+
+// Main component
+function EmployeeDetail() {
   const params = useParams()
   const router = useRouter()
   const employeeId = params.id as string
@@ -33,114 +43,9 @@ export default function EmployeeDetail() {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
-  // Reset state when employeeId changes (browser navigation)
-  useEffect(() => {
-    setEmployee(null)
-    setWorkDays([])
-    setPayments([])
-    setLoading(true)
-    setSyncStatus('syncing')
-    setErrorMessage('')
-    setSelectedWorkDays([])
-    setShowPaymentModal(false)
-  }, [employeeId])
-
-  // Load employee and work days data
-  useEffect(() => {
-    let isMounted = true
-    let timeoutId: NodeJS.Timeout
-
-    const loadEmployeeData = async () => {
-      if (!employeeId) return
-
-      try {
-        console.log('Loading employee data for:', employeeId)
-        setLoading(true)
-        setSyncStatus('syncing')
-        setErrorMessage('')
-        
-        // Add timeout protection
-        timeoutId = setTimeout(() => {
-          if (isMounted) {
-            console.log('Loading timeout reached')
-            setLoading(false)
-            setSyncStatus('error')
-            setErrorMessage('Loading timeout - please try again')
-          }
-        }, 10000) // 10 second timeout
-        
-        // Load all employees, work days, and payments
-        const [employeesData, workDaysData, paymentsData] = await Promise.all([
-          firebaseService.getEmployees(),
-          firebaseService.getWorkDays(),
-          firebaseService.getPayments()
-        ])
-        
-        // Clear timeout since we got data
-        clearTimeout(timeoutId)
-        
-        // Check if component is still mounted
-        if (!isMounted) {
-          console.log('Component unmounted during data load')
-          return
-        }
-        
-        console.log('Data loaded successfully')
-        const employees = employeesData as Employee[]
-        const allWorkDays = workDaysData as WorkDay[]
-        const allPayments = paymentsData as Payment[]
-        
-        // Find the specific employee
-        const foundEmployee = employees.find(emp => emp.id === employeeId)
-        if (!foundEmployee) {
-          if (isMounted) {
-            setErrorMessage('Employee not found')
-            setSyncStatus('error')
-          }
-          return
-        }
-        
-        if (isMounted) {
-          setEmployee(foundEmployee)
-          
-          // Filter work days for this employee
-          const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
-          setWorkDays(employeeWorkDays)
-          
-          // Filter payments for this employee
-          const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
-          setPayments(employeePayments)
-          
-          setSyncStatus('synced')
-        }
-      } catch (error: any) {
-        console.error('Error loading employee data:', error)
-        clearTimeout(timeoutId)
-        if (isMounted) {
-          setSyncStatus('error')
-          setErrorMessage(error.message || 'Failed to load employee data')
-        }
-      } finally {
-        clearTimeout(timeoutId)
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    if (employeeId) {
-      loadEmployeeData()
-    }
-
-    return () => {
-      console.log('Cleaning up data loading effect')
-      isMounted = false
-      clearTimeout(timeoutId)
-    }
-  }, [employeeId])
-
-  // Set up real-time listeners
+  // Single useEffect to handle all data loading and subscriptions
   useEffect(() => {
     if (!employeeId) return
 
@@ -149,92 +54,121 @@ export default function EmployeeDetail() {
     let unsubscribeWorkDays: (() => void) | undefined
     let unsubscribePayments: (() => void) | undefined
 
-    console.log('Setting up real-time listeners for employee:', employeeId)
-
-    try {
-      unsubscribeEmployees = firebaseService.subscribeToEmployees(
-        (employeesData) => {
-          if (!isMounted) return
-          console.log('Employees data updated')
-          const employees = employeesData as Employee[]
-          const foundEmployee = employees.find(emp => emp.id === employeeId)
-          if (foundEmployee) {
-            setEmployee(foundEmployee)
-            setSyncStatus('synced')
-            setErrorMessage('')
-          }
-        },
-        (error: any) => {
-          if (!isMounted) return
-          console.error('Employees subscription error:', error)
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setSyncStatus('syncing')
+        setErrorMessage('')
+        setDataLoaded(false)
+        
+        // Load initial data
+        const [employeesData, workDaysData, paymentsData] = await Promise.all([
+          firebaseService.getEmployees(),
+          firebaseService.getWorkDays(),
+          firebaseService.getPayments()
+        ])
+        
+        if (!isMounted) return
+        
+        const employees = employeesData as Employee[]
+        const allWorkDays = workDaysData as WorkDay[]
+        const allPayments = paymentsData as Payment[]
+        
+        const foundEmployee = employees.find(emp => emp.id === employeeId)
+        if (!foundEmployee) {
+          setErrorMessage('Employee not found')
           setSyncStatus('error')
-          setErrorMessage(`Employees sync error: ${error.message}`)
+          setLoading(false)
+          return
         }
-      )
-
-      unsubscribeWorkDays = firebaseService.subscribeToWorkDays(
-        (workDaysData) => {
-          if (!isMounted) return
-          console.log('Work days data updated')
-          const allWorkDays = workDaysData as WorkDay[]
-          const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
-          setWorkDays(employeeWorkDays)
-          setSyncStatus('synced')
-          setErrorMessage('')
-        },
-        (error: any) => {
-          if (!isMounted) return
-          console.error('Work days subscription error:', error)
+        
+        setEmployee(foundEmployee)
+        setWorkDays(allWorkDays.filter(day => day.employeeId === employeeId))
+        setPayments(allPayments.filter(payment => payment.employeeId === employeeId))
+        setSyncStatus('synced')
+        setDataLoaded(true)
+        setLoading(false)
+        
+      } catch (error: any) {
+        console.error('Error loading data:', error)
+        if (isMounted) {
           setSyncStatus('error')
-          setErrorMessage(`Work days sync error: ${error.message}`)
+          setErrorMessage(error.message || 'Failed to load data')
+          setLoading(false)
         }
-      )
-
-      unsubscribePayments = firebaseService.subscribeToPayments(
-        (paymentsData) => {
-          if (!isMounted) return
-          console.log('Payments data updated')
-          const allPayments = paymentsData as Payment[]
-          const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
-          setPayments(employeePayments)
-          setSyncStatus('synced')
-          setErrorMessage('')
-        },
-        (error: any) => {
-          if (!isMounted) return
-          console.error('Payments subscription error:', error)
-          setSyncStatus('error')
-          setErrorMessage(`Payments sync error: ${error.message}`)
-        }
-      )
-    } catch (error) {
-      console.error('Error setting up subscriptions:', error)
+      }
     }
 
+    // Set up real-time listeners
+    const setupListeners = () => {
+      try {
+        unsubscribeEmployees = firebaseService.subscribeToEmployees(
+          (employeesData) => {
+            if (!isMounted) return
+            const employees = employeesData as Employee[]
+            const foundEmployee = employees.find(emp => emp.id === employeeId)
+            if (foundEmployee) {
+              setEmployee(foundEmployee)
+              setSyncStatus('synced')
+              setErrorMessage('')
+            }
+          },
+          (error: any) => {
+            if (!isMounted) return
+            console.error('Employees subscription error:', error)
+            setSyncStatus('error')
+            setErrorMessage(`Employees sync error: ${error.message}`)
+          }
+        )
+
+        unsubscribeWorkDays = firebaseService.subscribeToWorkDays(
+          (workDaysData) => {
+            if (!isMounted) return
+            const allWorkDays = workDaysData as WorkDay[]
+            setWorkDays(allWorkDays.filter(day => day.employeeId === employeeId))
+            setSyncStatus('synced')
+            setErrorMessage('')
+          },
+          (error: any) => {
+            if (!isMounted) return
+            console.error('Work days subscription error:', error)
+            setSyncStatus('error')
+            setErrorMessage(`Work days sync error: ${error.message}`)
+          }
+        )
+
+        unsubscribePayments = firebaseService.subscribeToPayments(
+          (paymentsData) => {
+            if (!isMounted) return
+            const allPayments = paymentsData as Payment[]
+            setPayments(allPayments.filter(payment => payment.employeeId === employeeId))
+            setSyncStatus('synced')
+            setErrorMessage('')
+          },
+          (error: any) => {
+            if (!isMounted) return
+            console.error('Payments subscription error:', error)
+            setSyncStatus('error')
+            setErrorMessage(`Payments sync error: ${error.message}`)
+          }
+        )
+      } catch (error) {
+        console.error('Error setting up listeners:', error)
+      }
+    }
+
+    // Load data first, then set up listeners
+    loadData().then(() => {
+      if (isMounted) {
+        setupListeners()
+      }
+    })
+
     return () => {
-      console.log('Cleaning up real-time listeners')
       isMounted = false
-      if (unsubscribeEmployees) {
-        try {
-          unsubscribeEmployees()
-        } catch (error) {
-          console.error('Error unsubscribing from employees:', error)
-        }
-      }
-      if (unsubscribeWorkDays) {
-        try {
-          unsubscribeWorkDays()
-        } catch (error) {
-          console.error('Error unsubscribing from work days:', error)
-        }
-      }
-      if (unsubscribePayments) {
-        try {
-          unsubscribePayments()
-        } catch (error) {
-          console.error('Error unsubscribing from payments:', error)
-        }
-      }
+      if (unsubscribeEmployees) unsubscribeEmployees()
+      if (unsubscribeWorkDays) unsubscribeWorkDays()
+      if (unsubscribePayments) unsubscribePayments()
     }
   }, [employeeId])
 
@@ -325,44 +259,15 @@ export default function EmployeeDetail() {
   }
 
   const retryConnection = async () => {
-    try {
-      setSyncStatus('syncing')
-      setErrorMessage('')
-      await firebaseService.enableNetwork()
-      
-      // Reload data
-      const [employeesData, workDaysData, paymentsData] = await Promise.all([
-        firebaseService.getEmployees(),
-        firebaseService.getWorkDays(),
-        firebaseService.getPayments()
-      ])
-      
-      const employees = employeesData as Employee[]
-      const allWorkDays = workDaysData as WorkDay[]
-      const allPayments = paymentsData as Payment[]
-      
-      const foundEmployee = employees.find(emp => emp.id === employeeId)
-      if (foundEmployee) {
-        setEmployee(foundEmployee)
-        const employeeWorkDays = allWorkDays.filter(day => day.employeeId === employeeId)
-        const employeePayments = allPayments.filter(payment => payment.employeeId === employeeId)
-        setWorkDays(employeeWorkDays)
-        setPayments(employeePayments)
-        setSyncStatus('synced')
-      }
-    } catch (error: any) {
-      console.error('Error retrying connection:', error)
-      setSyncStatus('error')
-      setErrorMessage(`Connection failed: ${error.message}`)
-    }
+    window.location.reload()
   }
 
   const handlePaymentComplete = () => {
     setSelectedWorkDays([])
-    // Data will be updated via real-time listeners
   }
 
-  if (loading) {
+  // Show loading state
+  if (loading || !dataLoaded) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-md">
         <div className="flex items-center justify-center min-h-screen">
@@ -375,7 +280,7 @@ export default function EmployeeDetail() {
               <p className="text-sm text-red-500 mt-2">{errorMessage}</p>
             )}
             <button
-              onClick={() => window.location.reload()}
+              onClick={retryConnection}
               className="mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
             >
               Reload page if stuck
@@ -386,6 +291,7 @@ export default function EmployeeDetail() {
     )
   }
 
+  // Show error state
   if (!employee) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-md">
@@ -651,4 +557,7 @@ export default function EmployeeDetail() {
       />
     </div>
   )
-} 
+}
+
+// Export the wrapper component
+export default EmployeeDetailWrapper 
