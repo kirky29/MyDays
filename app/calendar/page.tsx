@@ -391,31 +391,69 @@ export default function CalendarPage() {
               const hasWorkers = dayWorkDays.length > 0
               const hasUnpaid = dayWorkDays.some(wd => !wd.paid)
               const allPaid = dayWorkDays.length > 0 && dayWorkDays.every(wd => wd.paid)
+              const unpaidCount = dayWorkDays.filter(wd => !wd.paid).length
+              const totalWorkers = dayWorkDays.length
 
               return (
                 <button
                   key={index}
                   onClick={() => openDayView(date)}
                   className={`
-                    aspect-square p-1 rounded-lg text-xs font-medium transition-all duration-200
+                    aspect-square p-2 rounded-lg text-xs font-medium transition-all duration-200 relative group
                     ${!isCurrentMonth ? 'text-gray-300' : 
-                      isCurrentDay ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                      isCurrentDay ? 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm' :
                       hasWorkers ? 
-                        allPaid ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                        hasUnpaid ? 'bg-orange-100 text-orange-800 hover:bg-orange-200' :
-                        'text-gray-700 hover:bg-gray-100'
-                      : 'text-gray-700 hover:bg-gray-100'
+                        allPaid ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-200' :
+                        hasUnpaid ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-200' :
+                        'text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      : 'text-gray-700 hover:bg-gray-100 border border-gray-200'
                     }
                   `}
                 >
-                  <div>{format(date, 'd')}</div>
+                  {/* Day number */}
+                  <div className="text-center font-semibold mb-1">
+                    {format(date, 'd')}
+                  </div>
+                  
+                  {/* Work status indicators */}
                   {hasWorkers && (
-                    <div className="flex justify-center mt-0.5">
-                      <div className={`w-1 h-1 rounded-full ${
-                        allPaid ? 'bg-green-500' : 'bg-orange-500'
-                      }`}></div>
+                    <div className="space-y-1">
+                      {/* Worker count */}
+                      <div className="flex justify-center">
+                        <div className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                          allPaid 
+                            ? 'bg-green-200 text-green-800' 
+                            : 'bg-orange-200 text-orange-800'
+                        }`}>
+                          {totalWorkers} worker{totalWorkers !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      
+                      {/* Payment status */}
+                      {hasUnpaid && (
+                        <div className="flex justify-center">
+                          <div className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-medium">
+                            {unpaidCount} unpaid
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Today indicator */}
+                  {isCurrentDay && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+                  )}
+
+                  {/* Hover tooltip */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                    {format(date, 'EEEE, MMM d')}
+                    {hasWorkers && (
+                      <div className="mt-1">
+                        {allPaid ? 'All workers paid' : `${unpaidCount} worker${unpaidCount !== 1 ? 's' : ''} unpaid`}
+                      </div>
+                    )}
+                  </div>
                 </button>
               )
             })}
@@ -424,19 +462,45 @@ export default function CalendarPage() {
 
         {/* Legend */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Legend</h3>
-          <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Calendar Guide</h3>
+          <div className="space-y-3">
             <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
-              <span className="text-sm text-gray-600">All workers paid</span>
+              <div className="w-8 h-8 bg-green-100 border border-green-200 rounded flex items-center justify-center">
+                <div className="w-4 h-4 bg-green-200 rounded-full text-xs font-medium text-green-800">2</div>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">All workers paid</span>
+                <p className="text-xs text-gray-500">Green background with worker count</p>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-orange-100 border border-orange-200 rounded"></div>
-              <span className="text-sm text-gray-600">Some workers unpaid</span>
+              <div className="w-8 h-8 bg-orange-100 border border-orange-200 rounded flex items-center justify-center">
+                <div className="w-4 h-4 bg-orange-200 rounded-full text-xs font-medium text-orange-800">3</div>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">Some workers unpaid</span>
+                <p className="text-xs text-gray-500">Orange background with unpaid count</p>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-blue-100 border border-blue-200 rounded"></div>
-              <span className="text-sm text-gray-600">Today</span>
+              <div className="w-8 h-8 bg-blue-100 border-2 border-blue-300 rounded relative">
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">Today</span>
+                <p className="text-xs text-gray-500">Blue border with dot indicator</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gray-100 border border-gray-200 rounded flex items-center justify-center">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">Click any day</span>
+                <p className="text-xs text-gray-500">To view and manage work status</p>
+              </div>
             </div>
           </div>
         </div>
@@ -474,59 +538,124 @@ export default function CalendarPage() {
                           : 'bg-gray-50 border-gray-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold ${
-                            workDay?.worked
-                              ? workDay.paid
-                                ? 'bg-green-600'
-                                : 'bg-orange-600'
-                              : 'bg-gray-400'
-                          }`}>
-                            {employee.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{employee.name}</h3>
-                            <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
-                          </div>
+                      {/* Employee Header */}
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg ${
+                          workDay?.worked
+                            ? workDay.paid
+                              ? 'bg-green-600'
+                              : 'bg-orange-600'
+                            : 'bg-gray-400'
+                        }`}>
+                          {employee.name.charAt(0).toUpperCase()}
                         </div>
-                        
-                        <div className="flex items-center space-x-2">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg">{employee.name}</h3>
+                          <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                        </div>
+                      </div>
+
+                      {/* Work Status Section */}
+                      <div className="space-y-3">
+                        {/* Work Toggle */}
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              workDay?.worked 
+                                ? 'bg-blue-100 text-blue-600' 
+                                : 'bg-gray-100 text-gray-400'
+                            }`}>
+                              {workDay?.worked ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">Worked Today</p>
+                              <p className="text-sm text-gray-500">
+                                {workDay?.worked ? 'Employee worked on this day' : 'Employee did not work'}
+                              </p>
+                            </div>
+                          </div>
                           <button
                             onClick={() => toggleWorkDay(employee.id, selectedDayData.date)}
-                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                               workDay?.worked
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                           >
-                            {workDay?.worked ? 'Worked' : 'Not Worked'}
+                            {workDay?.worked ? 'Mark as Not Worked' : 'Mark as Worked'}
                           </button>
-                          
-                          {workDay?.worked && (
-                            <>
+                        </div>
+
+                        {/* Payment Status Section - Only show if worked */}
+                        {workDay?.worked && (
+                          <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                workDay.paid 
+                                  ? 'bg-green-100 text-green-600' 
+                                  : 'bg-orange-100 text-orange-600'
+                              }`}>
+                                {workDay.paid ? (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">Payment Status</p>
+                                <p className="text-sm text-gray-500">
+                                  {workDay.paid ? 'Payment completed' : 'Payment pending'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => togglePayment(employee.id, selectedDayData.date)}
-                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
                                   workDay.paid
-                                    ? 'bg-green-600 text-white hover:bg-green-700'
-                                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                                    : 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm'
                                 }`}
                               >
-                                {workDay.paid ? 'Paid' : 'Unpaid'}
+                                {workDay.paid ? 'Mark as Unpaid' : 'Mark as Paid'}
                               </button>
                               
                               {!workDay.paid && (
                                 <button
                                   onClick={() => openPaymentModal(employee)}
-                                  className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+                                  className="px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
                                 >
-                                  Add Payment
+                                  Process Payment
                                 </button>
                               )}
-                            </>
-                          )}
-                        </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Quick Actions */}
+                        {!workDay?.worked && (
+                          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                            <p className="text-sm text-blue-800 font-medium mb-2">Quick Action</p>
+                            <button
+                              onClick={() => toggleWorkDay(employee.id, selectedDayData.date)}
+                              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm"
+                            >
+                              Mark {employee.name} as Worked Today
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
