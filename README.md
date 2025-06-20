@@ -1,6 +1,6 @@
 # My Days - Employee Work Tracker
 
-A mobile-first web application for tracking employee work days and payments. Built with Next.js, React, and Tailwind CSS.
+A mobile-first web application for tracking employee work days and payments with real-time synchronization across multiple devices. Built with Next.js, React, Tailwind CSS, and Firebase Firestore.
 
 ## Features
 
@@ -8,9 +8,12 @@ A mobile-first web application for tracking employee work days and payments. Bui
 - ✅ Track work days for each employee
 - ✅ Mark payments for worked days
 - ✅ Calculate total earnings and outstanding payments
+- ✅ **Real-time synchronization across multiple devices**
+- ✅ **Cloud storage with Firebase Firestore**
 - ✅ Mobile-first responsive design
-- ✅ Local storage for data persistence
 - ✅ Clean, intuitive interface
+- ✅ Sync status indicators
+- ✅ Offline capability with sync when online
 
 ## Tech Stack
 
@@ -18,6 +21,7 @@ A mobile-first web application for tracking employee work days and payments. Bui
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Date Handling**: date-fns
+- **Database**: Firebase Firestore
 - **Deployment**: Vercel
 
 ## Getting Started
@@ -26,6 +30,7 @@ A mobile-first web application for tracking employee work days and payments. Bui
 
 - Node.js 18+ 
 - npm or yarn
+- Firebase project (already configured)
 
 ### Installation
 
@@ -52,16 +57,24 @@ npm run dev
 ### Adding Employees
 1. Enter the employee's name
 2. Enter their daily wage rate
-3. Click "Add Employee"
+3. Click "Add Employee" (data syncs to cloud automatically)
 
 ### Tracking Work Days
 1. Select a date using the date picker
 2. For each employee, click "Mark Worked" if they worked that day
 3. Click "Mark Paid" when payment is made for that work day
+4. Changes sync instantly across all devices
+
+### Multi-Device Sync
+- **Real-time updates**: Changes made on one device appear instantly on others
+- **Sync status indicator**: Shows when data is syncing, synced, or has errors
+- **Cloud storage**: All data is stored securely in Firebase Firestore
+- **Offline support**: App works offline and syncs when connection is restored
 
 ### Viewing Summary
 - See total earnings, payments, and outstanding amounts for each employee
 - View overall summary statistics
+- All calculations update in real-time
 
 ## Deployment
 
@@ -94,19 +107,35 @@ my-days-app/
 │   ├── globals.css          # Global styles and Tailwind imports
 │   ├── layout.tsx           # Root layout component
 │   └── page.tsx             # Main application page
+├── lib/
+│   └── firebase.ts          # Firebase configuration and service functions
 ├── package.json             # Dependencies and scripts
 ├── tailwind.config.js       # Tailwind CSS configuration
 ├── tsconfig.json           # TypeScript configuration
+├── vercel.json             # Vercel deployment configuration
 └── README.md               # This file
 ```
 
-## Data Storage
+## Data Storage & Sync
 
-The application uses browser localStorage to persist data. This means:
-- Data is stored locally in the user's browser
-- Data persists between sessions
-- No server or database required
-- Data is private to each device/browser
+The application uses **Firebase Firestore** for data persistence and synchronization:
+
+- **Cloud Storage**: All data is stored securely in Firebase Firestore
+- **Real-time Sync**: Changes sync instantly across all devices
+- **Offline Support**: App works offline and syncs when connection is restored
+- **Automatic Backups**: Data is automatically backed up in the cloud
+- **Multi-user Support**: Multiple users can access the same data simultaneously
+
+### Firebase Collections
+
+- `employees`: Stores employee information (name, daily wage)
+- `workDays`: Stores work day records (employee, date, worked status, paid status)
+
+## Security
+
+- Firebase security rules protect your data
+- API keys are configured for your specific Firebase project
+- Data is stored securely in Google's cloud infrastructure
 
 ## Contributing
 
