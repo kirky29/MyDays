@@ -118,46 +118,111 @@ export default function Settings() {
         }
       }
 
-      // For now, we'll create a downloadable HTML file that can be printed as PDF
+      // Create HTML content for the report
       const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
           <title>My Days Report</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .summary { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-            .employee { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 8px; }
-            .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
-            .stat { text-align: center; padding: 10px; background: #f9f9f9; border-radius: 4px; }
-            @media print { body { margin: 0; } }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              line-height: 1.6;
+              color: #333;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 2px solid #e5e7eb;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              color: #1f2937;
+              margin-bottom: 10px;
+            }
+            .summary { 
+              background: #f9fafb; 
+              padding: 20px; 
+              border-radius: 8px; 
+              margin-bottom: 30px; 
+              border: 1px solid #e5e7eb;
+            }
+            .summary h2 {
+              color: #1f2937;
+              margin-bottom: 15px;
+            }
+            .employee { 
+              border: 1px solid #e5e7eb; 
+              margin: 15px 0; 
+              padding: 20px; 
+              border-radius: 8px; 
+              background: white;
+            }
+            .employee h3 {
+              color: #1f2937;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 10px;
+            }
+            .stats { 
+              display: grid; 
+              grid-template-columns: repeat(4, 1fr); 
+              gap: 15px; 
+              margin-top: 15px; 
+            }
+            .stat { 
+              text-align: center; 
+              padding: 15px; 
+              background: #f9fafb; 
+              border-radius: 6px; 
+              border: 1px solid #e5e7eb;
+            }
+            .stat strong {
+              display: block;
+              font-size: 1.2em;
+              color: #1f2937;
+              margin-bottom: 5px;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              color: #6b7280;
+              font-size: 0.9em;
+              border-top: 1px solid #e5e7eb;
+              padding-top: 20px;
+            }
+            @media print { 
+              body { margin: 0; }
+              .header { page-break-after: avoid; }
+              .summary { page-break-after: avoid; }
+            }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>${reportData.title}</h1>
-            <p>Generated on: ${reportData.date}</p>
+            <p><strong>Generated on:</strong> ${reportData.date}</p>
           </div>
           
           <div class="summary">
-            <h2>Summary</h2>
+            <h2>Business Summary</h2>
             <div class="stats">
               <div class="stat">
-                <strong>${reportData.summary.totalEmployees}</strong><br>
-                Employees
+                <strong>${reportData.summary.totalEmployees}</strong>
+                Total Employees
               </div>
               <div class="stat">
-                <strong>${reportData.summary.totalWorkDays}</strong><br>
-                Work Days
+                <strong>${reportData.summary.totalWorkDays}</strong>
+                Work Days Logged
               </div>
               <div class="stat">
-                <strong>${reportData.summary.totalPaidDays}</strong><br>
-                Paid Days
+                <strong>${reportData.summary.totalPaidDays}</strong>
+                Days Paid
               </div>
               <div class="stat">
-                <strong>£${reportData.summary.totalOutstanding.toFixed(2)}</strong><br>
-                Outstanding
+                <strong>£${reportData.summary.totalOutstanding.toFixed(2)}</strong>
+                Total Outstanding
               </div>
             </div>
           </div>
@@ -166,32 +231,38 @@ export default function Settings() {
           ${reportData.employees.map(emp => `
             <div class="employee">
               <h3>${emp.name}</h3>
-              <p>Daily Wage: £${emp.dailyWage}</p>
+              <p><strong>Daily Wage:</strong> £${emp.dailyWage}</p>
               <div class="stats">
                 <div class="stat">
-                  <strong>${emp.workedDays}</strong><br>
+                  <strong>${emp.workedDays}</strong>
                   Days Worked
                 </div>
                 <div class="stat">
-                  <strong>${emp.paidDays}</strong><br>
+                  <strong>${emp.paidDays}</strong>
                   Days Paid
                 </div>
                 <div class="stat">
-                  <strong>£${emp.totalEarned.toFixed(2)}</strong><br>
+                  <strong>£${emp.totalEarned.toFixed(2)}</strong>
                   Total Earned
                 </div>
                 <div class="stat">
-                  <strong>£${emp.outstanding.toFixed(2)}</strong><br>
+                  <strong>£${emp.outstanding.toFixed(2)}</strong>
                   Outstanding
                 </div>
               </div>
             </div>
           `).join('')}
+          
+          <div class="footer">
+            <p>My Days - Work Tracker Report</p>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+          </div>
         </body>
         </html>
       `
 
-      const blob = new Blob([htmlContent], { type: 'text/html' })
+      // Create and download the HTML file
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -269,7 +340,7 @@ export default function Settings() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-500 to-gray-700 rounded-2xl shadow-lg mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -280,7 +351,7 @@ export default function Settings() {
           <p className="text-gray-600">Manage your app preferences and data</p>
         </div>
 
-        {/* Data Management */}
+        {/* Data Export */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
@@ -289,8 +360,8 @@ export default function Settings() {
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Data Management</h2>
-              <p className="text-sm text-gray-600">Backup and manage your data</p>
+              <h2 className="text-lg font-semibold text-gray-900">Export Data</h2>
+              <p className="text-sm text-gray-600">Backup your data in different formats</p>
             </div>
           </div>
 
@@ -330,7 +401,24 @@ export default function Settings() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
+          </div>
+        </div>
 
+        {/* Data Management - Deletion Options */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Data Management</h2>
+              <p className="text-sm text-gray-600">Delete employees and data</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
             <button
               onClick={() => setShowEmployeeModal(true)}
               className="w-full flex items-center justify-between p-4 border border-orange-200 rounded-xl hover:bg-orange-50 transition-colors"
