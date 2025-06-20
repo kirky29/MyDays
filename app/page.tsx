@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { firebaseService } from '../lib/firebase'
 
@@ -19,6 +20,7 @@ interface WorkDay {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [workDays, setWorkDays] = useState<WorkDay[]>([])
   const [newEmployeeName, setNewEmployeeName] = useState('')
@@ -178,26 +180,23 @@ export default function Home() {
     return workDays.find(day => day.employeeId === employeeId && day.date === date)
   }
 
-  const calculateTotalEarnings = (employeeId: string) => {
+  const calculateEmployeeStats = (employeeId: string) => {
     const employee = employees.find(emp => emp.id === employeeId)
-    if (!employee) return 0
+    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0 }
     
     const workedDays = workDays.filter(day => 
       day.employeeId === employeeId && day.worked
     ).length
     
-    return workedDays * employee.dailyWage
-  }
-
-  const calculateTotalPaid = (employeeId: string) => {
-    const employee = employees.find(emp => emp.id === employeeId)
-    if (!employee) return 0
-    
     const paidDays = workDays.filter(day => 
       day.employeeId === employeeId && day.paid
     ).length
     
-    return paidDays * employee.dailyWage
+    const totalEarned = workedDays * employee.dailyWage
+    const totalPaid = paidDays * employee.dailyWage
+    const totalOwed = totalEarned - totalPaid
+    
+    return { totalWorked: workedDays, totalPaid: paidDays, totalOwed, totalEarned }
   }
 
   const retryConnection = async () => {
@@ -301,7 +300,7 @@ export default function Home() {
           />
           <input
             type="number"
-            placeholder="Daily Wage ($)"
+            placeholder="Daily Wage (£)"
             value={newEmployeeWage}
             onChange={(e) => setNewEmployeeWage(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -320,39 +319,84 @@ export default function Home() {
       {employees.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <h2 className="text-lg font-semibold mb-4 text-gray-700">Employees</h2>
-          <div className="space-y-3">
-            {employees.map(employee => (
-              <div key={employee.id} className="border border-gray-200 rounded-md p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <div>
-                    <h3 className="font-medium text-gray-800">{employee.name}</h3>
-                    <p className="text-sm text-gray-600">${employee.dailyWage}/day</p>
+          <div className="space-y-4">
+            {employees.map(employee => {
+              const stats = calculateEmployeeStats(employee.id)
+              return (
+                <div key={employee.id} className="border border-gray-200 rounded-lg p-4">
+                  {/* Employee Header */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 text-lg">{employee.name}</h3>
+                      <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => router.push(`/employee/${employee.id}`)}
+                        className="bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => deleteEmployee(employee.id)}
+                        disabled={syncStatus === 'syncing'}
+                        className="text-danger hover:text-red-700 text-sm disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => deleteEmployee(employee.id)}
-                    disabled={syncStatus === 'syncing'}
-                    className="text-danger hover:text-red-700 text-sm disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">{stats.totalWorked}</div>
+                      <div className="text-xs text-gray-600">Days Worked</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">{stats.totalPaid}</div>
+                      <div className="text-xs text-gray-600">Days Paid</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-lg font-bold ${stats.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        £{stats.totalOwed.toFixed(0)}
+                      </div>
+                      <div className="text-xs text-gray-600">Outstanding</div>
+                    </div>
+                  </div>
+
+                  {/* Financial Breakdown */}
+                  <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Earned:</span>
+                        <span className="font-medium">£{stats.totalEarned.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Paid:</span>
+                        <span className="font-medium text-green-600">£{(stats.totalPaid * employee.dailyWage).toFixed(2)}</span>
+                      </div>
+                      <div className="border-t pt-1 mt-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Outstanding:</span>
+                          <span className={`font-bold ${stats.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            £{stats.totalOwed.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">
-                  <p>Total Earned: ${calculateTotalEarnings(employee.id).toFixed(2)}</p>
-                  <p>Total Paid: ${calculateTotalPaid(employee.id).toFixed(2)}</p>
-                  <p className="font-medium">
-                    Outstanding: ${(calculateTotalEarnings(employee.id) - calculateTotalPaid(employee.id)).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Work Day Tracker */}
+      {/* Quick Work Day Tracker */}
       {employees.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">Work Day Tracker</h2>
+          <h2 className="text-lg font-semibold mb-4 text-gray-700">Quick Work Day Tracker</h2>
           
           {/* Date Selector */}
           <div className="mb-4">
@@ -407,7 +451,7 @@ export default function Home() {
       {/* Summary */}
       {employees.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-4">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">Summary</h2>
+          <h2 className="text-lg font-semibold mb-4 text-gray-700">Overall Summary</h2>
           <div className="space-y-2 text-sm">
             <p className="text-gray-600">Total Employees: {employees.length}</p>
             <p className="text-gray-600">
@@ -417,9 +461,10 @@ export default function Home() {
               Total Paid Days: {workDays.filter(day => day.paid).length}
             </p>
             <p className="font-medium text-gray-800">
-              Total Outstanding: ${employees.reduce((total, emp) => 
-                total + (calculateTotalEarnings(emp.id) - calculateTotalPaid(emp.id)), 0
-              ).toFixed(2)}
+              Total Outstanding: £{employees.reduce((total, emp) => {
+                const stats = calculateEmployeeStats(emp.id)
+                return total + stats.totalOwed
+              }, 0).toFixed(2)}
             </p>
           </div>
         </div>
