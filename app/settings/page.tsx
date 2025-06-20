@@ -1,12 +1,54 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { firebaseService } from '../../lib/firebase'
 import BottomNavigation from '../components/BottomNavigation'
 
+interface Employee {
+  id: string
+  name: string
+  dailyWage: number
+  email?: string
+  phone?: string
+  startDate?: string
+  notes?: string
+}
+
+interface WorkDay {
+  id: string
+  employeeId: string
+  date: string
+  worked: boolean
+  paid: boolean
+}
+
 export default function Settings() {
-  const [notifications, setNotifications] = useState(true)
-  const [darkMode, setDarkMode] = useState(false)
-  const [autoBackup, setAutoBackup] = useState(true)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [workDays, setWorkDays] = useState<WorkDay[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showClearAllModal, setShowClearAllModal] = useState(false)
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [employeesData, workDaysData] = await Promise.all([
+          firebaseService.getEmployees(),
+          firebaseService.getWorkDays()
+        ])
+        
+        setEmployees(employeesData as Employee[])
+        setWorkDays(workDaysData as WorkDay[])
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const handleNavigate = (path: string) => {
     window.location.href = path
@@ -14,19 +56,213 @@ export default function Settings() {
 
   const exportData = async () => {
     try {
-      // This would export all data as JSON
-      alert('Data export feature coming soon!')
+      const data = {
+        employees,
+        workDays,
+        exportDate: new Date().toISOString(),
+        totalEmployees: employees.length,
+        totalWorkDays: workDays.length
+      }
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `my-days-data-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      alert('Data exported successfully!')
     } catch (error) {
       console.error('Export failed:', error)
+      alert('Export failed. Please try again.')
+    }
+  }
+
+  const exportToPDF = async () => {
+    try {
+      // Create a simple PDF-like report
+      const reportData = {
+        title: 'My Days - Work Tracking Report',
+        date: new Date().toLocaleDateString(),
+        employees: employees.map(emp => {
+          const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
+          const workedDays = empWorkDays.filter(wd => wd.worked).length
+          const paidDays = empWorkDays.filter(wd => wd.paid).length
+          const totalEarned = workedDays * emp.dailyWage
+          const totalPaid = paidDays * emp.dailyWage
+          const outstanding = totalEarned - totalPaid
+          
+          return {
+            name: emp.name,
+            dailyWage: emp.dailyWage,
+            workedDays,
+            paidDays,
+            totalEarned,
+            totalPaid,
+            outstanding
+          }
+        }),
+        summary: {
+          totalEmployees: employees.length,
+          totalWorkDays: workDays.filter(wd => wd.worked).length,
+          totalPaidDays: workDays.filter(wd => wd.paid).length,
+          totalOutstanding: employees.reduce((total, emp) => {
+            const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
+            const workedDays = empWorkDays.filter(wd => wd.worked).length
+            const paidDays = empWorkDays.filter(wd => wd.paid).length
+            return total + (workedDays * emp.dailyWage) - (paidDays * emp.dailyWage)
+          }, 0)
+        }
+      }
+
+      // For now, we'll create a downloadable HTML file that can be printed as PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>My Days Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .summary { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+            .employee { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 8px; }
+            .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+            .stat { text-align: center; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${reportData.title}</h1>
+            <p>Generated on: ${reportData.date}</p>
+          </div>
+          
+          <div class="summary">
+            <h2>Summary</h2>
+            <div class="stats">
+              <div class="stat">
+                <strong>${reportData.summary.totalEmployees}</strong><br>
+                Employees
+              </div>
+              <div class="stat">
+                <strong>${reportData.summary.totalWorkDays}</strong><br>
+                Work Days
+              </div>
+              <div class="stat">
+                <strong>${reportData.summary.totalPaidDays}</strong><br>
+                Paid Days
+              </div>
+              <div class="stat">
+                <strong>£${reportData.summary.totalOutstanding.toFixed(2)}</strong><br>
+                Outstanding
+              </div>
+            </div>
+          </div>
+          
+          <h2>Employee Details</h2>
+          ${reportData.employees.map(emp => `
+            <div class="employee">
+              <h3>${emp.name}</h3>
+              <p>Daily Wage: £${emp.dailyWage}</p>
+              <div class="stats">
+                <div class="stat">
+                  <strong>${emp.workedDays}</strong><br>
+                  Days Worked
+                </div>
+                <div class="stat">
+                  <strong>${emp.paidDays}</strong><br>
+                  Days Paid
+                </div>
+                <div class="stat">
+                  <strong>£${emp.totalEarned.toFixed(2)}</strong><br>
+                  Total Earned
+                </div>
+                <div class="stat">
+                  <strong>£${emp.outstanding.toFixed(2)}</strong><br>
+                  Outstanding
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </body>
+        </html>
+      `
+
+      const blob = new Blob([htmlContent], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `my-days-report-${new Date().toISOString().split('T')[0]}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      alert('PDF report generated! Open the downloaded HTML file and use "Print to PDF" in your browser.')
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      alert('PDF export failed. Please try again.')
     }
   }
 
   const clearAllData = async () => {
-    if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to clear ALL data? This action cannot be undone.')) {
       if (confirm('This will delete ALL employees, work days, and payments. Are you absolutely sure?')) {
-        alert('Clear data feature - implementation needed')
+        try {
+          // Delete all employees and their associated work days
+          for (const employee of employees) {
+            await firebaseService.deleteEmployee(employee.id)
+            await firebaseService.deleteWorkDaysForEmployee(employee.id)
+          }
+          
+          setEmployees([])
+          setWorkDays([])
+          setShowClearAllModal(false)
+          alert('All data has been cleared successfully.')
+        } catch (error) {
+          console.error('Error clearing data:', error)
+          alert('Failed to clear data. Please try again.')
+        }
       }
     }
+  }
+
+  const clearEmployeeData = async (employee: Employee) => {
+    if (confirm(`Are you sure you want to delete ${employee.name} and all their work data? This action cannot be undone.`)) {
+      try {
+        await firebaseService.deleteEmployee(employee.id)
+        await firebaseService.deleteWorkDaysForEmployee(employee.id)
+        
+        setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
+        setWorkDays(prev => prev.filter(wd => wd.employeeId !== employee.id))
+        setShowEmployeeModal(false)
+        setSelectedEmployee(null)
+        alert(`${employee.name} and their data have been deleted successfully.`)
+      } catch (error) {
+        console.error('Error deleting employee:', error)
+        alert('Failed to delete employee. Please try again.')
+      }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20">
+        <div className="container mx-auto px-4 py-8 max-w-md">
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Settings</h2>
+              <p className="text-gray-600">Getting your data...</p>
+            </div>
+          </div>
+        </div>
+        <BottomNavigation onNavigate={handleNavigate} />
+      </div>
+    )
   }
 
   return (
@@ -42,80 +278,6 @@ export default function Settings() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
           <p className="text-gray-600">Manage your app preferences and data</p>
-        </div>
-
-        {/* App Preferences */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">App Preferences</h2>
-              <p className="text-sm text-gray-600">Customize your app experience</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Notifications</h3>
-                <p className="text-sm text-gray-600">Receive app notifications</p>
-              </div>
-              <button
-                onClick={() => setNotifications(!notifications)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notifications ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    notifications ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Dark Mode</h3>
-                <p className="text-sm text-gray-600">Switch to dark theme</p>
-              </div>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  darkMode ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    darkMode ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-gray-900">Auto Backup</h3>
-                <p className="text-sm text-gray-600">Automatically sync data to cloud</p>
-              </div>
-              <button
-                onClick={() => setAutoBackup(!autoBackup)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoBackup ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoBackup ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Data Management */}
@@ -142,8 +304,8 @@ export default function Settings() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                 </svg>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900">Export Data</h3>
-                  <p className="text-sm text-gray-600">Download all your data as JSON</p>
+                  <h3 className="font-medium text-gray-900">Export Data (JSON)</h3>
+                  <p className="text-sm text-gray-600">Download all your data as JSON file</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +314,43 @@ export default function Settings() {
             </button>
 
             <button
-              onClick={clearAllData}
+              onClick={exportToPDF}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900">Export Report (PDF)</h3>
+                  <p className="text-sm text-gray-600">Generate a professional PDF report</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setShowEmployeeModal(true)}
+              className="w-full flex items-center justify-between p-4 border border-orange-200 rounded-xl hover:bg-orange-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-orange-900">Delete Individual Employee</h3>
+                  <p className="text-sm text-orange-600">Remove specific employee and their data</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setShowClearAllModal(true)}
               className="w-full flex items-center justify-between p-4 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
             >
               <div className="flex items-center">
@@ -246,6 +444,95 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Clear All Data Modal */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Clear All Data</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              This will permanently delete all employees, work days, and payment records. 
+              Make sure you have exported your data before proceeding.
+            </p>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowClearAllModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={clearAllData}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+              >
+                Clear All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Employee Selection Modal */}
+      {showEmployeeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full max-h-96 overflow-y-auto">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Select Employee</h3>
+                <p className="text-sm text-gray-600">Choose employee to delete</p>
+              </div>
+            </div>
+            
+            {employees.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">No employees to delete</p>
+            ) : (
+              <div className="space-y-2">
+                {employees.map(employee => (
+                  <button
+                    key={employee.id}
+                    onClick={() => clearEmployeeData(employee)}
+                    className="w-full text-left p-3 border border-gray-200 rounded-xl hover:bg-red-50 hover:border-red-200 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{employee.name}</h4>
+                        <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                      </div>
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <button
+              onClick={() => setShowEmployeeModal(false)}
+              className="w-full mt-4 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />

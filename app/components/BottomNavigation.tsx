@@ -32,21 +32,6 @@ export default function BottomNavigation({ onNavigate }: BottomNavigationProps) 
       )
     },
     {
-      id: 'add',
-      label: 'Add',
-      path: '/add-employee',
-      icon: (active: boolean) => (
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-          active ? 'bg-blue-600' : 'bg-blue-600'
-        } shadow-lg`}>
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-        </div>
-      ),
-      isSpecial: true
-    },
-    {
       id: 'settings',
       label: 'Settings',
       path: '/settings',
@@ -70,21 +55,17 @@ export default function BottomNavigation({ onNavigate }: BottomNavigationProps) 
               key={item.id}
               onClick={() => onNavigate(item.path)}
               className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-all duration-200 ${
-                item.isSpecial
-                  ? 'transform -translate-y-2'
-                  : isActive 
-                    ? 'bg-blue-50' 
-                    : 'hover:bg-gray-50'
+                isActive 
+                  ? 'bg-blue-50' 
+                  : 'hover:bg-gray-50'
               }`}
             >
               {item.icon(isActive)}
-              {!item.isSpecial && (
-                <span className={`text-xs font-medium ${
-                  isActive ? 'text-blue-600' : 'text-gray-600'
-                }`}>
-                  {item.label}
-                </span>
-              )}
+              <span className={`text-xs font-medium ${
+                isActive ? 'text-blue-600' : 'text-gray-600'
+              }`}>
+                {item.label}
+              </span>
             </button>
           )
         })}
