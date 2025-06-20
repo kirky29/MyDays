@@ -20,17 +20,7 @@ interface WorkDay {
   paid: boolean
 }
 
-// Wrapper component that forces remount on route change
-function EmployeeDetailWrapper() {
-  const params = useParams()
-  const employeeId = params.id as string
-  
-  // Force complete remount when employeeId changes
-  return <EmployeeDetail key={employeeId} />
-}
-
-// Main component
-function EmployeeDetail() {
+export default function EmployeeDetail() {
   const params = useParams()
   const router = useRouter()
   const employeeId = params.id as string
@@ -313,7 +303,7 @@ function EmployeeDetail() {
   const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-md">
+    <div className="container mx-auto px-4 py-6 max-w-md" key={employeeId}>
       {/* Sync Status Indicator */}
       <div className="mb-4 flex items-center justify-center">
         <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
@@ -557,7 +547,4 @@ function EmployeeDetail() {
       />
     </div>
   )
-}
-
-// Export the wrapper component
-export default EmployeeDetailWrapper 
+} 
