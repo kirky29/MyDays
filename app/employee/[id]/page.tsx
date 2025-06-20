@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { firebaseService, Payment, PAYMENT_TYPES } from '../../../lib/firebase'
 import PaymentModal from '../../components/PaymentModal'
@@ -22,7 +22,6 @@ interface WorkDay {
 
 export default function EmployeeDetail() {
   const params = useParams()
-  const router = useRouter()
   const employeeId = params.id as string
   
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -35,27 +34,45 @@ export default function EmployeeDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // Handle browser navigation events
+  // Handle browser navigation with a different approach
   useEffect(() => {
-    const handlePopState = () => {
-      // Force a complete page reload when browser back/forward is used
-      window.location.reload()
+    // Set a unique state for this page
+    const currentState = { page: 'employee-detail', employeeId }
+    window.history.replaceState(currentState, '', window.location.href)
+
+    const handleBeforeUnload = () => {
+      // This will trigger when the page is about to unload
+      console.log('Page unloading')
     }
 
-    // Add event listener for browser navigation
-    window.addEventListener('popstate', handlePopState)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Page hidden')
+      } else {
+        console.log('Page visible')
+        // Reload data when page becomes visible again
+        if (mounted && employeeId) {
+          window.location.reload()
+        }
+      }
+    }
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     
     return () => {
-      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [employeeId, mounted])
 
   // Set mounted state
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Data loading effect
+  // Data loading effect with simplified approach
   useEffect(() => {
     if (!employeeId || !mounted) return
 
@@ -71,21 +88,12 @@ export default function EmployeeDetail() {
         setSyncStatus('syncing')
         setErrorMessage('')
         
-        // Load initial data with timeout
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 8000)
-        )
-        
-        const dataPromise = Promise.all([
+        // Simple data loading without complex timeout logic
+        const [employeesData, workDaysData, paymentsData] = await Promise.all([
           firebaseService.getEmployees(),
           firebaseService.getWorkDays(),
           firebaseService.getPayments()
         ])
-        
-        const [employeesData, workDaysData, paymentsData] = await Promise.race([
-          dataPromise,
-          timeoutPromise
-        ]) as any[]
         
         if (!isMounted) return
         
@@ -109,6 +117,9 @@ export default function EmployeeDetail() {
         
         console.log('Data loaded successfully')
         
+        // Set up listeners after data is loaded
+        setupListeners()
+        
       } catch (error: any) {
         console.error('Error loading data:', error)
         if (isMounted) {
@@ -119,7 +130,7 @@ export default function EmployeeDetail() {
       }
     }
 
-    // Set up real-time listeners after initial load
+    // Set up real-time listeners
     const setupListeners = () => {
       if (!isMounted) return
       
@@ -179,13 +190,8 @@ export default function EmployeeDetail() {
       }
     }
 
-    // Load data first
-    loadData().then(() => {
-      if (isMounted) {
-        // Set up listeners after a short delay
-        setTimeout(setupListeners, 500)
-      }
-    })
+    // Start loading data
+    loadData()
 
     return () => {
       isMounted = false
@@ -317,12 +323,20 @@ export default function EmployeeDetail() {
             {errorMessage && (
               <p className="text-sm text-red-500 mt-2">{errorMessage}</p>
             )}
-            <button
-              onClick={retryConnection}
-              className="mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              Reload if stuck
-            </button>
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={retryConnection}
+                className="block text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Reload if stuck
+              </button>
+              <button
+                onClick={handleBackNavigation}
+                className="block text-sm text-gray-600 hover:text-gray-800 underline"
+              >
+                Go back to main page
+              </button>
+            </div>
           </div>
         </div>
       </div>

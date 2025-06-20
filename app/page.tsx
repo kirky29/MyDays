@@ -244,6 +244,11 @@ export default function Home() {
     }
   }
 
+  const navigateToEmployee = (employeeId: string) => {
+    // Use window.location for clean navigation
+    window.location.href = `/employee/${employeeId}`
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-md">
@@ -355,7 +360,7 @@ export default function Home() {
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => router.push(`/employee/${employee.id}`)}
+                        onClick={() => navigateToEmployee(employee.id)}
                         className="bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition-colors"
                       >
                         View Details
