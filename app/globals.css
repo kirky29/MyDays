@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safe area padding for mobile devices */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;

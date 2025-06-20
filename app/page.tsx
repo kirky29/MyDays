@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { firebaseService } from '../lib/firebase'
 import ReportModal from './components/ReportModal'
+import BottomNavigation from './components/BottomNavigation'
 
 interface Employee {
   id: string
@@ -291,6 +292,10 @@ export default function Home() {
     window.location.href = '/add-employee'
   }
 
+  const handleNavigate = (path: string) => {
+    window.location.href = path
+  }
+
   // Filter employees based on search term
   const filteredEmployees = employees.filter(employee =>
     employee.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -316,7 +321,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Sync Status Indicator - Modern Design */}
         <div className="mb-6 flex items-center justify-center">
@@ -681,6 +686,9 @@ export default function Home() {
           payments={payments}
         />
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation onNavigate={handleNavigate} />
     </div>
   )
 } 
