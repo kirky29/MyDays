@@ -287,6 +287,10 @@ export default function Home() {
     window.location.href = `/employee/${employeeId}`
   }
 
+  const navigateToAddEmployee = () => {
+    window.location.href = '/add-employee'
+  }
+
   // Filter employees based on search term
   const filteredEmployees = employees.filter(employee =>
     employee.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -397,112 +401,52 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Add Employee Section - Enhanced Design */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Add New Employee</h2>
-              <p className="text-sm text-gray-600">Create a profile and start tracking</p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
-              <input
-                type="text"
-                placeholder="Enter full name"
-                value={newEmployeeName}
-                onChange={(e) => setNewEmployeeName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Daily Wage</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-lg">£</span>
-                </div>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={newEmployeeWage}
-                  onChange={(e) => setNewEmployeeWage(e.target.value)}
-                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-            </div>
-            
-            <button
-              onClick={addEmployee}
-              disabled={syncStatus === 'syncing' || !newEmployeeName.trim() || !newEmployeeWage}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-600 disabled:hover:to-indigo-600"
-            >
-              {syncStatus === 'syncing' ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                  Adding Employee...
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                  Add Employee & Set Up Profile
-                </div>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Employee Search - Enhanced when employees exist */}
+        {/* Business Overview - Moved Above Employees */}
         {employees.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl shadow-lg p-6 text-white mb-6">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <input
-                type="text"
-                placeholder="Search employees..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+              <div>
+                <h2 className="text-lg font-semibold">Business Overview</h2>
+                <p className="text-white/80 text-sm">Your workspace at a glance</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="text-2xl font-bold mb-1">{employees.length}</div>
+                <div className="text-white/80 text-sm">Total Employees</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="text-2xl font-bold mb-1">{workDays.filter(day => day.worked).length}</div>
+                <div className="text-white/80 text-sm">Work Days Logged</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="text-2xl font-bold mb-1">{workDays.filter(day => day.paid).length}</div>
+                <div className="text-white/80 text-sm">Days Paid</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="text-2xl font-bold mb-1 text-yellow-400">
+                  £{employees.reduce((total, emp) => {
+                    const stats = calculateEmployeeStats(emp.id)
+                    return total + stats.totalOwed
+                  }, 0).toFixed(0)}
+                </div>
+                <div className="text-white/80 text-sm">Outstanding</div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Employee List - Modern Cards */}
+        {/* Employee List - Modern Cards (No Search, No Delete) */}
         {filteredEmployees.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Your Team
-                {searchTerm && (
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({filteredEmployees.length} of {employees.length})
-                  </span>
-                )}
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Your Team</h2>
             </div>
             
             <div className="space-y-4">
@@ -536,15 +480,6 @@ export default function Home() {
                             className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
                           >
                             View Profile
-                          </button>
-                          <button
-                            onClick={() => deleteEmployee(employee.id)}
-                            disabled={syncStatus === 'syncing'}
-                            className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 transition-colors"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
                           </button>
                         </div>
                       </div>
@@ -621,28 +556,6 @@ export default function Home() {
               </div>
               <span>Track work</span>
             </div>
-          </div>
-        )}
-
-        {/* No Search Results */}
-        {employees.length > 0 && filteredEmployees.length === 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No employees found</h3>
-            <p className="text-gray-600 mb-4">No employees match "{searchTerm}"</p>
-            <button
-              onClick={() => setSearchTerm('')}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Clear Search
-            </button>
           </div>
         )}
 
@@ -746,46 +659,18 @@ export default function Home() {
           </div>
         )}
 
-        {/* Summary - Enhanced */}
-        {employees.length > 0 && (
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Business Overview</h2>
-                <p className="text-white/80 text-sm">Your workspace at a glance</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="text-2xl font-bold mb-1">{employees.length}</div>
-                <div className="text-white/80 text-sm">Total Employees</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="text-2xl font-bold mb-1">{workDays.filter(day => day.worked).length}</div>
-                <div className="text-white/80 text-sm">Work Days Logged</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="text-2xl font-bold mb-1">{workDays.filter(day => day.paid).length}</div>
-                <div className="text-white/80 text-sm">Days Paid</div>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="text-2xl font-bold mb-1 text-yellow-400">
-                  £{employees.reduce((total, emp) => {
-                    const stats = calculateEmployeeStats(emp.id)
-                    return total + stats.totalOwed
-                  }, 0).toFixed(0)}
-                </div>
-                <div className="text-white/80 text-sm">Outstanding</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Add Employee Button - Moved to Bottom */}
+        <div className="text-center py-6">
+          <button
+            onClick={navigateToAddEmployee}
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            Add New Employee
+          </button>
+        </div>
 
         {/* Report Modal */}
         <ReportModal
