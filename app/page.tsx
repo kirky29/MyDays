@@ -28,15 +28,28 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
-      <div className="container mx-auto px-4 py-6 max-w-md">
-        <SyncStatus />
-        <AppHeader />
-        <BusinessOverview />
-        <EmployeeList />
-        <WorkDayTracker />
-        <AddEmployeeButton />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pb-20 sm:pb-24">
+      {/* Main Content Container */}
+      <div className="container mx-auto px-4 py-4 sm:py-6 max-w-md">
+        {/* Status and Header Section */}
+        <div className="space-y-mobile">
+          <SyncStatus />
+          <AppHeader />
+        </div>
+        
+        {/* Main Content Grid */}
+        <div className="space-y-mobile">
+          <BusinessOverview />
+          <EmployeeList />
+          <WorkDayTracker />
+          <AddEmployeeButton />
+        </div>
+        
+        {/* Bottom Spacing for Navigation */}
+        <div className="h-4 sm:h-6"></div>
       </div>
+      
+      {/* Fixed Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />
     </div>
   )
