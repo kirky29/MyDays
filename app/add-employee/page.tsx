@@ -44,7 +44,7 @@ export default function AddEmployee() {
         id: employeeId,
         name: formData.name.trim(),
         dailyWage: Number(formData.dailyWage),
-        notes: formData.notes?.trim() || undefined
+        ...(formData.notes?.trim() && { notes: formData.notes.trim() })
       }
 
       await firebaseService.addEmployee(employee)
