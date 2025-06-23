@@ -64,7 +64,7 @@ export default function EmployeeList() {
             <div key={employee.id} className="card group cursor-pointer" onClick={() => navigateToEmployee(employee.id)}>
               {/* Employee Header */}
               <div className="card-header">
-                <div className="flex items-start space-x-3 sm:space-x-4 mb-4">
+                <div className="flex items-start space-x-3 sm:space-x-4 mb-4 mt-2">
                   <div className="avatar avatar-lg flex-shrink-0">
                     <span>{employee.name.charAt(0).toUpperCase()}</span>
                   </div>

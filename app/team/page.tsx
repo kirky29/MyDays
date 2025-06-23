@@ -104,7 +104,7 @@ export default function Team() {
               return (
                 <div key={employee.id} className="card hover:shadow-lg transition-all duration-200 group">
                   <div className="card-body">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-4 mt-2">
                       <div className="flex items-center space-x-3">
                         <div className="avatar avatar-lg bg-gradient-to-br from-purple-500 to-indigo-600">
                           <span>{employee.name.charAt(0).toUpperCase()}</span>
