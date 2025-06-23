@@ -159,6 +159,18 @@ export const firebaseService = {
     }
   },
 
+  async deleteAllPayments() {
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTIONS.PAYMENTS));
+      const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting all payments:', error);
+      throw error;
+    }
+  },
+
   // Real-time listeners with error handling
   subscribeToEmployees(callback: (employees: Employee[]) => void, errorCallback?: (error: any) => void) {
     try {

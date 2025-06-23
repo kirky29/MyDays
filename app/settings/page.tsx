@@ -283,12 +283,15 @@ export default function Settings() {
     if (confirm('Are you sure you want to clear ALL data? This action cannot be undone.')) {
       if (confirm('This will delete ALL employees, work days, payments, and activity logs. Are you absolutely sure?')) {
         try {
-          // Delete all employees and their associated work days and payments
-          for (const employee of employees) {
-            await firebaseService.deleteEmployee(employee.id)
-            await firebaseService.deleteWorkDaysForEmployee(employee.id)
-            await firebaseService.deletePaymentsForEmployee(employee.id)
-          }
+          // Delete all data comprehensively
+          await Promise.all([
+            // Delete all employees
+            ...employees.map(employee => firebaseService.deleteEmployee(employee.id)),
+            // Delete all work days
+            ...employees.map(employee => firebaseService.deleteWorkDaysForEmployee(employee.id)),
+            // Delete ALL payments (including any orphaned ones)
+            firebaseService.deleteAllPayments()
+          ])
           
           setEmployees([])
           setWorkDays([])
