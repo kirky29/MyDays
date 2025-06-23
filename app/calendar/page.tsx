@@ -130,7 +130,7 @@ export default function CalendarPage() {
 
         {/* Month Navigation */}
         <div className="card mb-6">
-          <div className="card-body">
+          <div className="card-body pt-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={goToPreviousMonth}
@@ -187,7 +187,7 @@ export default function CalendarPage() {
                     key={index}
                     onClick={() => openDayView(date)}
                     className={`
-                      aspect-square p-2 rounded-xl text-xs font-medium transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-blue-500
+                      aspect-square min-h-[52px] p-2 rounded-xl text-xs font-medium transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-hidden flex flex-col items-center justify-start
                       ${!isCurrentMonth ? 'text-gray-300 opacity-50' : 
                         isCurrentDay ? 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm' :
                         hasWorkers ? 
@@ -199,32 +199,34 @@ export default function CalendarPage() {
                     `}
                   >
                     {/* Day number */}
-                    <div className="text-center font-bold mb-1">
+                    <div className="font-bold mb-1 flex-shrink-0">
                       {format(date, 'd')}
                     </div>
                     
-                    {/* Work status indicators */}
-                    {hasWorkers && (
-                      <div className="space-y-1">
-                        {/* Worker count */}
-                        <div className="flex justify-center">
-                          <div className={`px-1.5 py-0.5 rounded-full text-xs font-semibold ${
-                            allPaid 
-                              ? 'bg-green-200 text-green-800' 
-                              : 'bg-amber-200 text-amber-800'
-                          }`}>
-                            {totalWorkers}
-                          </div>
-                        </div>
-                        
-                        {/* Payment status */}
-                        {hasUnpaid && (
+                    {/* Work status indicators - constrained container */}
+                    <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full">
+                      {hasWorkers && (
+                        <div className="space-y-0.5">
+                          {/* Worker count */}
                           <div className="flex justify-center">
-                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                            <div className={`px-1 py-0.5 rounded-full text-xs font-semibold leading-none ${
+                              allPaid 
+                                ? 'bg-green-200 text-green-800' 
+                                : 'bg-amber-200 text-amber-800'
+                            }`}>
+                              {totalWorkers}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )}
+                          
+                          {/* Payment status */}
+                          {hasUnpaid && (
+                            <div className="flex justify-center">
+                              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Today indicator */}
                     {isCurrentDay && (
