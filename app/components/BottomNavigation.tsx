@@ -60,7 +60,7 @@ export default function BottomNavigation({ onNavigate }: BottomNavigationProps) 
       <div className="absolute inset-0 bg-white/90 backdrop-blur-lg border-t border-gray-200/50"></div>
       
       {/* Navigation content */}
-      <div className="relative px-4 py-2 safe-area-pb">
+      <div className="relative px-4 pt-2 pb-4 safe-area-pb">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.path
@@ -107,11 +107,6 @@ export default function BottomNavigation({ onNavigate }: BottomNavigationProps) 
               </button>
             )
           })}
-        </div>
-        
-        {/* Home indicator for devices with home indicators */}
-        <div className="flex justify-center mt-1">
-          <div className="w-32 h-1 bg-gray-300 rounded-full opacity-30"></div>
         </div>
       </div>
     </div>
