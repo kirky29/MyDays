@@ -130,21 +130,20 @@ body {
   }
   
   .card-header {
-    @apply p-5 sm:p-6 pb-4 sm:pb-5;
+    @apply p-4 sm:p-5 pb-3 sm:pb-4;
   }
   
   .card-body {
-    @apply p-5 sm:p-6 pt-0;
+    @apply p-4 sm:p-5 pt-0;
   }
   
   .card-footer {
-    @apply bg-gray-50 px-5 sm:px-6 py-4 sm:py-5;
+    @apply bg-gray-50 px-4 sm:px-5 py-3 sm:py-4;
   }
   
-  /* Enhanced button variants with better touch targets */
+  /* Button variants */
   .btn {
     @apply inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
-    min-height: 44px; /* Better touch target for mobile */
   }
   
   .btn-primary {
@@ -164,21 +163,18 @@ body {
   }
   
   .btn-sm {
-    @apply px-4 py-2 text-sm;
-    min-height: 36px;
+    @apply px-3 py-1.5 text-sm;
   }
   
   .btn-md {
-    @apply px-5 py-3 text-sm;
-    min-height: 44px;
+    @apply px-4 py-2 text-sm;
   }
   
   .btn-lg {
-    @apply px-6 py-4 text-base;
-    min-height: 48px;
+    @apply px-6 py-3 text-base;
   }
   
-  /* Enhanced avatar styles */
+  /* Avatar styles */
   .avatar {
     @apply flex items-center justify-center font-semibold text-white rounded-xl;
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
@@ -216,9 +212,9 @@ body {
     animation: pulse 2s infinite;
   }
   
-  /* Enhanced stats cards with better mobile spacing */
+  /* Stats cards */
   .stat-card {
-    @apply rounded-xl p-4 sm:p-5 text-center transition-all duration-200;
+    @apply rounded-xl p-3 sm:p-4 text-center transition-all duration-200;
   }
   
   .stat-card:hover {
@@ -230,7 +226,7 @@ body {
   }
   
   .stat-label {
-    @apply text-xs sm:text-sm font-medium opacity-80;
+    @apply text-xs font-medium opacity-80;
   }
 }
 

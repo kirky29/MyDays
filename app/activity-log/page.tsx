@@ -192,46 +192,35 @@ export default function ActivityLog() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="mb-8">
           {/* Back Button */}
           <div className="flex justify-start mb-6">
             <button
               onClick={() => window.location.href = '/'}
-              className="btn btn-secondary btn-md group"
+              className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
             >
-              <svg className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to Dashboard
             </button>
           </div>
           
-          {/* Header Content */}
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-600 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-            <div className="absolute top-1 right-1 w-3 h-3 bg-white/30 rounded-full"></div>
-            <svg className="w-8 h-8 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          {/* Centered Header Content */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Activity Log</h1>
+            <p className="text-gray-600 text-sm mb-6">Complete timeline of all changes and activities</p>
+            
+            <button
+              onClick={loadData}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
           </div>
-          
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-            <span className="text-gradient">Activity Log</span>
-          </h1>
-          <p className="text-gray-600 text-sm sm:text-base max-w-md mx-auto leading-relaxed mb-6">
-            Complete timeline of all changes and activities
-          </p>
-          
-          {/* Refresh Button */}
-          <button
-            onClick={loadData}
-            className="btn btn-secondary btn-md group"
-          >
-            <svg className="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh Data
-          </button>
         </div>
 
         {/* Filters */}
