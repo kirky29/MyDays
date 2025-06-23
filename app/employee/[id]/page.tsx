@@ -1454,10 +1454,10 @@ function WorkDayEditModal({
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.customAmount || ''}
+                value={formData.customAmount ?? ''}
                 onChange={(e) => setFormData(prev => ({ 
                   ...prev, 
-                  customAmount: parseFloat(e.target.value) || 0 
+                  customAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 
                 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
@@ -1615,11 +1615,13 @@ function EditEmployeeModal({
               <input
                 type="number"
                 step="0.01"
-                value={formData.dailyWage}
-                onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: parseFloat(e.target.value) || 0 }))}
+                min="0"
+                value={formData.dailyWage ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
+              <p className="text-xs text-gray-600 mt-1">£0 allowed for volunteers/unpaid work</p>
               {hasWageChanged && impact && (
                 <div className={`mt-2 p-3 rounded-lg ${impact.isIncrease ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
                   <div className="flex items-center space-x-2">
