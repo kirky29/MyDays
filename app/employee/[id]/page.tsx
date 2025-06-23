@@ -16,6 +16,8 @@ interface Employee {
   phone?: string
   startDate?: string
   notes?: string
+  wageChangeDate?: string
+  previousWage?: number
 }
 
 interface WorkDay {
@@ -261,17 +263,40 @@ export default function EmployeeDetail() {
   }
 
   const calculateStats = () => {
-    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0 }
+    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0 }
     
     const workedDays = workDays.filter(day => day.worked)
     const paidDays = workDays.filter(day => day.paid)
+    const unpaidDays = workDays.filter(day => day.worked && !day.paid)
     
-    const totalWorked = workedDays.length
-    const totalPaid = paidDays.length
-    const totalEarned = totalWorked * employee.dailyWage
-    const totalOwed = totalEarned - (totalPaid * employee.dailyWage)
+    // Calculate actual amount paid from payment records
+    const employeePayments = payments.filter(p => p.employeeId === employee.id)
+    const actualPaidAmount = employeePayments.reduce((sum, payment) => sum + payment.amount, 0)
     
-    return { totalWorked, totalPaid, totalOwed, totalEarned }
+    // Calculate total earned based on wage change logic
+    let totalEarned = 0
+    
+    if (employee.wageChangeDate && employee.previousWage) {
+      // Split work days by wage change date
+      const workBeforeChange = workedDays.filter(day => day.date < employee.wageChangeDate!)
+      const workAfterChange = workedDays.filter(day => day.date >= employee.wageChangeDate!)
+      
+      totalEarned = (workBeforeChange.length * employee.previousWage) + (workAfterChange.length * employee.dailyWage)
+    } else {
+      // No wage change or "all work" option - use current wage for everything
+      totalEarned = workedDays.length * employee.dailyWage
+    }
+    
+    // Outstanding = what should be earned - what was actually paid
+    const totalOwed = totalEarned - actualPaidAmount
+    
+    return { 
+      totalWorked: workedDays.length, 
+      totalPaid: paidDays.length, 
+      totalOwed: Math.max(0, totalOwed), // Don't show negative owed amounts
+      totalEarned,
+      actualPaidAmount 
+    }
   }
 
   const getWorkDay = (date: string) => {
@@ -318,12 +343,17 @@ export default function EmployeeDetail() {
     setSelectedPayment(null)
   }
 
-  const updateEmployee = async (updatedEmployee: Employee) => {
+  const updateEmployee = async (updatedEmployee: Employee, wageUpdateOption?: 'future' | 'all') => {
     try {
       setSyncStatus('syncing')
       setErrorMessage('')
       
-      // Update employee - new wage will automatically apply to future calculations
+      // If wage changed and we have work days, handle the wage change logic
+      if (wageUpdateOption && updatedEmployee.dailyWage !== employee?.dailyWage) {
+        await handleWageChange(updatedEmployee, wageUpdateOption)
+      }
+      
+      // Update employee
       await firebaseService.addEmployee(updatedEmployee)
       
       setEmployee(updatedEmployee)
@@ -333,6 +363,22 @@ export default function EmployeeDetail() {
       setSyncStatus('error')
       setErrorMessage(`Failed to update employee: ${error.message}`)
     }
+  }
+
+  const handleWageChange = async (updatedEmployee: Employee, option: 'future' | 'all') => {
+    if (option === 'future') {
+      // For "future only", we add a special field to track the wage change date
+      // This allows us to apply different rates for work done before/after this date
+      updatedEmployee.wageChangeDate = format(new Date(), 'yyyy-MM-dd')
+      updatedEmployee.previousWage = employee?.dailyWage || updatedEmployee.dailyWage
+      
+      // Add note for clarity
+      const wageChangeNote = `Wage changed from £${employee?.dailyWage}/day to £${updatedEmployee.dailyWage}/day on ${format(new Date(), 'MMM d, yyyy')}`
+      updatedEmployee.notes = updatedEmployee.notes 
+        ? `${updatedEmployee.notes}\n\n${wageChangeNote}`
+        : wageChangeNote
+    }
+    // For 'all' option, we don't set wage change date - new wage applies to everything
   }
 
 
@@ -689,12 +735,12 @@ export default function EmployeeDetail() {
         <h2 className="text-lg font-semibold text-gray-700 mb-4">Financial Summary</h2>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">Total Earned:</span>
+            <span className="text-gray-600">Total Earned (at current wage):</span>
             <span className="font-semibold text-gray-800">£{stats.totalEarned.toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-600">Total Paid:</span>
-            <span className="font-semibold text-green-600">£{(stats.totalPaid * employee.dailyWage).toFixed(2)}</span>
+            <span className="text-gray-600">Total Paid (actual):</span>
+            <span className="font-semibold text-green-600">£{stats.actualPaidAmount.toFixed(2)}</span>
           </div>
           <div className="border-t pt-3">
             <div className="flex justify-between items-center">
@@ -959,13 +1005,14 @@ function EditEmployeeModal({
   payments
 }: { 
   employee: Employee
-  onSave: (employee: Employee) => void
+  onSave: (employee: Employee, wageUpdateOption?: 'future' | 'all') => void
   onClose: () => void
   workDays: WorkDay[]
   payments: Payment[]
 }) {
   const [formData, setFormData] = useState<Employee>(employee)
   const [showWageOptions, setShowWageOptions] = useState(false)
+  const [wageUpdateOption, setWageUpdateOption] = useState<'future' | 'all'>('future')
 
   const hasWageChanged = formData.dailyWage !== employee.dailyWage
   const hasWorkedDays = workDays.some(day => day.worked)
@@ -981,7 +1028,7 @@ function EditEmployeeModal({
   }
 
   const handleWageUpdateConfirm = () => {
-    onSave(formData)
+    onSave(formData, wageUpdateOption)
     setShowWageOptions(false)
   }
 
@@ -1148,19 +1195,58 @@ function EditEmployeeModal({
                 </div>
 
                                 <div className="space-y-4">
-                   <h3 className="font-semibold text-gray-800">Confirm Wage Change</h3>
-                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                     <div className="flex items-start space-x-3">
-                       <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                   <h3 className="font-semibold text-gray-800">How should this wage change be applied?</h3>
+                   
+                   <div className="space-y-3">
+                     <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                       <input
+                         type="radio"
+                         name="wageOption"
+                         value="future"
+                         checked={wageUpdateOption === 'future'}
+                         onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
+                         className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                       />
+                       <div className="flex-1">
+                         <div className="font-medium text-gray-800">Apply to Future Work Only</div>
+                         <div className="text-sm text-gray-600 mt-1">
+                           Only future work will use the new wage rate. Past work calculations remain at the rate when it was done.
+                         </div>
+                         <div className="text-xs text-blue-600 mt-2 font-medium">
+                           Recommended for pay rises
+                         </div>
+                       </div>
+                     </label>
+
+                     <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                       <input
+                         type="radio"
+                         name="wageOption"
+                         value="all"
+                         checked={wageUpdateOption === 'all'}
+                         onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
+                         className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                       />
+                       <div className="flex-1">
+                         <div className="font-medium text-gray-800">Apply to All Work (Retroactive)</div>
+                         <div className="text-sm text-gray-600 mt-1">
+                           Recalculate outstanding amounts for all work using the new wage. Existing payments remain unchanged.
+                         </div>
+                         <div className={`text-xs mt-2 font-medium ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
+                           {impact.isIncrease ? 'Will increase' : 'Will decrease'} total outstanding amount
+                         </div>
+                       </div>
+                     </label>
+                   </div>
+
+                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                     <div className="flex items-start space-x-2">
+                       <svg className="w-4 h-4 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
                        </svg>
                        <div>
-                         <h4 className="font-medium text-blue-800">How wage changes work:</h4>
-                         <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                           <li>• Existing payments remain unchanged (financial integrity)</li>
-                           <li>• New wage applies to all future work and calculations</li>
-                           <li>• Outstanding amounts will reflect the updated wage</li>
-                         </ul>
+                         <span className="text-sm font-medium text-yellow-800">Important:</span>
+                         <p className="text-xs text-yellow-700 mt-1">Existing payment records never change to maintain financial integrity.</p>
                        </div>
                      </div>
                    </div>

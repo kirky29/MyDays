@@ -9,6 +9,8 @@ export interface Employee {
   phone?: string
   startDate?: string
   notes?: string
+  wageChangeDate?: string
+  previousWage?: number
 }
 
 export interface WorkDay {
