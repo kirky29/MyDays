@@ -9,7 +9,6 @@ import type { Employee, WorkDay } from '../../lib/store'
 import BottomNavigation from '../components/BottomNavigation'
 import PaymentModal from '../components/PaymentModal'
 import LoadingScreen from '../components/LoadingScreen'
-import SyncStatus from '../components/SyncStatus'
 
 interface DayViewData {
   date: string
@@ -109,10 +108,8 @@ export default function CalendarPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pb-20 sm:pb-24">
       <div className="container mx-auto px-4 py-4 sm:py-6 max-w-md">
-        {/* Status and Header Section */}
+        {/* Header Section */}
         <div className="space-y-mobile">
-          <SyncStatus />
-          
           {/* Enhanced Header */}
           <div className="text-center mb-6 sm:mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl sm:rounded-3xl shadow-lg mb-4 sm:mb-6 relative overflow-hidden">

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useFirebaseData } from '../lib/hooks/useFirebaseData'
 import { useAppStore } from '../lib/store'
 import LoadingScreen from './components/LoadingScreen'
-import SyncStatus from './components/SyncStatus'
 import AppHeader from './components/AppHeader'
 import BusinessOverview from './components/BusinessOverview'
 import EmployeeList from './components/EmployeeList'
@@ -33,9 +32,8 @@ export default function Home() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pb-20 sm:pb-24">
         {/* Main Content Container */}
         <div className="container mx-auto px-4 py-4 sm:py-6 max-w-md">
-          {/* Status and Header Section */}
+          {/* Header Section */}
           <div className="space-y-mobile">
-            <SyncStatus />
             <AppHeader />
           </div>
           
