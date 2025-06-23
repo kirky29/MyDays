@@ -28,6 +28,7 @@ export default function PaymentEditModal({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string>('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedWorkDayIds, setSelectedWorkDayIds] = useState<string[]>(payment.workDayIds)
 
   if (!isOpen) return null
 
@@ -36,17 +37,43 @@ export default function PaymentEditModal({
     payment.workDayIds.includes(wd.id)
   ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
+  // Get currently selected work days for the payment
+  const currentlySelectedWorkDays = paidWorkDays.filter(wd => selectedWorkDayIds.includes(wd.id))
+  const newTotalAmount = currentlySelectedWorkDays.length * employee.dailyWage
+
   const handleUpdatePayment = async () => {
+    if (selectedWorkDayIds.length === 0) {
+      setError('You must select at least one work day for this payment.')
+      return
+    }
+
     setIsProcessing(true)
     setError('')
     
     try {
-      // Update payment record
+      // Handle work days that were removed from the payment
+      const removedWorkDayIds = payment.workDayIds.filter(id => !selectedWorkDayIds.includes(id))
+      if (removedWorkDayIds.length > 0) {
+        const removedWorkDays = workDays.filter(wd => removedWorkDayIds.includes(wd.id))
+        const updatePromises = removedWorkDays.map(async (workDay) => {
+          const updatedWorkDay = { ...workDay, paid: false }
+          return firebaseService.addWorkDay(updatedWorkDay)
+        })
+        await Promise.all(updatePromises)
+      }
+
+      // Update payment record with new work day selection and amount
       const updatedPayment: Payment = {
         ...payment,
+        workDayIds: selectedWorkDayIds,
+        amount: newTotalAmount,
         paymentType,
-        notes: notes.trim() || undefined,
         date: paymentDate
+      }
+
+      // Only add notes if they exist and are not empty
+      if (notes.trim()) {
+        updatedPayment.notes = notes.trim()
       }
 
       await firebaseService.addPayment(updatedPayment)
@@ -58,6 +85,14 @@ export default function PaymentEditModal({
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const toggleWorkDaySelection = (workDayId: string) => {
+    setSelectedWorkDayIds(prev => 
+      prev.includes(workDayId) 
+        ? prev.filter(id => id !== workDayId)
+        : [...prev, workDayId]
+    )
   }
 
   const handleDeletePayment = async () => {
@@ -130,25 +165,55 @@ export default function PaymentEditModal({
 
           {/* Payment Details */}
           <div className="space-y-4">
-            {/* Work Days Paid (Read-only) */}
+            {/* Work Days Selection */}
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                Work Days Paid ({paidWorkDays.length} day{paidWorkDays.length !== 1 ? 's' : ''})
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-3 max-h-32 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  Work Days ({paidWorkDays.length} day{paidWorkDays.length !== 1 ? 's' : ''})
+                </h3>
+                <span className="text-xs text-gray-600">
+                  {selectedWorkDayIds.length} selected
+                </span>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
                 <div className="space-y-2">
-                  {paidWorkDays.map(workDay => (
-                    <div key={workDay.id} className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-800">
-                        {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
-                      </span>
-                      <span className="font-semibold text-green-600">
-                        £{employee.dailyWage}
-                      </span>
-                    </div>
-                  ))}
+                  {paidWorkDays.map(workDay => {
+                    const isSelected = selectedWorkDayIds.includes(workDay.id)
+                    return (
+                      <div 
+                        key={workDay.id} 
+                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                          isSelected ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => toggleWorkDaySelection(workDay.id)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleWorkDaySelection(workDay.id)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className={`font-medium text-sm ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>
+                            {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
+                          </span>
+                        </div>
+                        <span className={`font-semibold text-sm ${isSelected ? 'text-blue-600' : 'text-green-600'}`}>
+                          £{employee.dailyWage}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+              {selectedWorkDayIds.length < paidWorkDays.length && (
+                <p className="text-xs text-amber-600 mt-2 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  Unselected work days will be marked as unpaid
+                </p>
+              )}
             </div>
 
             {/* Payment Date */}
@@ -195,13 +260,28 @@ export default function PaymentEditModal({
             </div>
 
             {/* Payment Summary */}
-            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+            <div className={`rounded-lg p-4 border ${
+              newTotalAmount !== payment.amount 
+                ? 'bg-amber-50 border-amber-200' 
+                : 'bg-green-50 border-green-200'
+            }`}>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-gray-800">Total Amount:</span>
-                <span className="text-xl font-bold text-green-600">£{payment.amount.toFixed(2)}</span>
+                <div className="text-right">
+                  <span className={`text-xl font-bold ${
+                    newTotalAmount !== payment.amount ? 'text-amber-600' : 'text-green-600'
+                  }`}>
+                    £{newTotalAmount.toFixed(2)}
+                  </span>
+                  {newTotalAmount !== payment.amount && (
+                    <div className="text-xs text-gray-600">
+                      Was: £{payment.amount.toFixed(2)}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-gray-600 mt-1">
-                {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''} × £{employee.dailyWage} each
+                {selectedWorkDayIds.length} work day{selectedWorkDayIds.length !== 1 ? 's' : ''} × £{employee.dailyWage} each
               </div>
             </div>
           </div>
@@ -213,10 +293,13 @@ export default function PaymentEditModal({
             {/* Update Button */}
             <button
               onClick={handleUpdatePayment}
-              disabled={isProcessing}
+              disabled={isProcessing || selectedWorkDayIds.length === 0}
               className="btn btn-primary btn-lg w-full"
             >
-              {isProcessing ? 'Updating...' : 'Update Payment'}
+              {isProcessing ? 'Updating...' : 
+               newTotalAmount !== payment.amount ? 
+               `Update Payment (£${newTotalAmount.toFixed(2)})` : 
+               'Update Payment'}
             </button>
 
             {/* Delete Section */}
@@ -230,9 +313,9 @@ export default function PaymentEditModal({
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="text-center mb-3">
-                  <h4 className="text-sm font-semibold text-red-800 mb-1">Delete Payment?</h4>
+                  <h4 className="text-sm font-semibold text-red-800 mb-1">Delete Entire Payment?</h4>
                   <p className="text-xs text-red-600">
-                    This will mark all {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''} as unpaid and cannot be undone.
+                    This will mark all {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''} as unpaid and delete the payment record. This cannot be undone.
                   </p>
                 </div>
                 <div className="flex space-x-3">
