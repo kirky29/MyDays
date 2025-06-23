@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { format } from 'date-fns'
 import { firebaseService } from '../../lib/firebase'
 import BottomNavigation from '../components/BottomNavigation'
 
@@ -19,9 +18,6 @@ export default function AddEmployee() {
   const [formData, setFormData] = useState<Partial<Employee>>({
     name: '',
     dailyWage: 0,
-    email: '',
-    phone: '',
-    startDate: format(new Date(), 'yyyy-MM-dd'),
     notes: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -48,9 +44,6 @@ export default function AddEmployee() {
         id: employeeId,
         name: formData.name.trim(),
         dailyWage: Number(formData.dailyWage),
-        email: formData.email?.trim() || undefined,
-        phone: formData.phone?.trim() || undefined,
-        startDate: formData.startDate || format(new Date(), 'yyyy-MM-dd'),
         notes: formData.notes?.trim() || undefined
       }
 
@@ -90,7 +83,7 @@ export default function AddEmployee() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Add New Employee</h1>
-            <p className="text-gray-600 text-sm">Create a complete employee profile</p>
+            <p className="text-gray-600 text-sm">Add a team member to start tracking work</p>
           </div>
         </div>
 
@@ -116,18 +109,20 @@ export default function AddEmployee() {
         {/* Add Employee Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="space-y-6">
-            {/* Required Fields Section */}
+            {/* Required Fields */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-blue-600 font-bold text-sm">*</span>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                 </div>
-                Required Information
+                Employee Details
               </h3>
               
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Full Name *
                   </label>
                   <input
@@ -136,17 +131,17 @@ export default function AddEmployee() {
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     placeholder="Enter employee's full name"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-base"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Daily Wage *
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-lg">£</span>
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-lg font-medium">£</span>
                     </div>
                     <input
                       type="number"
@@ -156,73 +151,22 @@ export default function AddEmployee() {
                       onChange={(e) => handleInputChange('dailyWage', parseFloat(e.target.value) || 0)}
                       placeholder="0.00"
                       required
-                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-base"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Optional Fields Section */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                Additional Details (Optional)
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email || ''}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="employee@example.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
+                  <p className="text-xs text-gray-600 mt-1">Amount paid per day worked</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="+44 7700 900000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.startDate || ''}
-                    onChange={(e) => handleInputChange('startDate', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Notes <span className="font-normal text-gray-500">(Optional)</span>
                   </label>
                   <textarea
                     value={formData.notes || ''}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     placeholder="Any additional notes about this employee..."
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200 text-base"
                   />
                 </div>
               </div>
@@ -264,7 +208,7 @@ export default function AddEmployee() {
         {/* Help Text */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            After creating the profile, you'll be taken to the employee's page where you can start tracking work days.
+            After adding the employee, you can start tracking their work days and managing payments.
           </p>
         </div>
       </div>
