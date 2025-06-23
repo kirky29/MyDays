@@ -353,7 +353,7 @@ export default function DayViewPage() {
               </button>
             </div>
           </div>
-        ) : (
+        ) : workedEmployees.length > 0 ? (
           <div className="space-y-4">
             {dayEmployees.map(({ employee, workDay }) => {
               const isWorked = workDay?.worked || false
@@ -489,7 +489,7 @@ export default function DayViewPage() {
               )
             })}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Bottom Navigation */}
