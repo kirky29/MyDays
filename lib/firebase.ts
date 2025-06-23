@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, query, where, enableNetwork, disableNetwork } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,6 +17,9 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
 export const db = getFirestore(app);
+
+// Initialize Auth
+export const auth = getAuth(app);
 
 // Collection names
 export const COLLECTIONS = {
@@ -248,5 +252,40 @@ export const firebaseService = {
       console.error('Error disabling network:', error);
       throw error;
     }
+  },
+
+  // Authentication functions
+  async signUp(email: string, password: string) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      return { success: true, user: userCredential.user };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  },
+
+  async signIn(email: string, password: string) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return { success: true, user: userCredential.user };
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
+    }
+  },
+
+  async signOut() {
+    try {
+      await signOut(auth);
+      return { success: true };
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  },
+
+  onAuthStateChanged(callback: (user: User | null) => void) {
+    return onAuthStateChanged(auth, callback);
   }
 }; 

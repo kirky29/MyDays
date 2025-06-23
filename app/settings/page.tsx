@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { firebaseService } from '../../lib/firebase'
 import BottomNavigation from '../components/BottomNavigation'
+import AuthGuard from '../components/AuthGuard'
 
 interface Employee {
   id: string
@@ -326,22 +327,25 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20">
-        <div className="container mx-auto px-4 py-8 max-w-md">
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Settings</h2>
-              <p className="text-gray-600">Getting your data...</p>
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20">
+          <div className="container mx-auto px-4 py-8 max-w-md">
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
+                <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Settings</h2>
+                <p className="text-gray-600">Getting your data...</p>
+              </div>
             </div>
           </div>
+          <BottomNavigation onNavigate={handleNavigate} />
         </div>
-        <BottomNavigation onNavigate={handleNavigate} />
-      </div>
+      </AuthGuard>
     )
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header */}
@@ -453,6 +457,51 @@ export default function Settings() {
                 <div className="text-left">
                   <h3 className="font-medium text-red-900">Clear All Data</h3>
                   <p className="text-sm text-red-600">Delete all employees and records</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Account Management */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Account</h2>
+              <p className="text-sm text-gray-600">Manage your account settings</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={async () => {
+                if (confirm('Are you sure you want to sign out?')) {
+                  try {
+                    await firebaseService.signOut()
+                    window.location.href = '/login'
+                  } catch (error) {
+                    console.error('Sign out error:', error)
+                    alert('Failed to sign out. Please try again.')
+                  }
+                }
+              }}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-gray-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900">Sign Out</h3>
+                  <p className="text-sm text-gray-600">Sign out of your account</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,5 +699,6 @@ export default function Settings() {
       {/* Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />
     </div>
+    </AuthGuard>
   )
 } 
