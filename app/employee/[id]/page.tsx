@@ -26,6 +26,8 @@ interface WorkDay {
   date: string
   worked: boolean
   paid: boolean
+  customAmount?: number // Optional custom amount for this specific day
+  notes?: string // Optional notes for this work day
 }
 
 export default function EmployeeDetail() {
@@ -46,6 +48,8 @@ export default function EmployeeDetail() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
+  const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
 
   // Handle browser navigation with a different approach
   useEffect(() => {
@@ -273,18 +277,21 @@ export default function EmployeeDetail() {
     const employeePayments = payments.filter(p => p.employeeId === employee.id)
     const actualPaidAmount = employeePayments.reduce((sum, payment) => sum + payment.amount, 0)
     
-    // Calculate total earned based on wage change logic
+    // Calculate total earned based on wage change logic and custom amounts
     let totalEarned = 0
     
-    if (employee.wageChangeDate && employee.previousWage) {
-      // Split work days by wage change date
-      const workBeforeChange = workedDays.filter(day => day.date < employee.wageChangeDate!)
-      const workAfterChange = workedDays.filter(day => day.date >= employee.wageChangeDate!)
-      
-      totalEarned = (workBeforeChange.length * employee.previousWage) + (workAfterChange.length * employee.dailyWage)
-    } else {
-      // No wage change or "all work" option - use current wage for everything
-      totalEarned = workedDays.length * employee.dailyWage
+    for (const workDay of workedDays) {
+      if (workDay.customAmount !== undefined) {
+        // Use custom amount if specified
+        totalEarned += workDay.customAmount
+      } else {
+        // Use wage logic
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          totalEarned += employee.previousWage
+        } else {
+          totalEarned += employee.dailyWage
+        }
+      }
     }
     
     // Outstanding = what should be earned - what was actually paid
@@ -301,6 +308,17 @@ export default function EmployeeDetail() {
       isOverpaid,
       creditAmount // Amount overpaid (positive number)
     }
+  }
+
+  // Helper function to get the amount earned for a specific work day
+  const getWorkDayAmount = (workDay: WorkDay) => {
+    if (workDay.customAmount !== undefined) {
+      return workDay.customAmount
+    }
+    if (employee?.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+      return employee.previousWage
+    }
+    return employee?.dailyWage || 0
   }
 
   const getWorkDay = (date: string) => {
@@ -345,6 +363,30 @@ export default function EmployeeDetail() {
     // Data will be updated via real-time listeners
     setShowPaymentEditModal(false)
     setSelectedPayment(null)
+  }
+
+  const handleWorkDayClick = (workDay: WorkDay) => {
+    setSelectedWorkDay(workDay)
+    setShowWorkDayEditModal(true)
+  }
+
+  const handleWorkDayUpdated = () => {
+    setShowWorkDayEditModal(false)
+    setSelectedWorkDay(null)
+  }
+
+  const updateWorkDay = async (updatedWorkDay: WorkDay) => {
+    try {
+      setSyncStatus('syncing')
+      setErrorMessage('')
+      await firebaseService.addWorkDay(updatedWorkDay)
+      setShowWorkDayEditModal(false)
+      setSelectedWorkDay(null)
+    } catch (error: any) {
+      console.error('Error updating work day:', error)
+      setSyncStatus('error')
+      setErrorMessage(`Failed to update work day: ${error.message}`)
+    }
   }
 
   const updateEmployee = async (updatedEmployee: Employee, wageUpdateOption?: 'future' | 'all') => {
@@ -796,6 +838,8 @@ export default function EmployeeDetail() {
         employee={employee}
         selectedWorkDays={selectedWorkDays}
         onToggleWorkDaySelection={toggleWorkDaySelection}
+        onWorkDayClick={handleWorkDayClick}
+        getWorkDayAmount={getWorkDayAmount}
       />
 
       {/* Payment History */}
@@ -948,6 +992,20 @@ export default function EmployeeDetail() {
         />
       )}
 
+      {/* Work Day Edit Modal */}
+      {selectedWorkDay && (
+        <WorkDayEditModal
+          isOpen={showWorkDayEditModal}
+          onClose={() => {
+            setShowWorkDayEditModal(false)
+            setSelectedWorkDay(null)
+          }}
+          workDay={selectedWorkDay}
+          employee={employee}
+          onWorkDayUpdated={updateWorkDay}
+        />
+      )}
+
       {/* Employee Actions */}
       <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex justify-center space-x-4 mb-6">
@@ -996,12 +1054,16 @@ function WorkOverview({
   workDays, 
   employee, 
   selectedWorkDays, 
-  onToggleWorkDaySelection 
+  onToggleWorkDaySelection,
+  onWorkDayClick,
+  getWorkDayAmount
 }: {
   workDays: WorkDay[]
   employee: Employee
   selectedWorkDays: string[]
   onToggleWorkDaySelection: (workDayId: string) => void
+  onWorkDayClick: (workDay: WorkDay) => void
+  getWorkDayAmount: (workDay: WorkDay) => number
 }) {
   const [expandedMonths, setExpandedMonths] = useState<string[]>([])
   
@@ -1037,10 +1099,11 @@ function WorkOverview({
     groups[monthKey].days.push(workDay)
     if (workDay.worked) {
       groups[monthKey].worked++
-      groups[monthKey].earned += employee.dailyWage
+      const dayAmount = getWorkDayAmount(workDay)
+      groups[monthKey].earned += dayAmount
       if (workDay.paid) {
         groups[monthKey].paid++
-        groups[monthKey].paidAmount += employee.dailyWage
+        groups[monthKey].paidAmount += dayAmount
       }
     }
     
@@ -1165,17 +1228,33 @@ function WorkOverview({
                                   disabled={workDay.paid}
                                   className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                 />
-                                <div>
-                                  <div className="font-medium text-gray-800 text-sm">
-                                    {format(parseISO(workDay.date), 'EEEE, d')}
+                                <div 
+                                  onClick={() => onWorkDayClick(workDay)}
+                                  className="cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                                >
+                                  <div className="font-medium text-gray-800 text-sm flex items-center space-x-2">
+                                    <span>{format(parseISO(workDay.date), 'EEEE, d')}</span>
+                                    {workDay.notes && (
+                                      <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                      </svg>
+                                    )}
+                                    {workDay.customAmount !== undefined && (
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Custom</span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     {format(parseISO(workDay.date), 'MMM d, yyyy')}
+                                    {workDay.notes && (
+                                      <span className="ml-2 text-blue-600 truncate max-w-20">"{workDay.notes}"</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-green-600">£{employee.dailyWage}</span>
+                                <span className={`text-sm font-medium ${workDay.customAmount !== undefined ? 'text-blue-600' : 'text-green-600'}`}>
+                                  £{getWorkDayAmount(workDay).toFixed(2)}
+                                </span>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   workDay.paid 
                                     ? 'bg-green-100 text-green-800' 
@@ -1228,6 +1307,194 @@ function WorkOverview({
           <p className="text-gray-600 text-sm">Work days will appear here once they're logged</p>
         </div>
       )}
+    </div>
+  )
+}
+
+// Work Day Edit Modal Component
+function WorkDayEditModal({
+  isOpen,
+  onClose,
+  workDay,
+  employee,
+  onWorkDayUpdated
+}: {
+  isOpen: boolean
+  onClose: () => void
+  workDay: WorkDay
+  employee: Employee
+  onWorkDayUpdated: (workDay: WorkDay) => void
+}) {
+  const [formData, setFormData] = useState<WorkDay>(workDay)
+  const [useCustomAmount, setUseCustomAmount] = useState(workDay.customAmount !== undefined)
+
+  useEffect(() => {
+    setFormData(workDay)
+    setUseCustomAmount(workDay.customAmount !== undefined)
+  }, [workDay])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const updatedWorkDay = {
+      ...formData,
+      customAmount: useCustomAmount ? formData.customAmount : undefined
+    }
+    
+    onWorkDayUpdated(updatedWorkDay)
+  }
+
+  const getDefaultAmount = () => {
+    if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+      return employee.previousWage
+    }
+    return employee.dailyWage
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 pt-8 border-b">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Edit Work Day
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Date Display */}
+          <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="font-semibold text-gray-800">
+              {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
+            </div>
+            <div className="text-sm text-gray-600 mt-1">
+              {format(parseISO(workDay.date), 'MMM d, yyyy')}
+            </div>
+          </div>
+
+          {/* Work Status */}
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={formData.worked}
+                onChange={(e) => setFormData(prev => ({ ...prev, worked: e.target.checked }))}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Work was completed on this day
+              </span>
+            </label>
+          </div>
+
+          {/* Custom Amount Toggle */}
+          {formData.worked && (
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={useCustomAmount}
+                  onChange={(e) => {
+                    setUseCustomAmount(e.target.checked)
+                    if (!e.target.checked) {
+                      setFormData(prev => ({ ...prev, customAmount: undefined }))
+                    } else {
+                      setFormData(prev => ({ ...prev, customAmount: getDefaultAmount() }))
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Use custom amount for this day
+                </span>
+              </label>
+              
+              {!useCustomAmount && (
+                <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between">
+                    <span>Standard rate:</span>
+                    <span className="font-medium">£{getDefaultAmount()}/day</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom Amount Input */}
+          {formData.worked && useCustomAmount && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Custom Amount (£)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.customAmount || ''}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  customAmount: parseFloat(e.target.value) || 0 
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+              <div className="mt-1 text-xs text-gray-500">
+                Set to £0.00 for work done for free
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={formData.notes || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Add notes about this work day (e.g., half day, overtime, special project...)"
+            />
+          </div>
+
+          {/* Paid Status Display */}
+          {formData.paid && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm font-medium text-green-800">
+                  This work day has been paid
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
