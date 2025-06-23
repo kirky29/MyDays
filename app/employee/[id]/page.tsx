@@ -318,11 +318,19 @@ export default function EmployeeDetail() {
     setSelectedPayment(null)
   }
 
-  const updateEmployee = async (updatedEmployee: Employee) => {
+  const updateEmployee = async (updatedEmployee: Employee, wageUpdateOption?: 'all' | 'future') => {
     try {
       setSyncStatus('syncing')
       setErrorMessage('')
+      
+      // Update employee first
       await firebaseService.addEmployee(updatedEmployee)
+      
+      // If wage changed and we have a wage update option, handle payment recalculations
+      if (wageUpdateOption && updatedEmployee.dailyWage !== employee?.dailyWage) {
+        await handleWageChange(updatedEmployee, wageUpdateOption)
+      }
+      
       setEmployee(updatedEmployee)
       setShowEditModal(false)
     } catch (error: any) {
@@ -330,6 +338,24 @@ export default function EmployeeDetail() {
       setSyncStatus('error')
       setErrorMessage(`Failed to update employee: ${error.message}`)
     }
+  }
+
+  const handleWageChange = async (updatedEmployee: Employee, option: 'all' | 'future') => {
+    if (option === 'all') {
+      // Update all existing payment amounts to reflect new wage
+      const employeePayments = payments.filter(p => p.employeeId === updatedEmployee.id)
+      
+      for (const payment of employeePayments) {
+        const paidWorkDays = workDays.filter(wd => payment.workDayIds.includes(wd.id))
+        const newAmount = paidWorkDays.length * updatedEmployee.dailyWage
+        
+        if (newAmount !== payment.amount) {
+          const updatedPayment = { ...payment, amount: newAmount }
+          await firebaseService.addPayment(updatedPayment)
+        }
+      }
+    }
+    // For 'future' option, we don't need to do anything - new wage will apply to future payments automatically
   }
 
   const addWorkDaysRange = async (startDate: string, endDate: string) => {
@@ -913,6 +939,8 @@ export default function EmployeeDetail() {
           employee={employee}
           onSave={updateEmployee}
           onClose={() => setShowEditModal(false)}
+          workDays={workDays}
+          payments={payments}
         />
       )}
 
@@ -947,24 +975,62 @@ export default function EmployeeDetail() {
 function EditEmployeeModal({ 
   employee, 
   onSave, 
-  onClose 
+  onClose,
+  workDays,
+  payments
 }: { 
   employee: Employee
-  onSave: (employee: Employee) => void
-  onClose: () => void 
+  onSave: (employee: Employee, wageUpdateOption?: 'all' | 'future') => void
+  onClose: () => void
+  workDays: WorkDay[]
+  payments: Payment[]
 }) {
   const [formData, setFormData] = useState<Employee>(employee)
+  const [showWageOptions, setShowWageOptions] = useState(false)
+  const [wageUpdateOption, setWageUpdateOption] = useState<'all' | 'future'>('future')
+
+  const hasWageChanged = formData.dailyWage !== employee.dailyWage
+  const hasWorkedDays = workDays.some(day => day.worked)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    
+    if (hasWageChanged && hasWorkedDays) {
+      setShowWageOptions(true)
+    } else {
+      onSave(formData)
+    }
   }
+
+  const handleWageUpdateConfirm = () => {
+    onSave(formData, wageUpdateOption)
+    setShowWageOptions(false)
+  }
+
+  const calculateImpact = () => {
+    const workedDays = workDays.filter(day => day.worked)
+    const oldWage = employee.dailyWage
+    const newWage = formData.dailyWage
+    const wageDifference = newWage - oldWage
+    
+    return {
+      totalDays: workedDays.length,
+      oldTotal: workedDays.length * oldWage,
+      newTotal: workedDays.length * newWage,
+      difference: workedDays.length * wageDifference,
+      isIncrease: wageDifference > 0
+    }
+  }
+
+  const impact = hasWageChanged ? calculateImpact() : null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">Edit Employee Details</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            {showWageOptions ? 'Wage Update Options' : 'Edit Employee Details'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -972,87 +1038,202 @@ function EditEmployeeModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-          </div>
+        {!showWageOptions ? (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Daily Wage (£)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.dailyWage}
-              onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: parseFloat(e.target.value) || 0 }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Daily Wage (£)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.dailyWage}
+                onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: parseFloat(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
+              {hasWageChanged && impact && (
+                <div className={`mt-2 p-3 rounded-lg ${impact.isIncrease ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
+                  <div className="flex items-center space-x-2">
+                    <svg className={`w-4 h-4 ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={impact.isIncrease ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"} />
+                    </svg>
+                    <span className={`text-sm font-medium ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
+                      {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Detected
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-1 ${impact.isIncrease ? 'text-green-700' : 'text-orange-700'}`}>
+                    {impact.totalDays} worked days will be affected. You'll choose how to apply this change next.
+                  </p>
+                </div>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
-            <input
-              type="email"
-              value={formData.email || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+              <input
+                type="email"
+                value={formData.email || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value || undefined }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone (Optional)</label>
-            <input
-              type="tel"
-              value={formData.phone || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone (Optional)</label>
+              <input
+                type="tel"
+                value={formData.phone || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value || undefined }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date (Optional)</label>
-            <input
-              type="date"
-              value={formData.startDate || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date (Optional)</label>
+              <input
+                type="date"
+                value={formData.startDate || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value || undefined }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-            <textarea
-              value={formData.notes || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Any additional notes about this employee..."
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+              <textarea
+                value={formData.notes || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                placeholder="Any additional notes about this employee..."
+              />
+            </div>
 
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
-            >
-              Save Changes
-            </button>
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
+              >
+                {hasWageChanged && hasWorkedDays ? 'Continue' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="p-6">
+            {impact && (
+              <>
+                <div className="mb-6">
+                  <div className={`p-4 rounded-lg ${impact.isIncrease ? 'bg-green-50' : 'bg-orange-50'}`}>
+                    <h3 className={`font-semibold ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
+                      {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Impact
+                    </h3>
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Previous wage:</span>
+                        <span className="font-medium">£{employee.dailyWage}/day</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">New wage:</span>
+                        <span className="font-medium">£{formData.dailyWage}/day</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Worked days:</span>
+                        <span className="font-medium">{impact.totalDays} days</span>
+                      </div>
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Impact:</span>
+                          <span className={`font-bold ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
+                            {impact.isIncrease ? '+' : ''}£{impact.difference.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-800">How should this wage change be applied?</h3>
+                  
+                  <div className="space-y-3">
+                    <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="wageOption"
+                        value="future"
+                        checked={wageUpdateOption === 'future'}
+                        onChange={(e) => setWageUpdateOption(e.target.value as 'all' | 'future')}
+                        className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">Apply to Future Work Only</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Keep existing payment amounts unchanged. The new wage will only apply to future work days and payments.
+                        </div>
+                        <div className="text-xs text-blue-600 mt-2 font-medium">
+                          Recommended for most situations
+                        </div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="wageOption"
+                        value="all"
+                        checked={wageUpdateOption === 'all'}
+                        onChange={(e) => setWageUpdateOption(e.target.value as 'all' | 'future')}
+                        className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">Apply to All Previous Work</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Update all existing payment amounts to reflect the new wage. This will recalculate all past payments.
+                        </div>
+                        <div className={`text-xs mt-2 font-medium ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
+                          {impact.isIncrease ? 'Will increase' : 'Will decrease'} total owed by £{Math.abs(impact.difference).toFixed(2)}
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowWageOptions(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleWageUpdateConfirm}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    Apply Changes
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </form>
+        )}
       </div>
     </div>
   )
