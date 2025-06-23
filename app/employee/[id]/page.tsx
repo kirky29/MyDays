@@ -318,18 +318,13 @@ export default function EmployeeDetail() {
     setSelectedPayment(null)
   }
 
-  const updateEmployee = async (updatedEmployee: Employee, wageUpdateOption?: 'all' | 'future') => {
+  const updateEmployee = async (updatedEmployee: Employee) => {
     try {
       setSyncStatus('syncing')
       setErrorMessage('')
       
-      // Update employee first
+      // Update employee - new wage will automatically apply to future calculations
       await firebaseService.addEmployee(updatedEmployee)
-      
-      // If wage changed and we have a wage update option, handle payment recalculations
-      if (wageUpdateOption && updatedEmployee.dailyWage !== employee?.dailyWage) {
-        await handleWageChange(updatedEmployee, wageUpdateOption)
-      }
       
       setEmployee(updatedEmployee)
       setShowEditModal(false)
@@ -340,23 +335,7 @@ export default function EmployeeDetail() {
     }
   }
 
-  const handleWageChange = async (updatedEmployee: Employee, option: 'all' | 'future') => {
-    if (option === 'all') {
-      // Update all existing payment amounts to reflect new wage
-      const employeePayments = payments.filter(p => p.employeeId === updatedEmployee.id)
-      
-      for (const payment of employeePayments) {
-        const paidWorkDays = workDays.filter(wd => payment.workDayIds.includes(wd.id))
-        const newAmount = paidWorkDays.length * updatedEmployee.dailyWage
-        
-        if (newAmount !== payment.amount) {
-          const updatedPayment = { ...payment, amount: newAmount }
-          await firebaseService.addPayment(updatedPayment)
-        }
-      }
-    }
-    // For 'future' option, we don't need to do anything - new wage will apply to future payments automatically
-  }
+
 
   const addWorkDaysRange = async (startDate: string, endDate: string) => {
     try {
@@ -980,14 +959,13 @@ function EditEmployeeModal({
   payments
 }: { 
   employee: Employee
-  onSave: (employee: Employee, wageUpdateOption?: 'all' | 'future') => void
+  onSave: (employee: Employee) => void
   onClose: () => void
   workDays: WorkDay[]
   payments: Payment[]
 }) {
   const [formData, setFormData] = useState<Employee>(employee)
   const [showWageOptions, setShowWageOptions] = useState(false)
-  const [wageUpdateOption, setWageUpdateOption] = useState<'all' | 'future'>('future')
 
   const hasWageChanged = formData.dailyWage !== employee.dailyWage
   const hasWorkedDays = workDays.some(day => day.worked)
@@ -1003,7 +981,7 @@ function EditEmployeeModal({
   }
 
   const handleWageUpdateConfirm = () => {
-    onSave(formData, wageUpdateOption)
+    onSave(formData)
     setShowWageOptions(false)
   }
 
@@ -1169,51 +1147,24 @@ function EditEmployeeModal({
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800">How should this wage change be applied?</h3>
-                  
-                  <div className="space-y-3">
-                    <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="wageOption"
-                        value="future"
-                        checked={wageUpdateOption === 'future'}
-                        onChange={(e) => setWageUpdateOption(e.target.value as 'all' | 'future')}
-                        className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">Apply to Future Work Only</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          Keep existing payment amounts unchanged. The new wage will only apply to future work days and payments.
-                        </div>
-                        <div className="text-xs text-blue-600 mt-2 font-medium">
-                          Recommended for most situations
-                        </div>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="wageOption"
-                        value="all"
-                        checked={wageUpdateOption === 'all'}
-                        onChange={(e) => setWageUpdateOption(e.target.value as 'all' | 'future')}
-                        className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">Apply to All Previous Work</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          Update all existing payment amounts to reflect the new wage. This will recalculate all past payments.
-                        </div>
-                        <div className={`text-xs mt-2 font-medium ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
-                          {impact.isIncrease ? 'Will increase' : 'Will decrease'} total owed by £{Math.abs(impact.difference).toFixed(2)}
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
+                                <div className="space-y-4">
+                   <h3 className="font-semibold text-gray-800">Confirm Wage Change</h3>
+                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                     <div className="flex items-start space-x-3">
+                       <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                       </svg>
+                       <div>
+                         <h4 className="font-medium text-blue-800">How wage changes work:</h4>
+                         <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                           <li>• Existing payments remain unchanged (financial integrity)</li>
+                           <li>• New wage applies to all future work and calculations</li>
+                           <li>• Outstanding amounts will reflect the updated wage</li>
+                         </ul>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
 
                 <div className="flex space-x-3 pt-6">
                   <button
