@@ -210,12 +210,138 @@ export default function DayViewPage() {
           )}
         </div>
 
+        {/* Quick Add Section - Show when no work activities */}
+        {dayEmployees.length > 0 && workedEmployees.length === 0 && (
+          <div className="card mb-6 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="card-body text-center">
+              <div className="mb-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-3">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Add New Work Day</h3>
+                <p className="text-gray-600 text-sm">No work activities recorded for this day yet</p>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      // Mark all employees as worked
+                      dayEmployees.forEach(({ employee }) => {
+                        toggleWorkDay(employee.id, dateString)
+                      })
+                    }}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    All Worked
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Mark all as worked first
+                        for (const { employee } of dayEmployees) {
+                          await toggleWorkDay(employee.id, dateString)
+                        }
+                        // Wait a moment for work days to be created, then mark as paid
+                        setTimeout(async () => {
+                          for (const { employee } of dayEmployees) {
+                            await togglePayment(employee.id, dateString)
+                          }
+                        }, 200)
+                      } catch (error) {
+                        console.error('Error marking all as paid:', error)
+                      }
+                    }}
+                    className="btn btn-success btn-sm"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    All Paid
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">Or select individual employees below</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Complete Section - Show when some but not all employees worked */}
+        {dayEmployees.length > 0 && workedEmployees.length > 0 && workedEmployees.length < dayEmployees.length && (
+          <div className="card mb-6 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="card-body">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="inline-flex items-center justify-center w-10 h-10 bg-amber-100 rounded-xl">
+                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Quick Complete</h4>
+                    <p className="text-sm text-gray-600">{dayEmployees.length - workedEmployees.length} employee{dayEmployees.length - workedEmployees.length !== 1 ? 's' : ''} haven't worked yet</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-amber-700">{workedEmployees.length}/{dayEmployees.length}</div>
+                  <div className="text-xs text-gray-600">Working</div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    // Mark remaining employees as worked
+                    dayEmployees.forEach(({ employee, workDay }) => {
+                      if (!workDay?.worked) {
+                        toggleWorkDay(employee.id, dateString)
+                      }
+                    })
+                  }}
+                  className="btn btn-primary btn-sm"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Mark All Worked
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      // Mark all worked employees as paid
+                      for (const { employee, workDay } of dayEmployees) {
+                        if (workDay?.worked && !workDay?.paid) {
+                          await togglePayment(employee.id, dateString)
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error marking worked as paid:', error)
+                    }
+                  }}
+                  className="btn btn-success btn-sm"
+                  disabled={paidEmployees.length === workedEmployees.length}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  Pay Worked ({workedEmployees.length - paidEmployees.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Employee List */}
         {dayEmployees.length === 0 ? (
           <div className="card">
             <div className="card-body text-center py-12">
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No employees found</h3>
               <p className="text-gray-600 mb-4">Add employees to start tracking work days</p>
