@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns'
 import { firebaseService } from '../../lib/firebase'
 import type { Employee, WorkDay, Payment } from '../../lib/store'
+import BottomNavigation from '../components/BottomNavigation'
 
 interface ActivityLogEntry {
   id: string
@@ -28,6 +29,10 @@ export default function ActivityLog() {
   useEffect(() => {
     loadData()
   }, [])
+
+  const handleNavigate = (path: string) => {
+    window.location.href = path
+  }
 
   const loadData = async () => {
     try {
@@ -179,17 +184,20 @@ export default function ActivityLog() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-gray-600">Loading activity log...</p>
-            </div>
-          </div>
+                      </div>
         </div>
       </div>
-    )
+
+      {/* Bottom Navigation */}
+      <BottomNavigation onNavigate={handleNavigate} />
+    </div>
+  )
   }
 
   const filteredActivities = getFilteredActivities()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 sm:pb-24">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
         <div className="mb-8">

@@ -7,6 +7,7 @@ import { firebaseService, PAYMENT_TYPES } from '../../../lib/firebase'
 import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
 import PaymentEditModal from '../../components/PaymentEditModal'
+import BottomNavigation from '../../components/BottomNavigation'
 
 interface Employee {
   id: string
@@ -221,6 +222,10 @@ export default function EmployeeDetail() {
   const handleBackNavigation = () => {
     // Use window.location instead of router to ensure clean navigation
     window.location.href = '/'
+  }
+
+  const handleNavigate = (path: string) => {
+    window.location.href = path
   }
 
   const toggleWorkDay = async (date: string) => {
@@ -583,7 +588,8 @@ export default function EmployeeDetail() {
   const weekDays = getWeekDays(currentWeek)
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 pb-20 sm:pb-24">
+      <div className="container mx-auto px-4 py-6 max-w-md">
 
 
       {/* Error Message */}
@@ -1077,6 +1083,10 @@ export default function EmployeeDetail() {
           </button>
           <p className="text-xs text-gray-500 mt-2">See all changes and activity across all employees</p>
         </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation onNavigate={handleNavigate} />
       </div>
     </div>
   )
