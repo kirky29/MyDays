@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'My Days - Employee Work Tracker',
+  title: 'Did They Work? - Employee Work Tracker',
   description: 'Track employee work days and payments',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 }

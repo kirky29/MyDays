@@ -173,7 +173,7 @@ export default function ReportModal({
       // Header
       doc.setFontSize(20)
       doc.setTextColor(40, 40, 40)
-      doc.text('My Days - Work Report', margin, 30)
+      doc.text('Did They Work? - Work Report', margin, 30)
       
       // Report info
       doc.setFontSize(12)
@@ -295,7 +295,7 @@ export default function ReportModal({
           
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: 'My Days Work Report',
+              title: 'Did They Work? Work Report',
               text: `Work report from ${format(new Date(startDate), 'MMM d, yyyy')} to ${format(new Date(endDate), 'MMM d, yyyy')}`,
               files: [file]
             })

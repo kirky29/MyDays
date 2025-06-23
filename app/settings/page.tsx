@@ -5,6 +5,7 @@ import { firebaseService } from '../../lib/firebase'
 import { useAppStore } from '../../lib/store'
 import BottomNavigation from '../components/BottomNavigation'
 import AuthGuard from '../components/AuthGuard'
+import ReportModal from '../components/ReportModal'
 
 interface Employee {
   id: string
@@ -31,9 +32,10 @@ export default function Settings() {
   const [showClearAllModal, setShowClearAllModal] = useState(false)
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [showReportModal, setShowReportModal] = useState(false)
   
   // Get sync status from the store
-  const { syncStatus, errorMessage, retryConnection } = useAppStore()
+  const { syncStatus, errorMessage, retryConnection, payments } = useAppStore()
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,7 +92,7 @@ export default function Settings() {
     try {
       // Create a simple PDF-like report
       const reportData = {
-        title: 'My Days - Work Tracking Report',
+        title: 'Did They Work? - Work Tracking Report',
         date: new Date().toLocaleDateString(),
         employees: employees.map(emp => {
           const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
@@ -128,7 +130,7 @@ export default function Settings() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>My Days Report</title>
+          <title>Did They Work? Report</title>
           <style>
             body { 
               font-family: Arial, sans-serif; 
@@ -259,7 +261,7 @@ export default function Settings() {
           `).join('')}
           
           <div class="footer">
-            <p>My Days - Work Tracker Report</p>
+            <p>Did They Work? - Work Tracker Report</p>
             <p>Generated on ${new Date().toLocaleString()}</p>
           </div>
         </body>
@@ -604,7 +606,7 @@ export default function Settings() {
             </button>
             
             <button
-              onClick={() => handleNavigate('/')}
+              onClick={() => setShowReportModal(true)}
               className="flex flex-col items-center p-4 border border-gray-200 rounded-xl hover:bg-green-50 hover:border-green-200 transition-colors"
             >
               <svg className="w-6 h-6 text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -666,7 +668,7 @@ export default function Settings() {
 
           <div className="mt-6 pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center">
-              My Days - Work Tracker
+              Did They Work? - Work Tracker
               <br />
               Built with ❤️ for efficient work management
             </p>
@@ -762,6 +764,15 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        employees={employees}
+        workDays={workDays}
+        payments={payments}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />

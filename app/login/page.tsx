@@ -166,7 +166,7 @@ export default function LoginPage() {
 
           {/* Title */}
           <h1 className="text-3xl font-bold mb-2">
-            <span className="text-gradient">My Days</span>
+            <span className="text-gradient">Did They Work?</span>
           </h1>
           
           {/* Subtitle */}
