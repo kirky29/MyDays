@@ -281,18 +281,19 @@ export default function Settings() {
 
   const clearAllData = async () => {
     if (confirm('Are you sure you want to clear ALL data? This action cannot be undone.')) {
-      if (confirm('This will delete ALL employees, work days, and payments. Are you absolutely sure?')) {
+      if (confirm('This will delete ALL employees, work days, payments, and activity logs. Are you absolutely sure?')) {
         try {
-          // Delete all employees and their associated work days
+          // Delete all employees and their associated work days and payments
           for (const employee of employees) {
             await firebaseService.deleteEmployee(employee.id)
             await firebaseService.deleteWorkDaysForEmployee(employee.id)
+            await firebaseService.deletePaymentsForEmployee(employee.id)
           }
           
           setEmployees([])
           setWorkDays([])
           setShowClearAllModal(false)
-          alert('All data has been cleared successfully.')
+          alert('All data including activity logs has been cleared successfully.')
         } catch (error) {
           console.error('Error clearing data:', error)
           alert('Failed to clear data. Please try again.')
@@ -302,16 +303,17 @@ export default function Settings() {
   }
 
   const clearEmployeeData = async (employee: Employee) => {
-    if (confirm(`Are you sure you want to delete ${employee.name} and all their work data? This action cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete ${employee.name} and all their work data including payments? This action cannot be undone.`)) {
       try {
         await firebaseService.deleteEmployee(employee.id)
         await firebaseService.deleteWorkDaysForEmployee(employee.id)
+        await firebaseService.deletePaymentsForEmployee(employee.id)
         
         setEmployees(prev => prev.filter(emp => emp.id !== employee.id))
         setWorkDays(prev => prev.filter(wd => wd.employeeId !== employee.id))
         setShowEmployeeModal(false)
         setSelectedEmployee(null)
-        alert(`${employee.name} and their data have been deleted successfully.`)
+        alert(`${employee.name} and all their data including payments have been deleted successfully.`)
       } catch (error) {
         console.error('Error deleting employee:', error)
         alert('Failed to delete employee. Please try again.')
@@ -570,7 +572,7 @@ export default function Settings() {
             </div>
             
             <p className="text-gray-700 mb-6">
-              This will permanently delete all employees, work days, and payment records. 
+              This will permanently delete all employees, work days, payment records, and activity logs. 
               Make sure you have exported your data before proceeding.
             </p>
             
