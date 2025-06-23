@@ -389,6 +389,38 @@ export default function EmployeeDetail() {
     }
   }
 
+  const removeWorkDay = async (workDay: WorkDay) => {
+    if (workDay.paid) {
+      alert('Cannot remove a work day that has been paid. Please adjust the payment record first.')
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to remove this work day?\n\n${format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}\n\nThis will remove the work day from records.`
+    
+    if (confirm(confirmMessage)) {
+      try {
+        setSyncStatus('syncing')
+        setErrorMessage('')
+        
+        // Mark as not worked and clear custom data to effectively "remove" it
+        const removedWorkDay = {
+          ...workDay,
+          worked: false,
+          customAmount: undefined,
+          notes: undefined
+        }
+        
+        await firebaseService.addWorkDay(removedWorkDay)
+        setShowWorkDayEditModal(false)
+        setSelectedWorkDay(null)
+      } catch (error: any) {
+        console.error('Error removing work day:', error)
+        setSyncStatus('error')
+        setErrorMessage(`Failed to remove work day: ${error.message}`)
+      }
+    }
+  }
+
   const updateEmployee = async (updatedEmployee: Employee, wageUpdateOption?: 'future' | 'all') => {
     try {
       setSyncStatus('syncing')
@@ -1003,6 +1035,7 @@ export default function EmployeeDetail() {
           workDay={selectedWorkDay}
           employee={employee}
           onWorkDayUpdated={updateWorkDay}
+          onWorkDayRemoved={removeWorkDay}
         />
       )}
 
@@ -1317,13 +1350,15 @@ function WorkDayEditModal({
   onClose,
   workDay,
   employee,
-  onWorkDayUpdated
+  onWorkDayUpdated,
+  onWorkDayRemoved
 }: {
   isOpen: boolean
   onClose: () => void
   workDay: WorkDay
   employee: Employee
   onWorkDayUpdated: (workDay: WorkDay) => void
+  onWorkDayRemoved: (workDay: WorkDay) => void
 }) {
   const [formData, setFormData] = useState<WorkDay>(workDay)
   const [useCustomAmount, setUseCustomAmount] = useState(workDay.customAmount !== undefined)
@@ -1378,23 +1413,8 @@ function WorkDayEditModal({
             </div>
           </div>
 
-          {/* Work Status */}
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.worked}
-                onChange={(e) => setFormData(prev => ({ ...prev, worked: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Work was completed on this day
-              </span>
-            </label>
-          </div>
-
           {/* Custom Amount Toggle */}
-          {formData.worked && (
+          {(
             <div>
               <label className="flex items-center space-x-2">
                 <input
@@ -1422,12 +1442,10 @@ function WorkDayEditModal({
                     <span className="font-medium">£{getDefaultAmount()}/day</span>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Custom Amount Input */}
-          {formData.worked && useCustomAmount && (
+                             )}
+             </div>
+           )}
+          {useCustomAmount && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Custom Amount (£)
@@ -1478,20 +1496,33 @@ function WorkDayEditModal({
             </div>
           )}
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex flex-col space-y-3 pt-4">
+            {/* Remove Day Button */}
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => onWorkDayRemoved(workDay)}
+              disabled={formData.paid}
+              className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              Cancel
+              {formData.paid ? 'Cannot Remove (Already Paid)' : 'Remove Work Day'}
             </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Save Changes
-            </button>
+            
+            {/* Action Buttons */}
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </div>
