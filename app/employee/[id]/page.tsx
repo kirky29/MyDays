@@ -6,6 +6,7 @@ import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay,
 import { firebaseService, PAYMENT_TYPES } from '../../../lib/firebase'
 import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
+import PaymentEditModal from '../../components/PaymentEditModal'
 
 interface Employee {
   id: string
@@ -39,6 +40,8 @@ export default function EmployeeDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showPaymentEditModal, setShowPaymentEditModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
 
@@ -302,6 +305,17 @@ export default function EmployeeDetail() {
 
   const handlePaymentComplete = () => {
     setSelectedWorkDays([])
+  }
+
+  const handlePaymentClick = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setShowPaymentEditModal(true)
+  }
+
+  const handlePaymentUpdated = () => {
+    // Data will be updated via real-time listeners
+    setShowPaymentEditModal(false)
+    setSelectedPayment(null)
   }
 
   const updateEmployee = async (updatedEmployee: Employee) => {
@@ -792,7 +806,11 @@ export default function EmployeeDetail() {
                 ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
                 return (
-                  <div key={payment.id} className="border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50">
+                  <div 
+                    key={payment.id} 
+                    onClick={() => handlePaymentClick(payment)}
+                    className="group border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 cursor-pointer hover:shadow-md hover:from-green-100 hover:to-emerald-100 transition-all duration-200"
+                  >
                     {/* Payment Header */}
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -810,9 +828,16 @@ export default function EmployeeDetail() {
                           </span>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                        {format(parseISO(payment.createdAt), 'MMM d, h:mm a')}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+                          {format(parseISO(payment.createdAt), 'MMM d, h:mm a')}
+                        </span>
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                          <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Work Days Paid */}
@@ -899,6 +924,21 @@ export default function EmployeeDetail() {
         selectedWorkDays={selectedWorkDayObjects}
         onPaymentComplete={handlePaymentComplete}
       />
+
+      {/* Payment Edit Modal */}
+      {selectedPayment && (
+        <PaymentEditModal
+          isOpen={showPaymentEditModal}
+          onClose={() => {
+            setShowPaymentEditModal(false)
+            setSelectedPayment(null)
+          }}
+          payment={selectedPayment}
+          employee={employee}
+          workDays={workDays}
+          onPaymentUpdated={handlePaymentUpdated}
+        />
+      )}
     </div>
   )
 }

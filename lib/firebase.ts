@@ -136,6 +136,16 @@ export const firebaseService = {
     }
   },
 
+  async deletePayment(paymentId: string) {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.PAYMENTS, paymentId));
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      throw error;
+    }
+  },
+
   async deletePaymentsForEmployee(employeeId: string) {
     try {
       const q = query(collection(db, COLLECTIONS.PAYMENTS), where("employeeId", "==", employeeId));
