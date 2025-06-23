@@ -510,25 +510,7 @@ export default function EmployeeDetail() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
-      {/* Sync Status Indicator */}
-      <div className="mb-4 flex items-center justify-center">
-        <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
-          syncStatus === 'syncing' ? 'bg-yellow-100 text-yellow-800' :
-          syncStatus === 'synced' ? 'bg-green-100 text-green-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          <div className={`w-2 h-2 rounded-full ${
-            syncStatus === 'syncing' ? 'bg-yellow-500 animate-pulse' :
-            syncStatus === 'synced' ? 'bg-green-500' :
-            'bg-red-500'
-          }`}></div>
-          <span>
-            {syncStatus === 'syncing' ? 'Syncing...' :
-             syncStatus === 'synced' ? 'Synced' :
-             'Sync Error'}
-          </span>
-        </div>
-      </div>
+
 
       {/* Error Message */}
       {errorMessage && (
@@ -558,7 +540,7 @@ export default function EmployeeDetail() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-start mb-6">
         <button
           onClick={handleBackNavigation}
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
@@ -568,24 +550,10 @@ export default function EmployeeDetail() {
           </svg>
           Back
         </button>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="text-primary hover:text-blue-700 text-sm"
-          >
-            Edit Details
-          </button>
-          <button
-            onClick={deleteEmployee}
-            className="text-danger hover:text-red-700 text-sm"
-          >
-            Delete
-          </button>
-        </div>
       </div>
 
       {/* Employee Info */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{employee.name}</h1>
         <p className="text-lg text-gray-600 mb-4">£{employee.dailyWage}/day</p>
         
@@ -635,9 +603,9 @@ export default function EmployeeDetail() {
         </div>
       </div>
 
-      {/* Quick Add Work Day */}
+      {/* Add Work Day */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">Quick Add Work Day</h2>
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">Log Work Day</h2>
         <div className="flex space-x-2">
           <input
             type="date"
@@ -1020,8 +988,32 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {/* Activity Log Link */}
+      {/* Employee Actions */}
       <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="flex justify-center space-x-4 mb-6">
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit Details
+          </button>
+          <button
+            onClick={deleteEmployee}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Activity Log Link */}
+      <div className="border-t border-gray-200 pt-6">
         <div className="text-center">
           <button
             onClick={() => window.location.href = '/activity-log'}
