@@ -1,26 +1,49 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { firebaseService } from '../firebase'
 import { useAppStore } from '../store'
 import type { Employee, WorkDay, Payment } from '../store'
 
 export const useFirebaseData = () => {
   const {
+    employees,
+    workDays,
+    payments,
     setEmployees,
     setWorkDays,
     setPayments,
     setLoading,
     setSyncStatus,
-    setErrorMessage
+    setErrorMessage,
+    loading
   } = useAppStore()
+  
+  const hasInitialized = useRef(false)
+  const listenersRef = useRef<(() => void)[]>([])
 
-  // Load initial data
+  // Only load data if we don't have any data yet
+  const hasData = employees.length > 0 || workDays.length > 0 || payments.length > 0
+
+  // Load initial data only if we don't have data and haven't initialized
   useEffect(() => {
+    if (hasData || hasInitialized.current) {
+      // If we already have data, don't show loading
+      if (hasData) {
+        setLoading(false)
+        setSyncStatus('synced')
+      }
+      return
+    }
+    
+    hasInitialized.current = true
     let isMounted = true
 
     const loadData = async () => {
       try {
-        setLoading(true)
-        setSyncStatus('syncing')
+        // Only show loading on the very first load
+        if (!hasData) {
+          setLoading(true)
+          setSyncStatus('syncing')
+        }
         setErrorMessage('')
         
         // Enable network connection
@@ -38,15 +61,13 @@ export const useFirebaseData = () => {
           setWorkDays(workDaysData as WorkDay[])
           setPayments(paymentsData as Payment[])
           setSyncStatus('synced')
+          setLoading(false)
         }
       } catch (error: any) {
         console.error('Error loading data:', error)
         if (isMounted) {
           setSyncStatus('error')
           setErrorMessage(error.message || 'Failed to connect to database')
-        }
-      } finally {
-        if (isMounted) {
           setLoading(false)
         }
       }
@@ -57,10 +78,12 @@ export const useFirebaseData = () => {
     return () => {
       isMounted = false
     }
-  }, [setEmployees, setWorkDays, setPayments, setLoading, setSyncStatus, setErrorMessage])
+  }, [hasData, setEmployees, setWorkDays, setPayments, setLoading, setSyncStatus, setErrorMessage])
 
-  // Set up real-time listeners
+  // Set up real-time listeners only once
   useEffect(() => {
+    if (listenersRef.current.length > 0) return // Already have listeners
+    
     let isMounted = true
 
     const unsubscribeEmployees = firebaseService.subscribeToEmployees(
@@ -114,11 +137,17 @@ export const useFirebaseData = () => {
       }
     )
 
+    // Store cleanup functions
+    listenersRef.current = [
+      unsubscribeEmployees,
+      unsubscribeWorkDays,
+      unsubscribePayments
+    ].filter((fn): fn is () => void => typeof fn === 'function')
+
     return () => {
       isMounted = false
-      if (unsubscribeEmployees) unsubscribeEmployees()
-      if (unsubscribeWorkDays) unsubscribeWorkDays()
-      if (unsubscribePayments) unsubscribePayments()
+      listenersRef.current.forEach(unsubscribe => unsubscribe?.())
+      listenersRef.current = []
     }
   }, [setEmployees, setWorkDays, setPayments, setSyncStatus, setErrorMessage])
 } 

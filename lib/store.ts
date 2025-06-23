@@ -75,8 +75,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   employees: [],
   workDays: [],
   payments: [],
-  loading: true,
-  syncStatus: 'syncing',
+  loading: false, // Start as false, will be set to true only when actually loading
+  syncStatus: 'synced', // Start as synced, will change when actually syncing
   errorMessage: '',
   
   // Basic setters
