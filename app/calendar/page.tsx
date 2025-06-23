@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isToday } from 'date-fns'
 import { useFirebaseData } from '../../lib/hooks/useFirebaseData'
 import { useAppStore } from '../../lib/store'
 import type { Employee, WorkDay } from '../../lib/store'
@@ -10,18 +10,9 @@ import BottomNavigation from '../components/BottomNavigation'
 import PaymentModal from '../components/PaymentModal'
 import LoadingScreen from '../components/LoadingScreen'
 
-interface DayViewData {
-  date: string
-  employees: {
-    employee: Employee
-    workDay?: WorkDay
-  }[]
-}
-
 export default function CalendarPage() {
   const router = useRouter()
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDayData, setSelectedDayData] = useState<DayViewData | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedEmployeeForPayment, setSelectedEmployeeForPayment] = useState<Employee | null>(null)
   const [selectedWorkDaysForPayment, setSelectedWorkDaysForPayment] = useState<WorkDay[]>([])
@@ -30,9 +21,7 @@ export default function CalendarPage() {
   const { 
     employees, 
     workDays, 
-    loading, 
-    toggleWorkDay, 
-    togglePayment 
+    loading
   } = useAppStore()
 
   // Initialize Firebase data loading
@@ -56,17 +45,7 @@ export default function CalendarPage() {
 
   const openDayView = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd')
-    const dayWorkDays = getWorkDaysForDate(dateString)
-    
-    const dayData: DayViewData = {
-      date: dateString,
-      employees: employees.map(employee => ({
-        employee,
-        workDay: dayWorkDays.find(wd => wd.employeeId === employee.id)
-      }))
-    }
-    
-    setSelectedDayData(dayData)
+    router.push(`/calendar/${dateString}`)
   }
 
   const openPaymentModal = (employee: Employee) => {
@@ -80,7 +59,6 @@ export default function CalendarPage() {
     setSelectedEmployeeForPayment(employee)
     setSelectedWorkDaysForPayment(unpaidWorkDays)
     setShowPaymentModal(true)
-    setSelectedDayData(null) // Close day view
   }
 
   // Generate calendar days
@@ -308,210 +286,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Enhanced Day View Modal */}
-        {selectedDayData && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
-            <div className="card max-w-md w-full my-4">
-              {/* Enhanced Header - Sticky */}
-              <div className="card-header bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 sticky top-4 z-10 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-xl">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {format(new Date(selectedDayData.date), 'EEEE, MMMM d')}
-                      </h3>
-                      <p className="text-sm text-blue-600">Manage work day</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedDayData(null)}
-                    className="p-2 hover:bg-white/50 rounded-xl transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
 
-                {/* Quick Summary */}
-                {(() => {
-                  const workedEmployees = selectedDayData.employees.filter(({ workDay }) => workDay?.worked)
-                  const paidEmployees = workedEmployees.filter(({ workDay }) => workDay?.paid)
-                  const totalEarned = workedEmployees.reduce((sum, { employee }) => 
-                    sum + employee.dailyWage, 0)
-                  const totalPaid = paidEmployees.reduce((sum, { employee }) => 
-                    sum + employee.dailyWage, 0)
-                  
-                  if (workedEmployees.length === 0) {
-                    return (
-                      <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <div className="text-center text-sm text-gray-600">
-                          <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 12H4" />
-                          </svg>
-                          No work scheduled for this day
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div className="text-center p-2 bg-white/60 rounded-xl border border-blue-100">
-                        <div className="text-lg font-bold text-gray-900">{workedEmployees.length}</div>
-                        <div className="text-xs text-gray-600">Working</div>
-                      </div>
-                      <div className="text-center p-2 bg-white/60 rounded-xl border border-blue-100">
-                        <div className="text-lg font-bold text-green-600">£{totalPaid}</div>
-                        <div className="text-xs text-gray-600">Paid</div>
-                      </div>
-                      <div className="text-center p-2 bg-white/60 rounded-xl border border-blue-100">
-                        <div className="text-lg font-bold text-amber-600">£{totalEarned - totalPaid}</div>
-                        <div className="text-xs text-gray-600">Outstanding</div>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Scrollable Body */}
-              <div className="card-body">
-                {selectedDayData.employees.length === 0 ? (
-                  <div className="text-center py-8">
-                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p className="text-gray-500 mb-2">No employees found</p>
-                    <p className="text-sm text-gray-400">Add employees to start tracking work days</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {selectedDayData.employees.map(({ employee, workDay }) => {
-                      const currentAmount = employee.dailyWage
-                      const isWorked = workDay?.worked || false
-                      const isPaid = workDay?.paid || false
-                      
-                      return (
-                        <div key={employee.id} className={`border-2 rounded-2xl p-4 transition-all ${
-                          isWorked 
-                            ? isPaid 
-                              ? 'border-green-200 bg-green-50' 
-                              : 'border-amber-200 bg-amber-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}>
-                          {/* Employee Header */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                              <div className={`avatar avatar-md ${
-                                isWorked 
-                                  ? isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}>
-                                <span className="font-semibold">{employee.name.charAt(0).toUpperCase()}</span>
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-gray-900">{employee.name}</h4>
-                                <p className="text-sm text-gray-600">Daily rate: £{employee.dailyWage}</p>
-                              </div>
-                            </div>
-                            
-                            {/* Status Badge */}
-                            <div className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 ${
-                              isWorked 
-                                ? isPaid 
-                                  ? 'bg-green-100 text-green-800 border-green-200' 
-                                  : 'bg-amber-100 text-amber-800 border-amber-200'
-                                : 'bg-gray-100 text-gray-600 border-gray-200'
-                            }`}>
-                              {isWorked 
-                                ? isPaid ? '✓ Paid' : '⏳ Worked - Unpaid'
-                                : '○ Not Worked'}
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="space-y-2">
-                            {/* Work Status Button */}
-                            <button
-                              onClick={() => toggleWorkDay(employee.id, selectedDayData.date)}
-                              className={`w-full p-3 rounded-xl font-semibold text-sm transition-all ${
-                                isWorked
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700 border-2 border-blue-600'
-                                  : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-400'
-                              }`}
-                            >
-                              {isWorked 
-                                ? (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span>Worked Today (Click to Remove)</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    <span>Mark as Worked</span>
-                                  </div>
-                                )
-                              }
-                            </button>
-                            
-                            {/* Payment Button */}
-                            {isWorked && (
-                              <button
-                                onClick={() => togglePayment(employee.id, selectedDayData.date)}
-                                className={`w-full p-3 rounded-xl font-semibold text-sm transition-all ${
-                                  isPaid
-                                    ? 'bg-green-600 text-white hover:bg-green-700 border-2 border-green-600'
-                                    : 'bg-amber-500 text-white hover:bg-amber-600 border-2 border-amber-500'
-                                }`}
-                              >
-                                {isPaid ? (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                    </svg>
-                                    <span>Paid £{currentAmount} (Click to Undo)</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    <span>Mark Paid £{currentAmount}</span>
-                                  </div>
-                                )}
-                              </button>
-                            )}
-
-                            {/* Employee Profile Button */}
-                            <button
-                              onClick={() => {
-                                setSelectedDayData(null)
-                                router.push(`/employee/${employee.id}`)
-                              }}
-                              className="w-full p-2 text-blue-600 hover:bg-blue-50 rounded-xl text-sm font-medium transition-colors"
-                            >
-                              View Employee Profile →
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Payment Modal */}
         {showPaymentModal && selectedEmployeeForPayment && (
