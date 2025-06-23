@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays, subDays } from 'date-fns'
-import { firebaseService, Payment, PAYMENT_TYPES } from '../../../lib/firebase'
+import { firebaseService, PAYMENT_TYPES } from '../../../lib/firebase'
+import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
 
 interface Employee {

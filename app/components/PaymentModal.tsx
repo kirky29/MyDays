@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { firebaseService, PAYMENT_TYPES, PaymentType, Payment } from '../../lib/firebase'
+import { firebaseService, PAYMENT_TYPES, PaymentType } from '../../lib/firebase'
+import type { Payment } from '../../lib/store'
 
 interface WorkDay {
   id: string

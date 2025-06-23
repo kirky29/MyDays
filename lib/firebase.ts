@@ -34,22 +34,13 @@ export const PAYMENT_TYPES = [
 
 export type PaymentType = typeof PAYMENT_TYPES[number];
 
-// Payment interface
-export interface Payment {
-  id: string
-  employeeId: string
-  workDayIds: string[]
-  amount: number
-  paymentType: PaymentType
-  notes?: string
-  date: string
-  createdAt: string
-}
+// Import types from store to maintain consistency
+import type { Employee, WorkDay, Payment } from './store'
 
 // Firebase service functions with enhanced error handling
 export const firebaseService = {
   // Employee functions
-  async addEmployee(employee: any) {
+  async addEmployee(employee: Employee) {
     try {
       await setDoc(doc(db, COLLECTIONS.EMPLOYEES, employee.id), employee);
       return { success: true };
@@ -59,10 +50,10 @@ export const firebaseService = {
     }
   },
 
-  async getEmployees() {
+  async getEmployees(): Promise<Employee[]> {
     try {
       const querySnapshot = await getDocs(collection(db, COLLECTIONS.EMPLOYEES));
-      return querySnapshot.docs.map(doc => doc.data());
+      return querySnapshot.docs.map(doc => doc.data() as Employee);
     } catch (error) {
       console.error('Error getting employees:', error);
       throw error;
@@ -80,7 +71,7 @@ export const firebaseService = {
   },
 
   // Work day functions
-  async addWorkDay(workDay: any) {
+  async addWorkDay(workDay: WorkDay) {
     try {
       await setDoc(doc(db, COLLECTIONS.WORK_DAYS, workDay.id), workDay);
       return { success: true };
@@ -90,10 +81,10 @@ export const firebaseService = {
     }
   },
 
-  async getWorkDays() {
+  async getWorkDays(): Promise<WorkDay[]> {
     try {
       const querySnapshot = await getDocs(collection(db, COLLECTIONS.WORK_DAYS));
-      return querySnapshot.docs.map(doc => doc.data());
+      return querySnapshot.docs.map(doc => doc.data() as WorkDay);
     } catch (error) {
       console.error('Error getting work days:', error);
       throw error;
@@ -114,7 +105,7 @@ export const firebaseService = {
   },
 
   // Payment functions
-  async addPayment(payment: Payment | any) {
+  async addPayment(payment: Payment) {
     try {
       await setDoc(doc(db, COLLECTIONS.PAYMENTS, payment.id), payment);
       return { success: true };
@@ -124,21 +115,21 @@ export const firebaseService = {
     }
   },
 
-  async getPayments() {
+  async getPayments(): Promise<Payment[]> {
     try {
       const querySnapshot = await getDocs(collection(db, COLLECTIONS.PAYMENTS));
-      return querySnapshot.docs.map(doc => doc.data());
+      return querySnapshot.docs.map(doc => doc.data() as Payment);
     } catch (error) {
       console.error('Error getting payments:', error);
       throw error;
     }
   },
 
-  async getPaymentsForEmployee(employeeId: string) {
+  async getPaymentsForEmployee(employeeId: string): Promise<Payment[]> {
     try {
       const q = query(collection(db, COLLECTIONS.PAYMENTS), where("employeeId", "==", employeeId));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data());
+      return querySnapshot.docs.map(doc => doc.data() as Payment);
     } catch (error) {
       console.error('Error getting payments for employee:', error);
       throw error;
@@ -159,12 +150,12 @@ export const firebaseService = {
   },
 
   // Real-time listeners with error handling
-  subscribeToEmployees(callback: (employees: any[]) => void, errorCallback?: (error: any) => void) {
+  subscribeToEmployees(callback: (employees: Employee[]) => void, errorCallback?: (error: any) => void) {
     try {
       return onSnapshot(
         collection(db, COLLECTIONS.EMPLOYEES), 
         (snapshot) => {
-          const employees = snapshot.docs.map(doc => doc.data());
+          const employees = snapshot.docs.map(doc => doc.data() as Employee);
           callback(employees);
         },
         (error) => {
@@ -178,12 +169,12 @@ export const firebaseService = {
     }
   },
 
-  subscribeToWorkDays(callback: (workDays: any[]) => void, errorCallback?: (error: any) => void) {
+  subscribeToWorkDays(callback: (workDays: WorkDay[]) => void, errorCallback?: (error: any) => void) {
     try {
       return onSnapshot(
         collection(db, COLLECTIONS.WORK_DAYS), 
         (snapshot) => {
-          const workDays = snapshot.docs.map(doc => doc.data());
+          const workDays = snapshot.docs.map(doc => doc.data() as WorkDay);
           callback(workDays);
         },
         (error) => {
@@ -197,12 +188,12 @@ export const firebaseService = {
     }
   },
 
-  subscribeToPayments(callback: (payments: any[]) => void, errorCallback?: (error: any) => void) {
+  subscribeToPayments(callback: (payments: Payment[]) => void, errorCallback?: (error: any) => void) {
     try {
       return onSnapshot(
         collection(db, COLLECTIONS.PAYMENTS), 
         (snapshot) => {
-          const payments = snapshot.docs.map(doc => doc.data());
+          const payments = snapshot.docs.map(doc => doc.data() as Payment);
           callback(payments);
         },
         (error) => {
