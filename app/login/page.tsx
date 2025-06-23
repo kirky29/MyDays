@@ -73,6 +73,8 @@ export default function LoginPage() {
         return 'No account found with this email address'
       case 'auth/wrong-password':
         return 'Incorrect password'
+      case 'auth/invalid-credential':
+        return 'The email or password is incorrect. Please check your credentials and try again.'
       case 'auth/email-already-in-use':
         return 'An account with this email already exists'
       case 'auth/weak-password':
@@ -83,8 +85,12 @@ export default function LoginPage() {
         return 'Too many failed attempts. Please try again later'
       case 'auth/network-request-failed':
         return 'Network error. Please check your connection'
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.'
+      case 'auth/operation-not-allowed':
+        return 'Email/password authentication is not enabled for this app'
       default:
-        return error.message || 'An unexpected error occurred'
+        return `Authentication failed: ${error.message || 'An unexpected error occurred'}`
     }
   }
 
@@ -97,15 +103,25 @@ export default function LoginPage() {
     setError('')
 
     try {
+      console.log('Attempting authentication with:', { email: formData.email, isLogin })
+      
       if (isLogin) {
         await firebaseService.signIn(formData.email, formData.password)
+        console.log('Sign in successful')
         router.push('/')
       } else {
         await firebaseService.signUp(formData.email, formData.password)
+        console.log('Sign up successful')
         router.push('/')
       }
     } catch (error: any) {
-      console.error('Authentication error:', error)
+      console.error('Authentication error details:', {
+        code: error.code,
+        message: error.message,
+        email: formData.email,
+        isLogin,
+        fullError: error
+      })
       setError(getErrorMessage(error))
     } finally {
       setLoading(false)
@@ -185,6 +201,17 @@ export default function LoginPage() {
                   <div>
                     <h4 className="font-medium text-red-800 text-sm">Authentication Error</h4>
                     <p className="text-red-700 text-sm mt-1">{error}</p>
+                    {error.includes('invalid-credential') && (
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <h5 className="text-yellow-800 font-medium text-xs mb-1">Troubleshooting Tips:</h5>
+                        <ul className="text-yellow-700 text-xs space-y-1">
+                          <li>• Double-check your email and password are exactly correct</li>
+                          <li>• Make sure you created the account using email/password (not Google Sign-In)</li>
+                          <li>• Try creating a new account if you're unsure</li>
+                          <li>• Check the browser console (F12) for detailed error logs</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
