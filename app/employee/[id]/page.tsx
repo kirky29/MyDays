@@ -263,7 +263,7 @@ export default function EmployeeDetail() {
   }
 
   const calculateStats = () => {
-    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0 }
+    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0, isOverpaid: false, creditAmount: 0 }
     
     const workedDays = workDays.filter(day => day.worked)
     const paidDays = workDays.filter(day => day.paid)
@@ -289,13 +289,17 @@ export default function EmployeeDetail() {
     
     // Outstanding = what should be earned - what was actually paid
     const totalOwed = totalEarned - actualPaidAmount
+    const isOverpaid = totalOwed < 0
+    const creditAmount = Math.abs(totalOwed)
     
     return { 
       totalWorked: workedDays.length, 
       totalPaid: paidDays.length, 
-      totalOwed: Math.max(0, totalOwed), // Don't show negative owed amounts
+      totalOwed: Math.max(0, totalOwed), // Amount still owed (0 if overpaid)
       totalEarned,
-      actualPaidAmount 
+      actualPaidAmount,
+      isOverpaid,
+      creditAmount // Amount overpaid (positive number)
     }
   }
 
@@ -733,6 +737,24 @@ export default function EmployeeDetail() {
       {/* Financial Summary */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-700 mb-4">Financial Summary</h2>
+        
+        {/* Overpayment Warning */}
+        {stats.isOverpaid && (
+          <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-orange-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <h4 className="font-medium text-orange-800">Overpayment Detected</h4>
+                <p className="text-sm text-orange-700 mt-1">
+                  This employee has been paid £{stats.creditAmount.toFixed(2)} more than their current calculated earnings.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Total Earned (at current wage):</span>
@@ -744,17 +766,22 @@ export default function EmployeeDetail() {
           </div>
           <div className="border-t pt-3">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-800">Outstanding:</span>
-              <span className={`text-lg font-bold ${stats.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                £{stats.totalOwed.toFixed(2)}
+              <span className="text-lg font-medium text-gray-800">
+                {stats.isOverpaid ? 'In Credit:' : 'Outstanding:'}
+              </span>
+              <span className={`text-lg font-bold ${stats.isOverpaid ? 'text-blue-600' : stats.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {stats.isOverpaid ? `£${stats.creditAmount.toFixed(2)}` : `£${stats.totalOwed.toFixed(2)}`}
               </span>
             </div>
+            {stats.isOverpaid && (
+              <p className="text-sm text-blue-600 mt-1">Employee has been overpaid</p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Bulk Payment Section */}
-      {unpaidWorkDays.length > 0 && (
+      {unpaidWorkDays.length > 0 && !stats.isOverpaid && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-700">Bulk Payment</h2>
