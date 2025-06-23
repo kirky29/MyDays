@@ -1,7 +1,7 @@
 import { useAppStore } from '../../lib/store'
 
 export default function AppHeader() {
-  const { employees, workDays } = useAppStore()
+  const { employees } = useAppStore()
 
   return (
     <>
@@ -25,32 +25,8 @@ export default function AppHeader() {
         
         {/* Subtitle with better typography */}
         <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base max-w-xs mx-auto leading-relaxed">
-          Track work, manage payments, and stay organized
+          Track work, manage payments, and stay organised
         </p>
-
-        {/* Quick Stats Preview */}
-        {employees.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-3 max-w-sm mx-auto">
-            <div className="text-center">
-              <div className="text-lg sm:text-xl font-bold text-blue-600">
-                {workDays.filter(day => day.worked).length}
-              </div>
-              <div className="text-xs text-gray-600 font-medium">Work Days</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-xl font-bold text-green-600">
-                {workDays.filter(day => day.paid).length}
-              </div>
-              <div className="text-xs text-gray-600 font-medium">Paid Days</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg sm:text-xl font-bold text-gray-900">
-                {employees.length}
-              </div>
-              <div className="text-xs text-gray-600 font-medium">Team Size</div>
-            </div>
-          </div>
-        )}
 
         {/* Welcome Message for New Users */}
         {employees.length === 0 && (

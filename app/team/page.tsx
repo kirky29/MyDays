@@ -228,7 +228,7 @@ export default function Team() {
               </div>
 
               <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 max-w-sm mx-auto">
-                💡 <strong>Tip:</strong> You can add employee details like contact info, start date, and notes to keep everything organized.
+                💡 <strong>Tip:</strong> You can add employee details like contact info, start date, and notes to keep everything organised.
               </div>
             </div>
           </div>

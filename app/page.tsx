@@ -7,14 +7,13 @@ import LoadingScreen from './components/LoadingScreen'
 import AppHeader from './components/AppHeader'
 import BusinessOverview from './components/BusinessOverview'
 import EmployeeList from './components/EmployeeList'
-import WorkDayTracker from './components/WorkDayTracker'
 import AddEmployeeButton from './components/AddEmployeeButton'
 import BottomNavigation from './components/BottomNavigation'
 import AuthGuard from './components/AuthGuard'
 
 export default function Home() {
   const router = useRouter()
-  const { loading } = useAppStore()
+  const { loading, employees } = useAppStore()
   
   // Initialize Firebase data loading and real-time subscriptions
   useFirebaseData()
@@ -41,8 +40,7 @@ export default function Home() {
           <div className="space-y-mobile">
             <BusinessOverview />
             <EmployeeList />
-            <WorkDayTracker />
-            <AddEmployeeButton />
+            {employees.length === 0 && <AddEmployeeButton />}
           </div>
           
           {/* Bottom Spacing for Navigation */}

@@ -127,10 +127,10 @@ export default function BusinessOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {financialSummary.map((item) => (
           <div key={item.label} className="card">
-            <div className="card-body">
+            <div className="card-body py-4 sm:py-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">{item.label}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">{item.label}</p>
                   <p className={`text-xl sm:text-2xl font-bold ${
                     item.color === 'green' ? 'text-green-600' : 'text-blue-600'
                   }`}>
