@@ -790,53 +790,13 @@ export default function EmployeeDetail() {
         </div>
       )}
 
-      {/* Work History */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">Work History</h2>
-        
-        {workDays.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No work days recorded yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {workDays
-              .filter(day => day.worked)
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map(workDay => (
-                <div key={workDay.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedWorkDays.includes(workDay.id)}
-                        onChange={() => toggleWorkDaySelection(workDay.id)}
-                        disabled={workDay.paid}
-                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                      />
-                      <div>
-                        <div className="font-medium text-gray-800">
-                          {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {format(parseISO(workDay.date), 'MMM d, yyyy')}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-green-600">£{employee.dailyWage}</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        workDay.paid 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-orange-100 text-orange-800'
-                      }`}>
-                        {workDay.paid ? 'Paid' : 'Unpaid'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
+      {/* Work Overview */}
+      <WorkOverview 
+        workDays={workDays}
+        employee={employee}
+        selectedWorkDays={selectedWorkDays}
+        onToggleWorkDaySelection={toggleWorkDaySelection}
+      />
 
       {/* Payment History */}
       {payments.length > 0 && (
@@ -1027,6 +987,247 @@ export default function EmployeeDetail() {
           <p className="text-xs text-gray-500 mt-2">See all changes and activity across all employees</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Work Overview Component
+function WorkOverview({ 
+  workDays, 
+  employee, 
+  selectedWorkDays, 
+  onToggleWorkDaySelection 
+}: {
+  workDays: WorkDay[]
+  employee: Employee
+  selectedWorkDays: string[]
+  onToggleWorkDaySelection: (workDayId: string) => void
+}) {
+  const [expandedMonths, setExpandedMonths] = useState<string[]>([])
+  
+  const toggleMonth = (monthKey: string) => {
+    setExpandedMonths(prev => 
+      prev.includes(monthKey) 
+        ? prev.filter(m => m !== monthKey)
+        : [...prev, monthKey]
+    )
+  }
+
+  // Group work days by month and separate past/future
+  const today = new Date()
+  const pastWorkDays = workDays.filter(day => new Date(day.date) < today)
+  const futureWorkDays = workDays.filter(day => new Date(day.date) >= today)
+
+  // Group past work days by month
+  const groupedPastWork = pastWorkDays.reduce((groups, workDay) => {
+    const monthKey = format(parseISO(workDay.date), 'yyyy-MM')
+    const monthLabel = format(parseISO(workDay.date), 'MMMM yyyy')
+    
+    if (!groups[monthKey]) {
+      groups[monthKey] = {
+        label: monthLabel,
+        days: [],
+        worked: 0,
+        paid: 0,
+        earned: 0,
+        paidAmount: 0
+      }
+    }
+    
+    groups[monthKey].days.push(workDay)
+    if (workDay.worked) {
+      groups[monthKey].worked++
+      groups[monthKey].earned += employee.dailyWage
+      if (workDay.paid) {
+        groups[monthKey].paid++
+        groups[monthKey].paidAmount += employee.dailyWage
+      }
+    }
+    
+    return groups
+  }, {} as Record<string, {
+    label: string
+    days: WorkDay[]
+    worked: number
+    paid: number
+    earned: number
+    paidAmount: number
+  }>)
+
+  // Sort months by date (most recent first)
+  const sortedMonths = Object.entries(groupedPastWork).sort(([a], [b]) => b.localeCompare(a))
+
+  if (workDays.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">Work Overview</h2>
+        <p className="text-gray-500 text-center py-8">No work days recorded yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h2 className="text-lg font-semibold text-gray-700 mb-6">Work Overview</h2>
+      
+      {/* Future/Upcoming Work */}
+      {futureWorkDays.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-md font-semibold text-blue-700 mb-3 flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Upcoming Work ({futureWorkDays.length} days)
+          </h3>
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="grid grid-cols-1 gap-2">
+              {futureWorkDays
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .slice(0, 5) // Show only next 5 future days
+                .map(workDay => (
+                  <div key={workDay.id} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">
+                      {format(parseISO(workDay.date), 'EEE, MMM d')}
+                    </span>
+                    <span className="text-blue-600 font-medium">
+                      {workDay.worked ? 'Completed' : 'Scheduled'}
+                    </span>
+                  </div>
+                ))}
+              {futureWorkDays.length > 5 && (
+                <div className="text-xs text-blue-600 font-medium text-center mt-2">
+                  +{futureWorkDays.length - 5} more scheduled days
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Past Work History */}
+      {sortedMonths.length > 0 && (
+        <div>
+          <h3 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Work History
+          </h3>
+          <div className="space-y-3">
+            {sortedMonths.map(([monthKey, monthData]) => {
+              const isExpanded = expandedMonths.includes(monthKey)
+              const outstanding = monthData.earned - monthData.paidAmount
+              
+              return (
+                <div key={monthKey} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Month Header */}
+                  <button
+                    onClick={() => toggleMonth(monthKey)}
+                    className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <svg className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span className="font-medium text-gray-800">{monthData.label}</span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-gray-600">{monthData.worked} worked</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-gray-600">{monthData.paid} paid</span>
+                        </div>
+                        <div className={`font-semibold ${outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                          {outstanding > 0 ? `£${outstanding.toFixed(0)} owed` : 'All paid'}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Month Details */}
+                  {isExpanded && (
+                    <div className="p-4 bg-white">
+                      <div className="space-y-2">
+                        {monthData.days
+                          .filter(day => day.worked)
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map(workDay => (
+                            <div key={workDay.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center space-x-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedWorkDays.includes(workDay.id)}
+                                  onChange={() => onToggleWorkDaySelection(workDay.id)}
+                                  disabled={workDay.paid}
+                                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                                />
+                                <div>
+                                  <div className="font-medium text-gray-800 text-sm">
+                                    {format(parseISO(workDay.date), 'EEEE, d')}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {format(parseISO(workDay.date), 'MMM d, yyyy')}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-green-600">£{employee.dailyWage}</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  workDay.paid 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {workDay.paid ? 'Paid' : 'Unpaid'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                      
+                      {/* Month Summary */}
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="font-semibold text-blue-600">{monthData.worked}</div>
+                            <div className="text-gray-600 text-xs">Days Worked</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-green-600">£{monthData.earned.toFixed(0)}</div>
+                            <div className="text-gray-600 text-xs">Total Earned</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`font-semibold ${outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                              £{outstanding.toFixed(0)}
+                            </div>
+                            <div className="text-gray-600 text-xs">Outstanding</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* No work history message */}
+      {sortedMonths.length === 0 && futureWorkDays.length === 0 && (
+        <div className="text-center py-8">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">No Work History</h3>
+          <p className="text-gray-600 text-sm">Work days will appear here once they're logged</p>
+        </div>
+      )}
     </div>
   )
 }
