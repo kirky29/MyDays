@@ -369,14 +369,14 @@ export default function DayViewPage() {
           <>
             {/* Employee Section Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Team Members</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Working Today</h3>
               <div className="text-sm text-gray-600">
-                {dayEmployees.length} employee{dayEmployees.length !== 1 ? 's' : ''}
+                {workedEmployees.length} employee{workedEmployees.length !== 1 ? 's' : ''}
               </div>
             </div>
             
             <div className="space-y-3">
-            {dayEmployees.map(({ employee, workDay }) => {
+            {workedEmployees.map(({ employee, workDay }) => {
               const isWorked = workDay?.worked || false
               const isPaid = workDay?.paid || false
               const isSelected = selectedEmployees.includes(employee.id)
@@ -482,7 +482,36 @@ export default function DayViewPage() {
                 </div>
               )
             })}
-                        </div>
+            </div>
+            
+            {/* Add More Workers Section - Show when some employees aren't working */}
+            {workedEmployees.length < dayEmployees.length && (
+              <div className="card mt-4 border-gray-200 bg-gray-50">
+                <div className="card-body py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      {dayEmployees.length - workedEmployees.length} more employee{dayEmployees.length - workedEmployees.length !== 1 ? 's' : ''} available
+                    </div>
+                    <button
+                      onClick={() => {
+                        // Show all employees who aren't working and allow selection
+                        const notWorkingEmployees = dayEmployees.filter(({ workDay }) => !workDay?.worked)
+                        // For now, just add all non-working employees
+                        notWorkingEmployees.forEach(({ employee }) => {
+                          toggleWorkDay(employee.id, dateString)
+                        })
+                      }}
+                      className="btn btn-primary btn-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add All ({dayEmployees.length - workedEmployees.length})
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : null}
       </div>
