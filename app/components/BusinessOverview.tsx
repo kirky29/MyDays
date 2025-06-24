@@ -60,13 +60,13 @@ export default function BusinessOverview() {
 
   const financialSummary = [
     {
-      label: "Total Earned",
+      label: "Total Employees have earned",
       value: totalEarned,
       color: "blue",
       icon: "📈"
     },
     {
-      label: "Total Paid",
+      label: "Total Currently Paid Out",
       value: totalPaid,
       color: "green",
       icon: "✅"
