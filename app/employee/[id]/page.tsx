@@ -476,8 +476,6 @@ export default function EmployeeDetail() {
     // For 'all' option, we don't set wage change date - new wage applies to everything
   }
 
-
-
   const addWorkDaysRange = async (startDate: string, endDate: string) => {
     try {
       setSyncStatus('syncing')
@@ -515,7 +513,260 @@ export default function EmployeeDetail() {
     await toggleWorkDay(quickAddDate)
   }
 
+  // Edit Employee Modal Component
+  function EditEmployeeModal({ 
+    employee, 
+    onSave, 
+    onClose,
+    workDays,
+    payments
+  }: { 
+    employee: Employee
+    onSave: (employee: Employee, wageUpdateOption?: 'future' | 'all') => void
+    onClose: () => void
+    workDays: WorkDay[]
+    payments: Payment[]
+  }) {
+    const [formData, setFormData] = useState<Employee>(employee)
+    const [showWageOptions, setShowWageOptions] = useState(false)
+    const [wageUpdateOption, setWageUpdateOption] = useState<'future' | 'all'>('future')
+    
+    // Prevent background scrolling when modal is open
+    useBodyScrollLock(true)
 
+    const hasWageChanged = formData.dailyWage !== employee.dailyWage
+    const hasWorkedDays = workDays.some(day => day.worked)
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault()
+      
+      if (hasWageChanged && hasWorkedDays) {
+        setShowWageOptions(true)
+      } else {
+        onSave(formData)
+      }
+    }
+
+    const handleWageUpdateConfirm = () => {
+      onSave(formData, wageUpdateOption)
+      setShowWageOptions(false)
+    }
+
+    const calculateImpact = () => {
+      const workedDays = workDays.filter(day => day.worked)
+      const oldWage = employee.dailyWage
+      const newWage = formData.dailyWage
+      const wageDifference = newWage - oldWage
+      
+      return {
+        totalDays: workedDays.length,
+        oldTotal: workedDays.length * oldWage,
+        newTotal: workedDays.length * newWage,
+        difference: workedDays.length * wageDifference,
+        isIncrease: wageDifference > 0
+      }
+    }
+
+    const impact = hasWageChanged ? calculateImpact() : null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-6 pt-8 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">
+              {showWageOptions ? 'Wage Update Options' : 'Edit Employee Details'}
+            </h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {!showWageOptions ? (
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Daily Wage (£)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.dailyWage ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+                <p className="text-xs text-gray-600 mt-1">£0 allowed for volunteers/unpaid work</p>
+                {hasWageChanged && impact && (
+                  <div className={`mt-2 p-3 rounded-lg ${impact.isIncrease ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
+                    <div className="flex items-center space-x-2">
+                      <svg className={`w-4 h-4 ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={impact.isIncrease ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"} />
+                      </svg>
+                      <span className={`text-sm font-medium ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
+                        {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Detected
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${impact.isIncrease ? 'text-green-700' : 'text-orange-700'}`}>
+                      {impact.totalDays} worked days will be affected. You'll choose how to apply this change next.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                <textarea
+                  value={formData.notes || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  placeholder="Any additional notes about this employee..."
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  {hasWageChanged && hasWorkedDays ? 'Continue' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="p-6">
+              {impact && (
+                <>
+                  <div className="mb-6">
+                    <div className={`p-4 rounded-lg ${impact.isIncrease ? 'bg-green-50' : 'bg-orange-50'}`}>
+                      <h3 className={`font-semibold ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
+                        {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Impact
+                      </h3>
+                      <div className="mt-3 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Previous wage:</span>
+                          <span className="font-medium">£{employee.dailyWage}/day</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">New wage:</span>
+                          <span className="font-medium">£{formData.dailyWage}/day</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Worked days:</span>
+                          <span className="font-medium">{impact.totalDays} days</span>
+                        </div>
+                        <div className="border-t pt-2 mt-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Impact:</span>
+                            <span className={`font-bold ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
+                              {impact.isIncrease ? '+' : ''}£{impact.difference.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-800">How should this wage change be applied?</h3>
+                    
+                    <div className="space-y-3">
+                      <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="wageOption"
+                          value="future"
+                          checked={wageUpdateOption === 'future'}
+                          onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
+                          className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">Apply to Future Work Only</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            Only future work will use the new wage rate. Past work calculations remain at the rate when it was done.
+                          </div>
+                          <div className="text-xs text-blue-600 mt-2 font-medium">
+                            Recommended for pay rises
+                          </div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                          type="radio"
+                          name="wageOption"
+                          value="all"
+                          checked={wageUpdateOption === 'all'}
+                          onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
+                          className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">Apply to All Work (Retroactive)</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            Recalculate outstanding amounts for all work using the new wage. Existing payments remain unchanged.
+                          </div>
+                          <div className={`text-xs mt-2 font-medium ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
+                            {impact.isIncrease ? 'Will increase' : 'Will decrease'} total outstanding amount
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <svg className="w-4 h-4 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <div>
+                          <span className="text-sm font-medium text-yellow-800">Important:</span>
+                          <p className="text-xs text-yellow-700 mt-1">Existing payment records never change to maintain financial integrity.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3 pt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowWageOptions(false)}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleWageUpdateConfirm}
+                      className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
+                    >
+                      Apply Changes
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   // Don't render anything until mounted (prevents hydration issues)
   if (!mounted) {
@@ -594,8 +845,7 @@ export default function EmployeeDetail() {
         <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-gradient-to-br from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style={{animationDelay: '4s'}}></div>
       </div>
       
-      <div className="relative z-10 container mx-auto px-4 py-6 max-w-md">
-
+      <div className="relative z-10 container mx-auto px-4 py-6 max-w-4xl">
 
       {/* Error Message */}
       {errorMessage && (
@@ -637,321 +887,309 @@ export default function EmployeeDetail() {
         </button>
       </div>
 
-      {/* Employee Info - Enhanced */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-6 sm:p-8 mb-8 relative overflow-hidden">
-        {/* Decorative Background */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 -translate-y-16 translate-x-16"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-pink-200 to-indigo-200 rounded-full opacity-20 translate-y-12 -translate-x-12"></div>
-        
-        {/* Header Section */}
-        <div className="text-center mb-8 relative z-10">
-          <div className="relative inline-block mb-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
-              <span className="text-white font-bold text-3xl">
-                {employee.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">{employee.name}</h1>
-          <div className="inline-flex items-center bg-gradient-to-r from-emerald-400 to-cyan-400 text-white px-6 py-3 rounded-2xl font-bold text-lg shadow-lg">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-            </svg>
-            £{employee.dailyWage}/day
-          </div>
-        </div>
-        
-        {/* Employee Details */}
-        {(employee.email || employee.phone || employee.startDate || employee.notes) && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact & Info</h3>
-            <div className="space-y-3">
-              {employee.email && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                  </div>
-                  <span className="text-gray-700 text-sm">{employee.email}</span>
-                </div>
-              )}
-              {employee.phone && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </div>
-                  <span className="text-gray-700 text-sm">{employee.phone}</span>
-                </div>
-              )}
-              {employee.startDate && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <span className="text-gray-700 text-sm">Started: {format(new Date(employee.startDate), 'MMM d, yyyy')}</span>
-                </div>
-              )}
-              {employee.notes && (
-                <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                  <div className="flex items-start space-x-2">
-                    <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                    </svg>
-                    <p className="text-gray-700 text-sm leading-relaxed">{employee.notes}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* Enhanced Stats Grid */}
-        <div className="grid grid-cols-2 gap-6 relative z-10">
-          <div className="group bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
-            <div className="text-white/90 text-sm font-medium mb-2">Days Worked</div>
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalWorked}</div>
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mx-auto group-hover:rotate-12 transition-transform duration-300">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="group bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
-            <div className="text-white/90 text-sm font-medium mb-2">Days Paid</div>
-            <div className="text-4xl font-bold text-white mb-2">{stats.totalPaid}</div>
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mx-auto group-hover:rotate-12 transition-transform duration-300">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Work Day - Enhanced */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-3xl shadow-xl p-6 sm:p-8 mb-8">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -translate-y-20 translate-x-20"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white rounded-full translate-y-16 -translate-x-16"></div>
-          <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-white rounded-full -translate-x-12 -translate-y-12"></div>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+      {/* Employee Header & Quick Stats */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-6 sm:p-8 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          {/* Employee Info */}
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-2xl">
+                  {employee.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white ${stats.totalOwed > 0 ? 'bg-amber-400' : 'bg-green-400'}`}></div>
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Log Work Day</h2>
-              <p className="text-white/80 text-sm">Add a new work day to track</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{employee.name}</h1>
+              <div className="flex items-center space-x-3 mt-1">
+                <span className="text-lg font-semibold text-gray-600">£{employee.dailyWage}/day</span>
+                {employee.startDate && (
+                  <span className="text-sm text-gray-500">• Started {format(new Date(employee.startDate), 'MMM d, yyyy')}</span>
+                )}
+              </div>
             </div>
           </div>
-          
-          <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-white/90 text-sm font-medium mb-2">Select Date</label>
-                <input
-                  type="date"
-                  value={quickAddDate}
-                  onChange={(e) => setQuickAddDate(e.target.value)}
-                  className="w-full px-4 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
-                />
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-4 lg:gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{stats.totalWorked}</div>
+              <div className="text-sm text-gray-600">Days Worked</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.totalPaid}</div>
+              <div className="text-sm text-gray-600">Days Paid</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${stats.totalOwed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                £{stats.totalOwed.toFixed(0)}
               </div>
-              <div className="flex justify-center">
-                <button
-                  onClick={quickAddWorkDay}
-                  disabled={syncStatus === 'syncing'}
-                  className="group bg-white text-indigo-600 px-8 py-4 rounded-xl hover:bg-white/90 transition-all duration-200 disabled:opacity-50 font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-3"
-                >
-                  <svg className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>{syncStatus === 'syncing' ? 'Adding...' : 'Add Day'}</span>
-                </button>
-              </div>
+              <div className="text-sm text-gray-600">Outstanding</div>
             </div>
           </div>
         </div>
       </div>
 
-
-
-      {/* Financial Summary - Enhanced */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/50 p-6 sm:p-8 mb-8 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-0 left-0 w-full h-full" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366f1' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}></div>
-        </div>
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         
-                 <div className="relative z-10">
-           <div className="flex items-center space-x-4 mb-8">
-             <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
-               <span className="text-white font-bold text-2xl">£</span>
-             </div>
-             <div>
-               <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">Financial Summary</h2>
-               <p className="text-gray-600 text-sm">Current financial status</p>
-             </div>
-           </div>
-         
-         {/* Rest of Financial Summary content... */}
-        
-        {/* Overpayment Warning */}
-        {stats.isOverpaid && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
+        {/* Financial Overview - Left Column */}
+        <div className="lg:col-span-1 space-y-6">
+          
+          {/* Financial Status Card */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">£</span>
               </div>
-              <div>
-                <h4 className="font-semibold text-orange-800">Overpayment Detected</h4>
-                <p className="text-sm text-orange-700 mt-1">
-                  This employee has been paid £{stats.creditAmount.toFixed(2)} more than their current calculated earnings.
-                </p>
+              <h2 className="text-lg font-bold text-gray-900">Financial Status</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-700 font-medium">Total Earned</span>
+                <span className="font-bold text-gray-900">£{stats.totalEarned.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
+                <span className="text-green-700 font-medium">Total Paid</span>
+                <span className="font-bold text-green-600">£{stats.actualPaidAmount.toFixed(2)}</span>
+              </div>
+              <div className={`flex justify-between items-center p-4 rounded-xl border-2 ${
+                stats.totalOwed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+              }`}>
+                <span className="font-bold text-gray-900">Outstanding</span>
+                <span className={`text-xl font-bold ${stats.totalOwed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                  £{stats.totalOwed.toFixed(2)}
+                </span>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Financial Breakdown */}
-        <div className="bg-gray-50 rounded-xl p-5 mb-6">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <span className="text-gray-700 font-medium">Total Earned</span>
-              <span className="font-bold text-gray-900 text-lg">£{stats.totalEarned.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <span className="text-gray-700 font-medium">Total Paid</span>
-              <span className="font-bold text-green-600 text-lg">£{stats.actualPaidAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-xl font-bold text-gray-900">
-                {stats.isOverpaid ? 'In Credit:' : 'Outstanding:'}
-              </span>
-              <span className={`text-xl font-bold ${stats.isOverpaid ? 'text-blue-600' : stats.totalOwed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                {stats.isOverpaid ? `£${stats.creditAmount.toFixed(2)}` : `£${stats.totalOwed.toFixed(2)}`}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Indicator */}
-        <div className={`rounded-xl p-4 text-center ${
-          stats.isOverpaid 
-            ? 'bg-blue-50 border border-blue-200' 
-            : stats.totalOwed > 0 
-              ? 'bg-amber-50 border border-amber-200' 
-              : 'bg-green-50 border border-green-200'
-        }`}>
-          <div className="flex items-center justify-center space-x-2">
-            {stats.isOverpaid ? (
-              <>
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span className="font-semibold text-blue-800">Employee has been overpaid</span>
-              </>
-            ) : stats.totalOwed > 0 ? (
-              <>
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-semibold text-amber-800">Payment pending</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="font-semibold text-green-800">All payments up to date</span>
-              </>
+            {stats.isOverpaid && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center space-x-2 text-blue-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  <span className="text-sm font-medium">Employee overpaid by £{stats.creditAmount.toFixed(2)}</span>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-        </div>
-      </div>
 
-      {/* Bulk Payment Section */}
-      {unpaidWorkDays.length > 0 && !stats.isOverpaid && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-700">Bulk Payment</h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={selectAllUnpaid}
-                className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-md hover:bg-blue-200 transition-colors"
-              >
-                Select All Unpaid
-              </button>
-              {selectedWorkDays.length > 0 && (
-                <button
-                  onClick={clearSelection}
-                  className="text-sm bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Clear
-                </button>
+          {/* Quick Actions */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Add Work Day</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="date"
+                    value={quickAddDate}
+                    onChange={(e) => setQuickAddDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={quickAddWorkDay}
+                    disabled={syncStatus === 'syncing'}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {syncStatus === 'syncing' ? '...' : 'Add'}
+                  </button>
+                </div>
+              </div>
+
+              {unpaidWorkDays.length > 0 && (
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">Bulk Payment</span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={selectAllUnpaid}
+                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                      >
+                        Select All
+                      </button>
+                      {selectedWorkDays.length > 0 && (
+                        <button
+                          onClick={clearSelection}
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {selectedWorkDays.length > 0 && (
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                    >
+                      Pay £{(selectedWorkDays.length * employee.dailyWage).toFixed(2)} for {selectedWorkDays.length} day{selectedWorkDays.length !== 1 ? 's' : ''}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
-
-          {selectedWorkDays.length > 0 && (
-            <div className="bg-green-50 rounded-lg p-4 mb-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-green-800">
-                  {selectedWorkDays.length} day(s) selected
-                </span>
-                <span className="text-lg font-bold text-green-600">
-                  £{(selectedWorkDays.length * employee.dailyWage).toFixed(2)}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="w-full mt-3 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Process Payment
-              </button>
-            </div>
-          )}
         </div>
-      )}
 
-      {/* Work Overview */}
-      <WorkOverview 
-        workDays={workDays}
-        employee={employee}
-        selectedWorkDays={selectedWorkDays}
-        onToggleWorkDaySelection={toggleWorkDaySelection}
-        onWorkDayClick={handleWorkDayClick}
-        getWorkDayAmount={getWorkDayAmount}
-      />
+        {/* Work History & Timeline - Right Columns */}
+        <div className="lg:col-span-2">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-900">Work & Payment History</h2>
+              <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span>Worked</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span>Paid</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                  <span>Unpaid</span>
+                </div>
+              </div>
+            </div>
 
-      {/* Payment History */}
+            {/* Upcoming Work */}
+            {workDays.filter(day => new Date(day.date) >= new Date()).length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Upcoming Work
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {workDays
+                    .filter(day => new Date(day.date) >= new Date())
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .slice(0, 6)
+                    .map(workDay => (
+                      <div key={workDay.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="font-medium text-blue-900 text-sm">
+                          {format(parseISO(workDay.date), 'EEE, MMM d')}
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          {workDay.worked ? 'Completed' : 'Scheduled'}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recent Work History */}
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Recent Work History
+              </h3>
+              
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {workDays
+                  .filter(day => day.worked && new Date(day.date) < new Date())
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .slice(0, 20)
+                  .map(workDay => {
+                    const relatedPayment = payments.find(payment => 
+                      payment.workDayIds.includes(workDay.id)
+                    )
+                    
+                    return (
+                      <div 
+                        key={workDay.id} 
+                        className={`p-4 rounded-lg border cursor-pointer hover:shadow-md transition-all ${
+                          workDay.paid 
+                            ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                            : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                        }`}
+                        onClick={() => handleWorkDayClick(workDay)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedWorkDays.includes(workDay.id)}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                toggleWorkDaySelection(workDay.id)
+                              }}
+                              disabled={workDay.paid}
+                              className="w-4 h-4 text-blue-600 rounded"
+                            />
+                            <div>
+                              <div className="font-medium text-gray-900 text-sm">
+                                {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
+                              </div>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  workDay.paid ? 'bg-green-500' : 'bg-amber-500'
+                                }`}></div>
+                                <span className={`text-xs font-medium ${
+                                  workDay.paid ? 'text-green-700' : 'text-amber-700'
+                                }`}>
+                                  {workDay.paid ? 'Paid' : 'Unpaid'}
+                                </span>
+                                {workDay.paid && relatedPayment && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-xs text-gray-600">
+                                      Paid on {format(parseISO(relatedPayment.date), 'MMM d, yyyy')}
+                                    </span>
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                      {relatedPayment.paymentType}
+                                    </span>
+                                  </>
+                                )}
+                                {workDay.notes && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-xs text-blue-600">"{workDay.notes}"</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-gray-900">
+                              £{getWorkDayAmount(workDay).toFixed(2)}
+                            </div>
+                            {workDay.customAmount !== undefined && (
+                              <div className="text-xs text-blue-600">Custom rate</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Payments */}
       {payments.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Payment History</h2>
-          <div className="space-y-4">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Recent Payments
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {payments
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, 6)
               .map(payment => {
-                // Get the work days that were paid in this payment
                 const paidWorkDays = workDays.filter(wd => 
                   payment.workDayIds.includes(wd.id)
                 ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -960,96 +1198,22 @@ export default function EmployeeDetail() {
                   <div 
                     key={payment.id} 
                     onClick={() => handlePaymentClick(payment)}
-                    className="group border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 cursor-pointer hover:shadow-md hover:from-green-100 hover:to-emerald-100 transition-all duration-200"
+                    className="p-4 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-green-100 transition-all"
                   >
-                    {/* Payment Header */}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="font-semibold text-gray-800 text-lg">
-                          £{payment.amount.toFixed(2)}
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className="flex items-center space-x-1">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span className="text-sm font-medium text-green-700">{payment.paymentType}</span>
-                          </div>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-sm text-gray-600">
-                            Paid on {format(parseISO(payment.date), 'MMM d, yyyy')}
-                          </span>
-                        </div>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-bold text-green-900 text-lg">
+                        £{payment.amount.toFixed(2)}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
-                          {format(parseISO(payment.createdAt), 'MMM d, h:mm a')}
-                        </span>
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
-                          <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </div>
+                      <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                        {payment.paymentType}
                       </div>
                     </div>
-
-                    {/* Work Days Paid */}
-                    <div className="mb-3">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                        Work Days Paid ({paidWorkDays.length} day{paidWorkDays.length !== 1 ? 's' : ''})
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {paidWorkDays.map(workDay => (
-                          <div key={workDay.id} className="bg-white rounded-lg p-3 border border-green-200">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium text-gray-800 text-sm">
-                                  {format(parseISO(workDay.date), 'EEEE, MMM d')}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  {format(parseISO(workDay.date), 'yyyy')}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm font-semibold text-green-600">
-                                  £{employee.dailyWage}
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <span className="text-xs text-green-600 font-medium">Paid</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="text-sm text-green-700 mb-2">
+                      Paid on {format(parseISO(payment.date), 'MMM d, yyyy')}
                     </div>
-
-                    {/* Payment Notes */}
-                    {payment.notes && (
-                      <div className="bg-white rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-start space-x-2">
-                          <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                          </svg>
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Notes:</span>
-                            <p className="text-sm text-gray-600 mt-1">{payment.notes}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Payment Summary */}
-                    <div className="mt-3 pt-3 border-t border-green-200">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">
-                          Total for {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          £{payment.amount.toFixed(2)}
-                        </span>
-                      </div>
+                    <div className="text-xs text-green-600">
+                      {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {' '}
+                      {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
                     </div>
                   </div>
                 )
@@ -1058,7 +1222,29 @@ export default function EmployeeDetail() {
         </div>
       )}
 
-      {/* Edit Employee Modal */}
+      {/* Employee Actions */}
+      <div className="flex justify-center space-x-4 mb-6">
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Edit Employee
+        </button>
+        <button
+          onClick={deleteEmployee}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Delete Employee
+        </button>
+      </div>
+
+      {/* Modals */}
       {showEditModal && employee && (
         <EditEmployeeModal
           employee={employee}
@@ -1069,7 +1255,6 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {/* Payment Modal */}
       <PaymentModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
@@ -1078,7 +1263,6 @@ export default function EmployeeDetail() {
         onPaymentComplete={handlePaymentComplete}
       />
 
-      {/* Payment Edit Modal */}
       {selectedPayment && (
         <PaymentEditModal
           isOpen={showPaymentEditModal}
@@ -1093,7 +1277,6 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {/* Work Day Edit Modal */}
       {selectedWorkDay && (
         <WorkDayEditModal
           isOpen={showWorkDayEditModal}
@@ -1109,569 +1292,8 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {/* Employee Actions */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
-        <div className="flex justify-center space-x-4 mb-6">
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit Details
-          </button>
-          <button
-            onClick={deleteEmployee}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete
-          </button>
-        </div>
-      </div>
-
-      {/* Activity Log Link */}
-      <div className="border-t border-gray-200 pt-6">
-        <div className="text-center">
-          <button
-            onClick={() => window.location.href = '/activity-log'}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View Activity Log
-          </button>
-          <p className="text-xs text-gray-500 mt-2">See all changes and activity across all employees</p>
-        </div>
-      </div>
-
       {/* Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />
-      </div>
-    </div>
-  )
-}
-
-// Work Overview Component
-function WorkOverview({ 
-  workDays, 
-  employee, 
-  selectedWorkDays, 
-  onToggleWorkDaySelection,
-  onWorkDayClick,
-  getWorkDayAmount
-}: {
-  workDays: WorkDay[]
-  employee: Employee
-  selectedWorkDays: string[]
-  onToggleWorkDaySelection: (workDayId: string) => void
-  onWorkDayClick: (workDay: WorkDay) => void
-  getWorkDayAmount: (workDay: WorkDay) => number
-}) {
-  const [expandedMonths, setExpandedMonths] = useState<string[]>([])
-  
-  const toggleMonth = (monthKey: string) => {
-    setExpandedMonths(prev => 
-      prev.includes(monthKey) 
-        ? prev.filter(m => m !== monthKey)
-        : [...prev, monthKey]
-    )
-  }
-
-  // Group work days by month and separate past/future
-  const today = new Date()
-  const pastWorkDays = workDays.filter(day => new Date(day.date) < today)
-  const futureWorkDays = workDays.filter(day => new Date(day.date) >= today)
-
-  // Group past work days by month
-  const groupedPastWork = pastWorkDays.reduce((groups, workDay) => {
-    const monthKey = format(parseISO(workDay.date), 'yyyy-MM')
-    const monthLabel = format(parseISO(workDay.date), 'MMMM yyyy')
-    
-    if (!groups[monthKey]) {
-      groups[monthKey] = {
-        label: monthLabel,
-        days: [],
-        worked: 0,
-        paid: 0,
-        earned: 0,
-        paidAmount: 0
-      }
-    }
-    
-    groups[monthKey].days.push(workDay)
-    if (workDay.worked) {
-      groups[monthKey].worked++
-      const dayAmount = getWorkDayAmount(workDay)
-      groups[monthKey].earned += dayAmount
-      if (workDay.paid) {
-        groups[monthKey].paid++
-        groups[monthKey].paidAmount += dayAmount
-      }
-    }
-    
-    return groups
-  }, {} as Record<string, {
-    label: string
-    days: WorkDay[]
-    worked: number
-    paid: number
-    earned: number
-    paidAmount: number
-  }>)
-
-  // Sort months by date (most recent first)
-  const sortedMonths = Object.entries(groupedPastWork).sort(([a], [b]) => b.localeCompare(a))
-
-  if (workDays.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">Work Overview</h2>
-        <p className="text-gray-500 text-center py-8">No work days recorded yet.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-700 mb-6">Work Overview</h2>
-      
-      {/* Future/Upcoming Work */}
-      {futureWorkDays.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-md font-semibold text-blue-700 mb-3 flex items-center">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Upcoming Work ({futureWorkDays.length} days)
-          </h3>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="grid grid-cols-1 gap-2">
-              {futureWorkDays
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .slice(0, 5) // Show only next 5 future days
-                .map(workDay => (
-                  <div key={workDay.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">
-                      {format(parseISO(workDay.date), 'EEE, MMM d')}
-                    </span>
-                    <span className="text-blue-600 font-medium">
-                      {workDay.worked ? 'Completed' : 'Scheduled'}
-                    </span>
-                  </div>
-                ))}
-              {futureWorkDays.length > 5 && (
-                <div className="text-xs text-blue-600 font-medium text-center mt-2">
-                  +{futureWorkDays.length - 5} more scheduled days
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Past Work History */}
-      {sortedMonths.length > 0 && (
-        <div>
-          <h3 className="text-md font-semibold text-gray-700 mb-3 flex items-center">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Work History
-          </h3>
-          <div className="space-y-3">
-            {sortedMonths.map(([monthKey, monthData]) => {
-              const isExpanded = expandedMonths.includes(monthKey)
-              const outstanding = monthData.earned - monthData.paidAmount
-              
-              return (
-                <div key={monthKey} className="border border-gray-200 rounded-lg overflow-hidden">
-                  {/* Month Header */}
-                  <button
-                    onClick={() => toggleMonth(monthKey)}
-                    className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <svg className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span className="font-medium text-gray-800">{monthData.label}</span>
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <span className="text-gray-600">{monthData.worked} worked</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-gray-600">{monthData.paid} paid</span>
-                        </div>
-                        <div className={`font-semibold ${outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                          {outstanding > 0 ? `£${outstanding.toFixed(0)} owed` : 'All paid'}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Month Details */}
-                  {isExpanded && (
-                    <div className="p-4 bg-white">
-                      <div className="space-y-2">
-                        {monthData.days
-                          .filter(day => day.worked)
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .map(workDay => (
-                            <div key={workDay.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center space-x-3">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedWorkDays.includes(workDay.id)}
-                                  onChange={() => onToggleWorkDaySelection(workDay.id)}
-                                  disabled={workDay.paid}
-                                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                                />
-                                <div 
-                                  onClick={() => onWorkDayClick(workDay)}
-                                  className="cursor-pointer hover:text-blue-600 transition-colors flex-1"
-                                >
-                                  <div className="font-medium text-gray-800 text-sm flex items-center space-x-2">
-                                    <span>{format(parseISO(workDay.date), 'EEEE, d')}</span>
-                                    {workDay.notes && (
-                                      <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                      </svg>
-                                    )}
-                                    {workDay.customAmount !== undefined && (
-                                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Custom</span>
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {format(parseISO(workDay.date), 'MMM d, yyyy')}
-                                    {workDay.notes && (
-                                      <span className="ml-2 text-blue-600 truncate max-w-20">"{workDay.notes}"</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className={`text-sm font-medium ${workDay.customAmount !== undefined ? 'text-blue-600' : 'text-green-600'}`}>
-                                  £{getWorkDayAmount(workDay).toFixed(2)}
-                                </span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  workDay.paid 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-orange-100 text-orange-800'
-                                }`}>
-                                  {workDay.paid ? 'Paid' : 'Unpaid'}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                      
-                      {/* Month Summary */}
-                      <div className="mt-4 pt-3 border-t border-gray-200">
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div className="text-center">
-                            <div className="font-semibold text-blue-600">{monthData.worked}</div>
-                            <div className="text-gray-600 text-xs">Days Worked</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-semibold text-green-600">£{monthData.earned.toFixed(0)}</div>
-                            <div className="text-gray-600 text-xs">Total Earned</div>
-                          </div>
-                          <div className="text-center">
-                            <div className={`font-semibold ${outstanding > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                              £{outstanding.toFixed(0)}
-                            </div>
-                            <div className="text-gray-600 text-xs">Outstanding</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* No work history message */}
-      {sortedMonths.length === 0 && futureWorkDays.length === 0 && (
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">No Work History</h3>
-          <p className="text-gray-600 text-sm">Work days will appear here once they're logged</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-
-// Edit Employee Modal Component
-function EditEmployeeModal({ 
-  employee, 
-  onSave, 
-  onClose,
-  workDays,
-  payments
-}: { 
-  employee: Employee
-  onSave: (employee: Employee, wageUpdateOption?: 'future' | 'all') => void
-  onClose: () => void
-  workDays: WorkDay[]
-  payments: Payment[]
-}) {
-  const [formData, setFormData] = useState<Employee>(employee)
-  const [showWageOptions, setShowWageOptions] = useState(false)
-  const [wageUpdateOption, setWageUpdateOption] = useState<'future' | 'all'>('future')
-  
-  // Prevent background scrolling when modal is open
-  useBodyScrollLock(true)
-
-  const hasWageChanged = formData.dailyWage !== employee.dailyWage
-  const hasWorkedDays = workDays.some(day => day.worked)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (hasWageChanged && hasWorkedDays) {
-      setShowWageOptions(true)
-    } else {
-      onSave(formData)
-    }
-  }
-
-  const handleWageUpdateConfirm = () => {
-    onSave(formData, wageUpdateOption)
-    setShowWageOptions(false)
-  }
-
-  const calculateImpact = () => {
-    const workedDays = workDays.filter(day => day.worked)
-    const oldWage = employee.dailyWage
-    const newWage = formData.dailyWage
-    const wageDifference = newWage - oldWage
-    
-    return {
-      totalDays: workedDays.length,
-      oldTotal: workedDays.length * oldWage,
-      newTotal: workedDays.length * newWage,
-      difference: workedDays.length * wageDifference,
-      isIncrease: wageDifference > 0
-    }
-  }
-
-  const impact = hasWageChanged ? calculateImpact() : null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 pt-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {showWageOptions ? 'Wage Update Options' : 'Edit Employee Details'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {!showWageOptions ? (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Daily Wage (£)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.dailyWage ?? ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <p className="text-xs text-gray-600 mt-1">£0 allowed for volunteers/unpaid work</p>
-              {hasWageChanged && impact && (
-                <div className={`mt-2 p-3 rounded-lg ${impact.isIncrease ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
-                  <div className="flex items-center space-x-2">
-                    <svg className={`w-4 h-4 ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={impact.isIncrease ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"} />
-                    </svg>
-                    <span className={`text-sm font-medium ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
-                      {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Detected
-                    </span>
-                  </div>
-                  <p className={`text-xs mt-1 ${impact.isIncrease ? 'text-green-700' : 'text-orange-700'}`}>
-                    {impact.totalDays} worked days will be affected. You'll choose how to apply this change next.
-                  </p>
-                </div>
-              )}
-            </div>
-
-
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                placeholder="Any additional notes about this employee..."
-              />
-            </div>
-
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
-              >
-                {hasWageChanged && hasWorkedDays ? 'Continue' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="p-6">
-            {impact && (
-              <>
-                <div className="mb-6">
-                  <div className={`p-4 rounded-lg ${impact.isIncrease ? 'bg-green-50' : 'bg-orange-50'}`}>
-                    <h3 className={`font-semibold ${impact.isIncrease ? 'text-green-800' : 'text-orange-800'}`}>
-                      {impact.isIncrease ? 'Pay Rise' : 'Pay Decrease'} Impact
-                    </h3>
-                    <div className="mt-3 space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Previous wage:</span>
-                        <span className="font-medium">£{employee.dailyWage}/day</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">New wage:</span>
-                        <span className="font-medium">£{formData.dailyWage}/day</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Worked days:</span>
-                        <span className="font-medium">{impact.totalDays} days</span>
-                      </div>
-                      <div className="border-t pt-2 mt-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Impact:</span>
-                          <span className={`font-bold ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
-                            {impact.isIncrease ? '+' : ''}£{impact.difference.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                                <div className="space-y-4">
-                   <h3 className="font-semibold text-gray-800">How should this wage change be applied?</h3>
-                   
-                   <div className="space-y-3">
-                     <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                       <input
-                         type="radio"
-                         name="wageOption"
-                         value="future"
-                         checked={wageUpdateOption === 'future'}
-                         onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
-                         className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                       />
-                       <div className="flex-1">
-                         <div className="font-medium text-gray-800">Apply to Future Work Only</div>
-                         <div className="text-sm text-gray-600 mt-1">
-                           Only future work will use the new wage rate. Past work calculations remain at the rate when it was done.
-                         </div>
-                         <div className="text-xs text-blue-600 mt-2 font-medium">
-                           Recommended for pay rises
-                         </div>
-                       </div>
-                     </label>
-
-                     <label className="flex items-start space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                       <input
-                         type="radio"
-                         name="wageOption"
-                         value="all"
-                         checked={wageUpdateOption === 'all'}
-                         onChange={(e) => setWageUpdateOption(e.target.value as 'future' | 'all')}
-                         className="mt-1 w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                       />
-                       <div className="flex-1">
-                         <div className="font-medium text-gray-800">Apply to All Work (Retroactive)</div>
-                         <div className="text-sm text-gray-600 mt-1">
-                           Recalculate outstanding amounts for all work using the new wage. Existing payments remain unchanged.
-                         </div>
-                         <div className={`text-xs mt-2 font-medium ${impact.isIncrease ? 'text-green-600' : 'text-orange-600'}`}>
-                           {impact.isIncrease ? 'Will increase' : 'Will decrease'} total outstanding amount
-                         </div>
-                       </div>
-                     </label>
-                   </div>
-
-                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                     <div className="flex items-start space-x-2">
-                       <svg className="w-4 h-4 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-                       </svg>
-                       <div>
-                         <span className="text-sm font-medium text-yellow-800">Important:</span>
-                         <p className="text-xs text-yellow-700 mt-1">Existing payment records never change to maintain financial integrity.</p>
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-
-                <div className="flex space-x-3 pt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowWageOptions(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleWageUpdateConfirm}
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
-                    Apply Changes
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
