@@ -23,30 +23,47 @@ interface WorkDay {
   date: string
   worked: boolean
   paid: boolean
+  customAmount?: number
+  notes?: string
+}
+
+interface Payment {
+  id: string
+  employeeId: string
+  workDayIds: string[]
+  amount: number
+  paymentType: string
+  notes?: string
+  date: string
+  createdAt: string
 }
 
 export default function Settings() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [workDays, setWorkDays] = useState<WorkDay[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [showClearAllModal, setShowClearAllModal] = useState(false)
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [importing, setImporting] = useState(false)
   
   // Get sync status from the store
-  const { syncStatus, errorMessage, retryConnection, payments } = useAppStore()
+  const { syncStatus, errorMessage, retryConnection } = useAppStore()
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [employeesData, workDaysData] = await Promise.all([
+        const [employeesData, workDaysData, paymentsData] = await Promise.all([
           firebaseService.getEmployees(),
-          firebaseService.getWorkDays()
+          firebaseService.getWorkDays(),
+          firebaseService.getPayments()
         ])
         
         setEmployees(employeesData as Employee[])
         setWorkDays(workDaysData as WorkDay[])
+        setPayments(paymentsData as Payment[])
       } catch (error) {
         console.error('Error loading data:', error)
       } finally {
@@ -64,28 +81,128 @@ export default function Settings() {
   const exportData = async () => {
     try {
       const data = {
+        version: '1.0.0',
+        exportDate: new Date().toISOString(),
+        appName: 'My Days Work Tracker',
         employees,
         workDays,
-        exportDate: new Date().toISOString(),
-        totalEmployees: employees.length,
-        totalWorkDays: workDays.length
+        payments,
+        summary: {
+          totalEmployees: employees.length,
+          totalWorkDays: workDays.length,
+          totalPayments: payments.length,
+          totalWorkedDays: workDays.filter(wd => wd.worked).length,
+          totalPaidDays: workDays.filter(wd => wd.paid).length
+        }
       }
       
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `my-days-data-${new Date().toISOString().split('T')[0]}.json`
+      a.download = `my-days-backup-${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      alert('Data exported successfully!')
+      alert('Complete backup exported successfully! This includes all employees, work days, and payment records.')
     } catch (error) {
       console.error('Export failed:', error)
       alert('Export failed. Please try again.')
     }
+  }
+
+  const importData = async (file: File) => {
+    try {
+      setImporting(true)
+      
+      const text = await file.text()
+      const data = JSON.parse(text)
+      
+      // Validate the imported data structure
+      if (!data.employees || !Array.isArray(data.employees)) {
+        throw new Error('Invalid backup file: Missing or invalid employees data')
+      }
+      if (!data.workDays || !Array.isArray(data.workDays)) {
+        throw new Error('Invalid backup file: Missing or invalid work days data')
+      }
+      if (!data.payments || !Array.isArray(data.payments)) {
+        throw new Error('Invalid backup file: Missing or invalid payments data')
+      }
+      
+      // Additional validation
+      const importedEmployees = data.employees as Employee[]
+      const importedWorkDays = data.workDays as WorkDay[]
+      const importedPayments = data.payments as Payment[]
+      
+      // Validate employee structure
+      for (const emp of importedEmployees) {
+        if (!emp.id || !emp.name || typeof emp.dailyWage !== 'number') {
+          throw new Error('Invalid employee data structure in backup file')
+        }
+      }
+      
+      // Confirm with user before clearing existing data
+      const confirmMessage = `This will replace ALL your current data with the backup data.\n\nBackup contains:\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n\nYour current data will be permanently deleted. Continue?`
+      
+      if (!confirm(confirmMessage)) {
+        setImporting(false)
+        return
+      }
+      
+      // Final confirmation
+      if (!confirm('Are you absolutely sure? This action cannot be undone.')) {
+        setImporting(false)
+        return
+      }
+      
+      // Clear all existing data first
+      await Promise.all([
+        // Delete all employees (this cascades to work days)
+        ...employees.map(employee => firebaseService.deleteEmployee(employee.id)),
+        // Delete all work days
+        ...employees.map(employee => firebaseService.deleteWorkDaysForEmployee(employee.id)),
+        // Delete all payments
+        firebaseService.deleteAllPayments()
+      ])
+      
+      // Import new data
+      await Promise.all([
+        // Import employees
+        ...importedEmployees.map(employee => firebaseService.addEmployee(employee)),
+        // Import work days
+        ...importedWorkDays.map(workDay => firebaseService.addWorkDay(workDay)),
+        // Import payments
+        ...importedPayments.map(payment => firebaseService.addPayment(payment))
+      ])
+      
+      // Update local state
+      setEmployees(importedEmployees)
+      setWorkDays(importedWorkDays)
+      setPayments(importedPayments)
+      
+      alert(`Data imported successfully!\n\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n\nAll data has been restored from the backup.`)
+      
+    } catch (error: any) {
+      console.error('Import failed:', error)
+      alert(`Import failed: ${error.message}\n\nPlease check that you're using a valid backup file exported from this app.`)
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+        alert('Please select a valid JSON backup file.')
+        return
+      }
+      importData(file)
+    }
+    // Reset the input so the same file can be selected again
+    event.target.value = ''
   }
 
   const exportToPDF = async () => {
@@ -429,32 +546,33 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Data Export */}
+        {/* Backup & Restore */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center mb-4">
-            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Export Data</h2>
-              <p className="text-sm text-gray-600">Backup your data in different formats</p>
+              <h2 className="text-lg font-semibold text-gray-900">Backup & Restore</h2>
+              <p className="text-sm text-gray-600">Export and import your complete data</p>
             </div>
           </div>
 
           <div className="space-y-3">
             <button
               onClick={exportData}
-              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={importing}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center">
-                <svg className="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                 </svg>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900">Export Data (JSON)</h3>
-                  <p className="text-sm text-gray-600">Download all your data as JSON file</p>
+                  <h3 className="font-medium text-gray-900">Export Backup</h3>
+                  <p className="text-sm text-gray-600">Download complete backup (employees, work days, payments)</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,9 +580,61 @@ export default function Settings() {
               </svg>
             </button>
 
+            {/* Import File Input (Hidden) */}
+            <input
+              type="file"
+              id="backup-import"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={importing}
+            />
+
+            <button
+              onClick={() => document.getElementById('backup-import')?.click()}
+              disabled={importing}
+              className="w-full flex items-center justify-between p-4 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-blue-900">
+                    {importing ? 'Importing...' : 'Import Backup'}
+                  </h3>
+                  <p className="text-sm text-blue-600">
+                    {importing ? 'Restoring your data...' : 'Restore data from backup file'}
+                  </p>
+                </div>
+              </div>
+              {importing ? (
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-medium text-amber-800">Important</h4>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Importing will replace ALL your current data. Make sure to export a backup first if you want to keep your current data.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={exportToPDF}
-              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={importing}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center">
                 <svg className="w-5 h-5 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
