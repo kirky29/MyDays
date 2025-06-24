@@ -32,21 +32,55 @@ export default function Team() {
 
   const calculateEmployeeStats = (employeeId: string) => {
     const employee = employees.find(emp => emp.id === employeeId)
-    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0 }
+    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0 }
     
     const workedDays = workDays.filter(day => 
       day.employeeId === employeeId && day.worked
-    ).length
+    )
     
     const paidDays = workDays.filter(day => 
       day.employeeId === employeeId && day.paid
-    ).length
+    )
     
-    const totalEarned = workedDays * employee.dailyWage
-    const totalPaid = paidDays * employee.dailyWage
-    const totalOwed = totalEarned - totalPaid
+    // Calculate total earned based on actual work day rates (including custom amounts)
+    let totalEarned = 0
+    for (const workDay of workedDays) {
+      if (workDay.customAmount !== undefined) {
+        // Use custom amount if specified
+        totalEarned += workDay.customAmount
+      } else {
+        // Use wage logic (accounting for wage changes)
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          totalEarned += employee.previousWage
+        } else {
+          totalEarned += employee.dailyWage
+        }
+      }
+    }
     
-    return { totalWorked: workedDays, totalPaid: paidDays, totalOwed, totalEarned }
+    // Calculate actual paid amount (same logic but for paid days only)
+    let actualPaidAmount = 0
+    for (const workDay of paidDays) {
+      if (workDay.customAmount !== undefined) {
+        actualPaidAmount += workDay.customAmount
+      } else {
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          actualPaidAmount += employee.previousWage
+        } else {
+          actualPaidAmount += employee.dailyWage
+        }
+      }
+    }
+    
+    const totalOwed = totalEarned - actualPaidAmount
+    
+    return { 
+      totalWorked: workedDays.length, 
+      totalPaid: paidDays.length, 
+      totalOwed: Math.max(0, totalOwed), // Don't show negative amounts (overpayments) on team page
+      totalEarned,
+      actualPaidAmount
+    }
   }
 
   if (loading) {
@@ -113,7 +147,14 @@ export default function Team() {
                           <h3 className="font-bold text-gray-900 text-lg group-hover:text-purple-600 transition-colors">
                             {employee.name}
                           </h3>
-                          <p className="text-sm text-gray-600 font-semibold">£{employee.dailyWage}/day</p>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm text-gray-600 font-semibold">£{employee.dailyWage}/day</p>
+                            {stats.totalEarned !== (stats.totalWorked * employee.dailyWage) && stats.totalWorked > 0 && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                                Avg: £{(stats.totalEarned / stats.totalWorked).toFixed(0)}/day
+                              </span>
+                            )}
+                          </div>
                           {employee.startDate && (
                             <p className="text-xs text-gray-500">
                               Started {format(new Date(employee.startDate), 'MMM d, yyyy')}

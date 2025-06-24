@@ -19,6 +19,8 @@ export interface WorkDay {
   date: string
   worked: boolean
   paid: boolean
+  customAmount?: number // Optional custom amount for this specific day
+  notes?: string // Optional notes for this work day
 }
 
 export interface Payment {
@@ -220,16 +222,49 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     const workedDays = workDays.filter(day => 
       day.employeeId === employeeId && day.worked
-    ).length
+    )
     
     const paidDays = workDays.filter(day => 
       day.employeeId === employeeId && day.paid
-    ).length
+    )
     
-    const totalEarned = workedDays * employee.dailyWage
-    const totalPaid = paidDays * employee.dailyWage
-    const totalOwed = totalEarned - totalPaid
+    // Calculate total earned based on actual work day rates (including custom amounts)
+    let totalEarned = 0
+    for (const workDay of workedDays) {
+      if (workDay.customAmount !== undefined) {
+        // Use custom amount if specified
+        totalEarned += workDay.customAmount
+      } else {
+        // Use wage logic (accounting for wage changes)
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          totalEarned += employee.previousWage
+        } else {
+          totalEarned += employee.dailyWage
+        }
+      }
+    }
     
-    return { totalWorked: workedDays, totalPaid: paidDays, totalOwed, totalEarned }
+    // Calculate actual paid amount (same logic but for paid days only)
+    let actualPaidAmount = 0
+    for (const workDay of paidDays) {
+      if (workDay.customAmount !== undefined) {
+        actualPaidAmount += workDay.customAmount
+      } else {
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          actualPaidAmount += employee.previousWage
+        } else {
+          actualPaidAmount += employee.dailyWage
+        }
+      }
+    }
+    
+    const totalOwed = totalEarned - actualPaidAmount
+    
+    return { 
+      totalWorked: workedDays.length, 
+      totalPaid: paidDays.length, 
+      totalOwed, 
+      totalEarned 
+    }
   }
 })) 
