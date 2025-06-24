@@ -155,11 +155,22 @@ export default function CalendarPage() {
                 const dayWorkDays = getWorkDaysForDate(dateString)
                 const isCurrentMonth = isSameMonth(date, currentDate)
                 const isCurrentDay = isToday(date)
-                const hasWorkers = dayWorkDays.length > 0
-                const hasUnpaid = dayWorkDays.some(wd => !wd.paid)
-                const allPaid = dayWorkDays.length > 0 && dayWorkDays.every(wd => wd.paid)
-                const unpaidCount = dayWorkDays.filter(wd => !wd.paid).length
-                const totalWorkers = dayWorkDays.length
+                
+                // Get employee work for this day (excluding day notes)
+                const employeeWork = dayWorkDays.filter(wd => wd.employeeId !== 'day-note')
+                const dayNotes = dayWorkDays.filter(wd => wd.employeeId === 'day-note')
+                const hasPaidWork = employeeWork.some(wd => wd.paid)
+                
+                // Employee color mapping (consistent colors for each employee)
+                const getEmployeeColor = (employeeId: string, index: number) => {
+                  const colors = ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-orange-500']
+                  const employee = employees.find(e => e.id === employeeId)
+                  if (employee) {
+                    const employeeIndex = employees.findIndex(e => e.id === employeeId)
+                    return colors[employeeIndex % colors.length]
+                  }
+                  return colors[index % colors.length]
+                }
 
                 return (
                   <button
@@ -169,11 +180,7 @@ export default function CalendarPage() {
                       aspect-square min-h-[52px] p-2 rounded-xl text-xs font-medium transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-hidden flex flex-col items-center justify-start
                       ${!isCurrentMonth ? 'text-gray-300 opacity-50' : 
                         isCurrentDay ? 'bg-blue-100 text-blue-800 border-2 border-blue-300 shadow-sm' :
-                        hasWorkers ? 
-                          allPaid ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-200 shadow-sm' :
-                          hasUnpaid ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200 shadow-sm' :
-                          'text-gray-700 hover:bg-gray-100 border border-gray-200'
-                        : 'text-gray-700 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'
+                        'text-gray-700 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'
                       }
                     `}
                   >
@@ -182,29 +189,35 @@ export default function CalendarPage() {
                       {format(date, 'd')}
                     </div>
                     
-                    {/* Work status indicators - constrained container */}
+                    {/* Status dots */}
                     <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full">
-                      {hasWorkers && (
-                        <div className="space-y-0.5">
-                          {/* Worker count */}
-                          <div className="flex justify-center">
-                            <div className={`px-1 py-0.5 rounded-full text-xs font-semibold leading-none ${
-                              allPaid 
-                                ? 'bg-green-200 text-green-800' 
-                                : 'bg-amber-200 text-amber-800'
-                            }`}>
-                              {totalWorkers}
-                            </div>
-                          </div>
-                          
-                          {/* Payment status */}
-                          {hasUnpaid && (
-                            <div className="flex justify-center">
-                              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap justify-center gap-0.5 max-w-8">
+                        {/* Employee work dots */}
+                        {employeeWork.slice(0, 4).map((workDay, idx) => (
+                          <div
+                            key={workDay.id}
+                            className={`w-1.5 h-1.5 rounded-full ${getEmployeeColor(workDay.employeeId, idx)} ${
+                              workDay.worked === false ? 'opacity-60' : '' // Dimmed for scheduled work
+                            }`}
+                            title={`${employees.find(e => e.id === workDay.employeeId)?.name || 'Employee'} - ${workDay.worked ? 'Working' : 'Scheduled'}`}
+                          />
+                        ))}
+                        
+                        {/* More employees indicator */}
+                        {employeeWork.length > 4 && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400" title={`+${employeeWork.length - 4} more`} />
+                        )}
+                        
+                        {/* Payment dot (green) */}
+                        {hasPaidWork && (
+                          <div className="w-2 h-2 rounded-full bg-green-500 border border-white" title="Has payments" />
+                        )}
+                        
+                        {/* Day notes dot (grey) */}
+                        {dayNotes.length > 0 && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-500" title="Has day notes" />
+                        )}
+                      </div>
                     </div>
 
                     {/* Today indicator */}
@@ -215,15 +228,23 @@ export default function CalendarPage() {
                     {/* Enhanced hover tooltip */}
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-20 shadow-lg">
                       <div className="font-semibold">{format(date, 'EEEE, MMM d')}</div>
-                      {hasWorkers ? (
+                      {employeeWork.length > 0 && (
                         <div className="mt-1">
-                          {allPaid ? 
-                            `✅ All ${totalWorkers} worker${totalWorkers !== 1 ? 's' : ''} paid` : 
-                            `⚠️ ${unpaidCount} of ${totalWorkers} unpaid`
-                          }
+                          {employeeWork.map(wd => {
+                            const employee = employees.find(e => e.id === wd.employeeId)
+                            return (
+                              <div key={wd.id} className="text-xs">
+                                {employee?.name}: {wd.worked ? (wd.paid ? '✅ Paid' : '💰 Unpaid') : '📅 Scheduled'}
+                              </div>
+                            )
+                          })}
                         </div>
-                      ) : (
-                        <div className="mt-1 text-gray-300">No work scheduled</div>
+                      )}
+                      {dayNotes.length > 0 && (
+                        <div className="mt-1 text-xs text-gray-300">📝 {dayNotes.length} note{dayNotes.length !== 1 ? 's' : ''}</div>
+                      )}
+                      {employeeWork.length === 0 && dayNotes.length === 0 && (
+                        <div className="mt-1 text-gray-300">No activity</div>
                       )}
                       {/* Tooltip arrow */}
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
@@ -243,22 +264,33 @@ export default function CalendarPage() {
           <div className="card-body">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-100 border border-green-200 rounded-xl flex items-center justify-center shadow-sm">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-8 h-8 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm gap-0.5">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
                 </div>
                 <div>
-                  <span className="text-sm font-semibold text-gray-900">All Paid</span>
-                  <p className="text-xs text-gray-600">Green background</p>
+                  <span className="text-sm font-semibold text-gray-900">Employee Work</span>
+                  <p className="text-xs text-gray-600">Colored dots per employee</p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-amber-100 border border-amber-200 rounded-xl flex items-center justify-center shadow-sm">
-                  <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
+                <div className="w-8 h-8 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full border border-white"></div>
                 </div>
                 <div>
-                  <span className="text-sm font-semibold text-gray-900">Unpaid</span>
-                  <p className="text-xs text-gray-600">Orange with pulse dot</p>
+                  <span className="text-sm font-semibold text-gray-900">Payments</span>
+                  <p className="text-xs text-gray-600">Green dot</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                </div>
+                <div>
+                  <span className="text-sm font-semibold text-gray-900">Day Notes</span>
+                  <p className="text-xs text-gray-600">Grey dot</p>
                 </div>
               </div>
               
@@ -268,19 +300,27 @@ export default function CalendarPage() {
                 </div>
                 <div>
                   <span className="text-sm font-semibold text-gray-900">Today</span>
-                  <p className="text-xs text-gray-600">Blue border with dot</p>
+                  <p className="text-xs text-gray-600">Blue border with corner dot</p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gray-100 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                  </svg>
+                <div className="w-8 h-8 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full opacity-60"></div>
                 </div>
                 <div>
-                  <span className="text-sm font-semibold text-gray-900">No Work</span>
-                  <p className="text-xs text-gray-600">Gray background</p>
+                  <span className="text-sm font-semibold text-gray-900">Scheduled</span>
+                  <p className="text-xs text-gray-600">Dimmed dots for future work</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                  <span className="text-xs text-gray-400">15</span>
+                </div>
+                <div>
+                  <span className="text-sm font-semibold text-gray-900">No Activity</span>
+                  <p className="text-xs text-gray-600">Just the day number</p>
                 </div>
               </div>
             </div>
