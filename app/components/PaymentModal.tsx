@@ -88,10 +88,10 @@ export default function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+      <div className="bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full sm:max-w-md sm:w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-800">Process Payment</h2>
           <button
             onClick={onClose}
@@ -103,8 +103,8 @@ export default function PaymentModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -180,24 +180,29 @@ export default function PaymentModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
           </div>
+
+          {/* Mobile spacing to ensure buttons are accessible */}
+          <div className="h-4 sm:hidden"></div>
         </div>
 
-        {/* Footer */}
-        <div className="flex space-x-3 p-6 border-t">
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handlePayment}
-            disabled={isProcessing || selectedWorkDays.length === 0}
-            className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isProcessing ? 'Processing...' : `Pay £${totalAmount.toFixed(2)}`}
-          </button>
+        {/* Footer - Fixed */}
+        <div className="flex-shrink-0 border-t bg-white rounded-b-lg sm:rounded-b-lg">
+          <div className="flex space-x-3 p-6">
+            <button
+              onClick={onClose}
+              disabled={isProcessing}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handlePayment}
+              disabled={isProcessing || selectedWorkDays.length === 0}
+              className="flex-1 px-4 py-3 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              {isProcessing ? 'Processing...' : `Pay £${totalAmount.toFixed(2)}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>
