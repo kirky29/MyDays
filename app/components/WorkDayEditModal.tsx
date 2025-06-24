@@ -53,9 +53,22 @@ export default function WorkDayEditModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const updatedWorkDay = {
-      ...formData,
-      customAmount: useCustomAmount ? formData.customAmount : undefined
+    // Create base work day object
+    const updatedWorkDay: WorkDay = {
+      id: formData.id,
+      employeeId: formData.employeeId,
+      date: formData.date,
+      worked: formData.worked,
+      paid: formData.paid
+    }
+    
+    // Only add optional fields if they have values
+    if (useCustomAmount && formData.customAmount !== undefined) {
+      updatedWorkDay.customAmount = formData.customAmount
+    }
+    
+    if (formData.notes && formData.notes.trim()) {
+      updatedWorkDay.notes = formData.notes.trim()
     }
     
     onWorkDayUpdated(updatedWorkDay)

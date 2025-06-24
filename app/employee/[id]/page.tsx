@@ -411,11 +411,13 @@ export default function EmployeeDetail() {
         console.log('Removing work day:', workDay)
         
         // Mark as not worked and clear custom data to effectively "remove" it
-        const removedWorkDay = {
-          ...workDay,
+        const removedWorkDay: WorkDay = {
+          id: workDay.id,
+          employeeId: workDay.employeeId,
+          date: workDay.date,
           worked: false,
-          customAmount: undefined,
-          notes: undefined
+          paid: false
+          // Intentionally omit customAmount and notes to remove them
         }
         
         console.log('Updated work day:', removedWorkDay)
