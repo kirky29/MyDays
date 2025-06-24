@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { format, parseISO, differenceInDays } from 'date-fns'
+import { useBodyScrollLock } from '../../lib/hooks/useBodyScrollLock'
 
 // PDF generation imports
 import jsPDF from 'jspdf'
@@ -63,6 +64,9 @@ export default function ReportModal({
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [reportType, setReportType] = useState<'summary' | 'detailed' | 'payments'>('summary')
   const [isGenerating, setIsGenerating] = useState(false)
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 

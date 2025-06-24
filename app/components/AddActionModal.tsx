@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns'
 import { firebaseService } from '../../lib/firebase'
+import { useBodyScrollLock } from '../../lib/hooks/useBodyScrollLock'
 
 interface Employee {
   id: string
@@ -52,6 +53,9 @@ export default function AddActionModal({
   })
   const [dayNote, setDayNote] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(isOpen)
 
   const resetModal = () => {
     setStep('action')

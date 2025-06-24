@@ -9,6 +9,7 @@ import PaymentModal from '../../components/PaymentModal'
 import PaymentEditModal from '../../components/PaymentEditModal'
 import WorkDayEditModal from '../../components/WorkDayEditModal'
 import BottomNavigation from '../../components/BottomNavigation'
+import { useBodyScrollLock } from '../../../lib/hooks/useBodyScrollLock'
 
 interface Employee {
   id: string
@@ -1394,6 +1395,9 @@ function EditEmployeeModal({
   const [formData, setFormData] = useState<Employee>(employee)
   const [showWageOptions, setShowWageOptions] = useState(false)
   const [wageUpdateOption, setWageUpdateOption] = useState<'future' | 'all'>('future')
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(true)
 
   const hasWageChanged = formData.dailyWage !== employee.dailyWage
   const hasWorkedDays = workDays.some(day => day.worked)

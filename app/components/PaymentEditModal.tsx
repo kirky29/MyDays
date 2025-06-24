@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { firebaseService, PAYMENT_TYPES, PaymentType } from '../../lib/firebase'
 import type { Payment, WorkDay, Employee } from '../../lib/store'
+import { useBodyScrollLock } from '../../lib/hooks/useBodyScrollLock'
 
 interface PaymentEditModalProps {
   isOpen: boolean
@@ -29,6 +30,9 @@ export default function PaymentEditModal({
   const [error, setError] = useState<string>('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedWorkDayIds, setSelectedWorkDayIds] = useState<string[]>(payment.workDayIds)
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 

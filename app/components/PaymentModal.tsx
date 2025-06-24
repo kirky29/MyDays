@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { firebaseService, PAYMENT_TYPES, PaymentType } from '../../lib/firebase'
 import type { Payment } from '../../lib/store'
+import { useBodyScrollLock } from '../../lib/hooks/useBodyScrollLock'
 
 interface WorkDay {
   id: string
@@ -38,6 +39,9 @@ export default function PaymentModal({
   const [notes, setNotes] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string>('')
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
+import { useBodyScrollLock } from '../../lib/hooks/useBodyScrollLock'
 
 interface Employee {
   id: string
@@ -44,6 +45,9 @@ export default function WorkDayEditModal({
 }: WorkDayEditModalProps) {
   const [formData, setFormData] = useState<WorkDay>(workDay)
   const [useCustomAmount, setUseCustomAmount] = useState(workDay.customAmount !== undefined)
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(isOpen)
 
   useEffect(() => {
     setFormData(workDay)
