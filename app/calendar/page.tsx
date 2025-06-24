@@ -40,7 +40,8 @@ export default function CalendarPage() {
   }
 
   const getWorkDaysForDate = (date: string) => {
-    return workDays.filter(day => day.date === date && day.worked)
+    // Show both completed work (worked: true) and scheduled work (worked: false)
+    return workDays.filter(day => day.date === date)
   }
 
   const openDayView = (date: Date) => {

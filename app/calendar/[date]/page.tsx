@@ -54,7 +54,8 @@ export default function DayViewPage() {
   }
 
   const getWorkDaysForDate = (dateString: string) => {
-    return workDays.filter(day => day.date === dateString && day.worked)
+    // Show both completed work (worked: true) and scheduled work (worked: false)
+    return workDays.filter(day => day.date === dateString)
   }
 
   const getDayEmployees = (): DayEmployee[] => {
@@ -158,9 +159,11 @@ export default function DayViewPage() {
 
   const dayEmployees = getDayEmployees()
   const dateString = format(date, 'yyyy-MM-dd')
-  const workedEmployees = dayEmployees.filter(({ workDay }) => workDay?.worked)
-  const paidEmployees = workedEmployees.filter(({ workDay }) => workDay?.paid)
-  const totalEarned = workedEmployees.reduce((sum, { employee }) => sum + employee.dailyWage, 0)
+  const allWorkEntries = dayEmployees.filter(({ workDay }) => workDay) // Any work entry (completed or scheduled)
+  const completedWork = dayEmployees.filter(({ workDay }) => workDay?.worked === true) // Only completed work
+  const scheduledWork = dayEmployees.filter(({ workDay }) => workDay?.worked === false) // Only scheduled work
+  const paidEmployees = completedWork.filter(({ workDay }) => workDay?.paid)
+  const totalEarned = completedWork.reduce((sum, { employee }) => sum + employee.dailyWage, 0)
   const totalPaid = paidEmployees.reduce((sum, { employee }) => sum + employee.dailyWage, 0)
 
   return (
@@ -192,8 +195,8 @@ export default function DayViewPage() {
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="card">
               <div className="card-body text-center py-3">
-                <div className="text-2xl font-bold text-gray-900">{workedEmployees.length}</div>
-                <div className="text-xs text-gray-600">Working</div>
+                <div className="text-2xl font-bold text-gray-900">{allWorkEntries.length}</div>
+                <div className="text-xs text-gray-600">Total Entries</div>
               </div>
             </div>
             <div className="card">
@@ -234,22 +237,24 @@ export default function DayViewPage() {
         </div>
 
         {/* Day Progress Overview - Show when there are activities */}
-        {workedEmployees.length > 0 && (
+        {allWorkEntries.length > 0 && (
           <div className="card mb-6">
             <div className="card-body">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-gray-900">Day Progress</h3>
+                  <h3 className="font-bold text-gray-900">Day Overview</h3>
                   <p className="text-sm text-gray-600">
-                    {workedEmployees.length} of {dayEmployees.length} employees working
+                    {completedWork.length} completed, {scheduledWork.length} scheduled
                   </p>
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-gray-600">
-                    {paidEmployees.length === workedEmployees.length ? (
+                    {completedWork.length > 0 && paidEmployees.length === completedWork.length ? (
                       <span className="text-green-600 font-semibold">✓ All Paid</span>
+                    ) : completedWork.length > 0 ? (
+                      <span className="text-amber-600 font-semibold">{completedWork.length - paidEmployees.length} Unpaid</span>
                     ) : (
-                      <span className="text-amber-600 font-semibold">{workedEmployees.length - paidEmployees.length} Unpaid</span>
+                      <span className="text-purple-600 font-semibold">All Scheduled</span>
                     )}
                   </div>
                 </div>
@@ -258,39 +263,40 @@ export default function DayViewPage() {
               {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Working Progress</span>
-                  <span>{Math.round((workedEmployees.length / dayEmployees.length) * 100)}%</span>
+                  <span>Work Progress</span>
+                  <span>{Math.round((completedWork.length / allWorkEntries.length) * 100)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${(workedEmployees.length / dayEmployees.length) * 100}%` }}
+                    style={{ width: `${allWorkEntries.length > 0 ? (completedWork.length / allWorkEntries.length) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
 
-              {/* Quick Actions - Only show if incomplete */}
-              {(workedEmployees.length < dayEmployees.length || paidEmployees.length < workedEmployees.length) && (
+              {/* Quick Actions - Only show if there are actions to take */}
+              {(scheduledWork.length > 0 || (completedWork.length > 0 && paidEmployees.length < completedWork.length)) && (
                 <div className="flex gap-2">
-                  {workedEmployees.length < dayEmployees.length && (
+                  {scheduledWork.length > 0 && (
                     <button
                       onClick={() => {
-                        dayEmployees.forEach(({ employee, workDay }) => {
-                          if (!workDay?.worked) {
+                        scheduledWork.forEach(({ employee, workDay }) => {
+                          if (workDay && !workDay.worked) {
+                            // Mark scheduled work as completed
                             toggleWorkDay(employee.id, dateString)
                           }
                         })
                       }}
                       className="btn btn-primary btn-sm flex-1"
                     >
-                      Complete All ({dayEmployees.length - workedEmployees.length} remaining)
+                      Complete All ({scheduledWork.length} scheduled)
                     </button>
                   )}
-                  {paidEmployees.length < workedEmployees.length && (
+                  {completedWork.length > 0 && paidEmployees.length < completedWork.length && (
                     <button
                       onClick={async () => {
                         try {
-                          for (const { employee, workDay } of dayEmployees) {
+                          for (const { employee, workDay } of completedWork) {
                             if (workDay?.worked && !workDay?.paid) {
                               await togglePayment(employee.id, dateString)
                             }
@@ -301,7 +307,7 @@ export default function DayViewPage() {
                       }}
                       className="btn btn-success btn-sm flex-1"
                     >
-                      Pay All ({workedEmployees.length - paidEmployees.length})
+                      Pay All ({completedWork.length - paidEmployees.length})
                     </button>
                   )}
                 </div>
@@ -327,7 +333,7 @@ export default function DayViewPage() {
               </button>
             </div>
           </div>
-        ) : workedEmployees.length === 0 ? (
+        ) : allWorkEntries.length === 0 ? (
           <div className="card">
             <div className="card-body text-center py-8">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -341,9 +347,11 @@ export default function DayViewPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {workedEmployees.map(({ employee, workDay }) => {
+            {allWorkEntries.map(({ employee, workDay }) => {
               if (!workDay) return null
               
+              const isCompleted = workDay.worked === true
+              const isScheduled = workDay.worked === false
               const isPaid = workDay.paid
               const hasCustomAmount = workDay.customAmount !== undefined
               const hasNotes = workDay.notes && workDay.notes.trim().length > 0
@@ -354,16 +362,22 @@ export default function DayViewPage() {
                   key={employee.id}
                   onClick={() => handleWorkDayClick(employee, workDay)}
                   className={`card cursor-pointer hover:shadow-md transition-all ${
-                    isPaid 
+                    isCompleted && isPaid 
                       ? 'border-l-4 border-l-green-500 bg-green-50/50' 
-                      : 'border-l-4 border-l-blue-500 bg-blue-50/50'
+                      : isCompleted 
+                        ? 'border-l-4 border-l-blue-500 bg-blue-50/50'
+                        : 'border-l-4 border-l-purple-500 bg-purple-50/50'
                   }`}
                 >
                   <div className="card-body py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                          isPaid ? 'bg-green-500' : 'bg-blue-500'
+                          isCompleted && isPaid 
+                            ? 'bg-green-500' 
+                            : isCompleted 
+                              ? 'bg-blue-500' 
+                              : 'bg-purple-500'
                         }`}>
                           {employee.name.charAt(0).toUpperCase()}
                         </div>
@@ -371,6 +385,11 @@ export default function DayViewPage() {
                           <h3 className="font-bold text-gray-900">{employee.name}</h3>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <span>£{displayAmount}/day</span>
+                            {isScheduled && (
+                              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
+                                Scheduled
+                              </span>
+                            )}
                             {hasCustomAmount && (
                               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
                                 Custom
@@ -391,12 +410,20 @@ export default function DayViewPage() {
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">
-                            £{displayAmount}
+                            {isScheduled ? '(Scheduled)' : `£${displayAmount}`}
                           </div>
                           <div className={`text-sm font-medium ${
-                            isPaid ? 'text-green-600' : 'text-blue-600'
+                            isCompleted && isPaid 
+                              ? 'text-green-600' 
+                              : isCompleted 
+                                ? 'text-blue-600' 
+                                : 'text-purple-600'
                           }`}>
-                            {isPaid ? '✓ Paid' : 'Unpaid'}
+                            {isCompleted && isPaid 
+                              ? '✓ Paid' 
+                              : isCompleted 
+                                ? 'Unpaid' 
+                                : '📅 Scheduled'}
                           </div>
                         </div>
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
