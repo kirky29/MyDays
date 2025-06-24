@@ -8,10 +8,12 @@ import { useAppStore } from '../../../lib/store'
 import type { Employee, WorkDay } from '../../../lib/store'
 import BottomNavigation from '../../components/BottomNavigation'
 import LoadingScreen from '../../components/LoadingScreen'
+import WorkDayEditModal from '../../components/WorkDayEditModal'
+import { firebaseService } from '../../../lib/firebase'
 
 interface DayEmployee {
   employee: Employee
-  workDay?: WorkDay
+  workDay?: WorkDay & { notes?: string; customAmount?: number }
 }
 
 export default function DayViewPage() {
@@ -21,6 +23,9 @@ export default function DayViewPage() {
   
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [showBulkActions, setShowBulkActions] = useState(false)
+  const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
+  const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
   // Use the centralized store and data management
   const { 
@@ -95,6 +100,51 @@ export default function DayViewPage() {
         ? prev.filter(id => id !== employeeId)
         : [...prev, employeeId]
     )
+  }
+
+  const handleWorkDayClick = (employee: Employee, workDay: WorkDay) => {
+    setSelectedEmployee(employee)
+    setSelectedWorkDay(workDay)
+    setShowWorkDayEditModal(true)
+  }
+
+  const handleWorkDayUpdated = async (updatedWorkDay: WorkDay) => {
+    try {
+      await firebaseService.addWorkDay(updatedWorkDay)
+      setShowWorkDayEditModal(false)
+      setSelectedWorkDay(null)
+      setSelectedEmployee(null)
+    } catch (error: any) {
+      console.error('Error updating work day:', error)
+    }
+  }
+
+  const handleWorkDayRemoved = async (workDay: WorkDay) => {
+    if (workDay.paid) {
+      alert('Cannot remove a work day that has been paid. Please adjust the payment record first.')
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to remove this work day?\n\n${format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}\n\nThis will remove the work day from records.`
+    
+    if (confirm(confirmMessage)) {
+      try {
+        // Mark as not worked and clear custom data to effectively "remove" it
+        const removedWorkDay = {
+          ...workDay,
+          worked: false,
+          customAmount: undefined,
+          notes: undefined
+        }
+        
+        await firebaseService.addWorkDay(removedWorkDay)
+        setShowWorkDayEditModal(false)
+        setSelectedWorkDay(null)
+        setSelectedEmployee(null)
+      } catch (error: any) {
+        console.error('Error removing work day:', error)
+      }
+    }
   }
 
   if (loading) {
@@ -392,13 +442,17 @@ export default function DayViewPage() {
                   <div className="card-body py-4">
                     {/* Simplified Employee Header */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                      <div 
+                        className="flex items-center space-x-3 flex-1 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+                        onClick={() => workDay && handleWorkDayClick(employee, workDay)}
+                      >
                         {showBulkActions && (
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleEmployeeSelection(employee.id)}
                             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            onClick={(e) => e.stopPropagation()}
                           />
                         )}
                         <div className={`avatar avatar-md ${
@@ -410,7 +464,17 @@ export default function DayViewPage() {
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900">{employee.name}</h3>
-                          <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                            {workDay?.notes && (
+                              <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                              </svg>
+                            )}
+                            {workDay?.customAmount !== undefined && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Custom</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -515,6 +579,22 @@ export default function DayViewPage() {
           </>
         ) : null}
       </div>
+
+      {/* Work Day Edit Modal */}
+      {selectedWorkDay && selectedEmployee && (
+        <WorkDayEditModal
+          isOpen={showWorkDayEditModal}
+          onClose={() => {
+            setShowWorkDayEditModal(false)
+            setSelectedWorkDay(null)
+            setSelectedEmployee(null)
+          }}
+          workDay={selectedWorkDay}
+          employee={selectedEmployee}
+          onWorkDayUpdated={handleWorkDayUpdated}
+          onWorkDayRemoved={handleWorkDayRemoved}
+        />
+      )}
 
       {/* Bottom Navigation */}
       <BottomNavigation onNavigate={handleNavigate} />
