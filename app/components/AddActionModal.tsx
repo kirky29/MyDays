@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, isToday, isPast, isFuture } from 'date-fns'
 import { firebaseService } from '../../lib/firebase'
 
 interface Employee {
@@ -63,6 +63,18 @@ export default function AddActionModal({
       paid: false
     })
     setIsProcessing(false)
+  }
+
+  // Determine which actions are available based on the date
+  const dateObj = parseISO(date)
+  const isDateToday = isToday(dateObj)
+  const isDatePast = isPast(dateObj) && !isDateToday
+  const isDateFuture = isFuture(dateObj)
+  
+  const availableActions = {
+    work: isDatePast || isDateToday, // Can log work for past/present
+    schedule: isDateFuture || isDateToday, // Can schedule for future/present  
+    payment: isDatePast || isDateToday // Can make payments for past/present
   }
 
   const handleClose = () => {
@@ -133,7 +145,11 @@ export default function AddActionModal({
               Add to {format(parseISO(date), 'EEEE, MMM d')}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {step === 'action' && 'What would you like to add?'}
+              {step === 'action' && (
+                isDatePast ? 'What would you like to record?' :
+                isDateFuture ? 'What would you like to schedule?' :
+                'What would you like to add?'
+              )}
               {step === 'employee' && 'Select an employee'}
               {step === 'details' && 'Add details'}
             </p>
@@ -148,56 +164,93 @@ export default function AddActionModal({
         <div className="p-6">
           {step === 'action' && (
             <div className="space-y-3">
-              <button
-                onClick={() => handleActionSelect('work')}
-                className="w-full p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Log Work Done</h3>
-                    <p className="text-sm text-gray-600">Record that someone worked today</p>
-                  </div>
-                </div>
-              </button>
+              {/* Context info */}
+              <div className="text-center mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  {isDatePast && 'This date is in the past'}
+                  {isDateToday && 'This is today'}
+                  {isDateFuture && 'This date is in the future'}
+                </p>
+              </div>
 
-              <button
-                onClick={() => handleActionSelect('schedule')}
-                className="w-full p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              {availableActions.work && (
+                <button
+                  onClick={() => handleActionSelect('work')}
+                  className="w-full p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-left"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Log Work Done</h3>
+                      <p className="text-sm text-gray-600">
+                        {isDatePast && 'Record work that was completed'}
+                        {isDateToday && 'Record work completed today'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Schedule Work</h3>
-                    <p className="text-sm text-gray-600">Plan who will work on this day</p>
-                  </div>
-                </div>
-              </button>
+                </button>
+              )}
 
-              <button
-                onClick={() => handleActionSelect('payment')}
-                className="w-full p-4 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-all text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              {availableActions.schedule && (
+                <button
+                  onClick={() => handleActionSelect('schedule')}
+                  className="w-full p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all text-left"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Schedule Work</h3>
+                      <p className="text-sm text-gray-600">
+                        {isDateFuture && 'Plan who will work on this day'}
+                        {isDateToday && 'Schedule work for today'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {availableActions.payment && (
+                <button
+                  onClick={() => handleActionSelect('payment')}
+                  className="w-full p-4 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-all text-left"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Make Payment</h3>
+                      <p className="text-sm text-gray-600">
+                        {isDatePast && 'Pay for work that was completed'}
+                        {isDateToday && 'Pay for work completed today'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* No actions available message */}
+              {!availableActions.work && !availableActions.schedule && !availableActions.payment && (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Make Payment</h3>
-                    <p className="text-sm text-gray-600">Pay an employee for their work</p>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No actions available</h3>
+                  <p className="text-gray-600">No valid actions for this date</p>
                 </div>
-              </button>
+              )}
             </div>
           )}
 
@@ -317,7 +370,7 @@ export default function AddActionModal({
                 </div>
               )}
 
-              {/* Payment Status - Only for completed work */}
+              {/* Payment Status - Only for completed work, not scheduled work */}
               {selectedAction === 'work' && (
                 <div>
                   <label className="flex items-center space-x-2">
@@ -331,6 +384,9 @@ export default function AddActionModal({
                       Mark as paid
                     </span>
                   </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only check if payment has already been made
+                  </p>
                 </div>
               )}
 
@@ -347,7 +403,10 @@ export default function AddActionModal({
                   disabled={isProcessing}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  {isProcessing ? 'Adding...' : 'Add Work Day'}
+                  {isProcessing ? 'Adding...' : 
+                   selectedAction === 'work' ? 'Log Work' :
+                   selectedAction === 'schedule' ? 'Schedule Work' :
+                   'Add Work Day'}
                 </button>
               </div>
             </div>
