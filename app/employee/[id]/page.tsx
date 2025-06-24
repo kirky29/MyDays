@@ -513,6 +513,104 @@ export default function EmployeeDetail() {
     await toggleWorkDay(quickAddDate)
   }
 
+  // Add data integrity validation
+  const validateAndRepairDataIntegrity = async () => {
+    try {
+      console.log('Validating payment data integrity...')
+      const validation = await firebaseService.validatePaymentIntegrity()
+      
+      if (!validation.isValid) {
+        console.error('Payment integrity issues found:', validation.issues)
+        setErrorMessage(`Data integrity issues detected: ${validation.issues.length} problems found. Auto-repairing...`)
+        
+        // Auto-repair the issues
+        const repair = await firebaseService.repairPaymentIntegrity()
+        console.log('Data integrity repair completed:', repair.repairActions)
+        
+        if (repair.success) {
+          setErrorMessage('')
+          // Real-time listeners will update the data automatically
+        }
+      }
+    } catch (error) {
+      console.error('Error validating data integrity:', error)
+    }
+  }
+
+  // Call validation on component mount and when payments/workDays change
+  useEffect(() => {
+    if (employee && workDays.length > 0 && payments.length > 0) {
+      validateAndRepairDataIntegrity()
+    }
+  }, [employee?.id, workDays.length, payments.length])
+
+  // Add debugging helper to identify payment inconsistencies
+  const getPaymentInconsistencies = () => {
+    const inconsistencies: Array<{
+      type: 'orphaned_payment' | 'orphaned_workday'
+      workDay?: WorkDay
+      payment?: Payment
+      message: string
+    }> = []
+
+    // Check for work days marked as paid but no payment record
+    const paidWorkDays = workDays.filter(wd => wd.paid)
+    paidWorkDays.forEach(workDay => {
+      const hasPaymentRecord = payments.some(payment => 
+        payment.workDayIds.includes(workDay.id)
+      )
+      if (!hasPaymentRecord) {
+        inconsistencies.push({
+          type: 'orphaned_workday',
+          workDay,
+          message: `Work day ${format(parseISO(workDay.date), 'MMM d, yyyy')} is marked as paid but has no payment record`
+        })
+      }
+    })
+
+    // Check for payment records where work days are not marked as paid
+    payments.forEach(payment => {
+      const unpaidWorkDaysInPayment = payment.workDayIds.filter(wdId => {
+        const workDay = workDays.find(wd => wd.id === wdId)
+        return workDay && !workDay.paid
+      })
+      
+      if (unpaidWorkDaysInPayment.length > 0) {
+        inconsistencies.push({
+          type: 'orphaned_payment',
+          payment,
+          message: `Payment £${payment.amount.toFixed(2)} on ${format(parseISO(payment.date), 'MMM d, yyyy')} includes work days that are not marked as paid`
+        })
+      }
+    })
+
+    return inconsistencies
+  }
+
+  const fixPaymentInconsistency = async (inconsistency: any) => {
+    try {
+      setSyncStatus('syncing')
+      if (inconsistency.type === 'orphaned_workday') {
+        // Work day marked as paid but no payment record - unmark as paid
+        const updatedWorkDay = { ...inconsistency.workDay, paid: false }
+        await firebaseService.addWorkDay(updatedWorkDay)
+      } else if (inconsistency.type === 'orphaned_payment') {
+        // Payment record exists but work days not marked as paid - mark them as paid
+        const workDaysToUpdate = workDays.filter(wd => 
+          inconsistency.payment.workDayIds.includes(wd.id) && !wd.paid
+        )
+        for (const workDay of workDaysToUpdate) {
+          const updatedWorkDay = { ...workDay, paid: true }
+          await firebaseService.addWorkDay(updatedWorkDay)
+        }
+      }
+      setSyncStatus('synced')
+    } catch (error) {
+      console.error('Error fixing payment inconsistency:', error)
+      setSyncStatus('error')
+    }
+  }
+
   // Edit Employee Modal Component
   function EditEmployeeModal({ 
     employee, 
@@ -873,6 +971,57 @@ export default function EmployeeDetail() {
           </div>
         </div>
       )}
+
+      {/* Payment Integrity Debug Section */}
+      {(() => {
+        const inconsistencies = getPaymentInconsistencies()
+        if (inconsistencies.length > 0) {
+          return (
+            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-yellow-800">Payment Data Inconsistencies Detected</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p className="mb-3">Found {inconsistencies.length} payment inconsistencies that need to be fixed:</p>
+                    <div className="space-y-2">
+                      {inconsistencies.map((inconsistency, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
+                          <div className="flex-1">
+                            <div className="font-medium text-yellow-800 text-xs mb-1">
+                              {inconsistency.type === 'orphaned_payment' ? '⚠️ Payment without paid work days' : '⚠️ Paid work day without payment record'}
+                            </div>
+                            <div className="text-xs text-yellow-700">{inconsistency.message}</div>
+                          </div>
+                          <button
+                            onClick={() => fixPaymentInconsistency(inconsistency)}
+                            className="ml-3 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition-colors"
+                          >
+                            Fix
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      onClick={validateAndRepairDataIntegrity}
+                      className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-md hover:bg-yellow-200 transition-colors"
+                    >
+                      Auto-Fix All Issues
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {/* Header */}
       <div className="flex items-center justify-start mb-8">

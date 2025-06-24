@@ -180,6 +180,7 @@ export const firebaseService = {
   /**
    * Creates a payment record and marks work days as paid atomically
    * This is the ONLY safe way to mark work days as paid
+   * Includes proper rollback on failure
    */
   async createPaymentAndMarkWorkDays(
     employeeId: string, 
@@ -189,6 +190,10 @@ export const firebaseService = {
     notes?: string,
     paymentDate?: string
   ): Promise<{ payment: Payment; success: boolean }> {
+    let paymentCreated = false;
+    let payment: Payment | null = null;
+    const originalWorkDayStates: Array<{ id: string; paid: boolean }> = [];
+
     try {
       console.log('Creating payment and marking work days as paid...', {
         employeeId,
@@ -197,9 +202,39 @@ export const firebaseService = {
         paymentType
       });
 
-      // 1. Create payment record first
+      // 1. Get current work days and store their original states for rollback
+      const workDaysSnapshot = await getDocs(collection(db, COLLECTIONS.WORK_DAYS));
+      const allWorkDays = workDaysSnapshot.docs.map(doc => doc.data() as WorkDay);
+      const workDaysToUpdate = allWorkDays.filter(wd => workDayIds.includes(wd.id));
+      
+      // Validate that all work days exist and are worked
+      if (workDaysToUpdate.length !== workDayIds.length) {
+        throw new Error(`Some work days not found. Expected ${workDayIds.length}, found ${workDaysToUpdate.length}`);
+      }
+
+      const unworkedDays = workDaysToUpdate.filter(wd => !wd.worked);
+      if (unworkedDays.length > 0) {
+        throw new Error(`Cannot mark unworked days as paid: ${unworkedDays.map(wd => wd.date).join(', ')}`);
+      }
+
+      // Store original states for rollback
+      workDaysToUpdate.forEach(wd => {
+        originalWorkDayStates.push({ id: wd.id, paid: wd.paid });
+      });
+
+      // 2. Mark work days as paid FIRST (easier to rollback)
+      const updatePromises = workDaysToUpdate.map(async (workDay) => {
+        const updatedWorkDay: WorkDay = { ...workDay, paid: true };
+        await setDoc(doc(db, COLLECTIONS.WORK_DAYS, workDay.id), updatedWorkDay);
+        console.log('Work day marked as paid:', workDay.id);
+      });
+
+      await Promise.all(updatePromises);
+      console.log('All work days marked as paid successfully');
+
+      // 3. Create payment record AFTER work days are updated
       const paymentId = `payment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const payment: Payment = {
+      payment = {
         id: paymentId,
         employeeId,
         workDayIds,
@@ -211,28 +246,49 @@ export const firebaseService = {
       };
 
       await setDoc(doc(db, COLLECTIONS.PAYMENTS, payment.id), payment);
+      paymentCreated = true;
       console.log('Payment record created:', payment.id);
-
-      // 2. Get current work days to update
-      const workDaysSnapshot = await getDocs(collection(db, COLLECTIONS.WORK_DAYS));
-      const allWorkDays = workDaysSnapshot.docs.map(doc => doc.data() as WorkDay);
-      const workDaysToUpdate = allWorkDays.filter(wd => workDayIds.includes(wd.id));
-
-      // 3. Mark work days as paid
-      const updatePromises = workDaysToUpdate.map(async (workDay) => {
-        const updatedWorkDay: WorkDay = { ...workDay, paid: true };
-        await setDoc(doc(db, COLLECTIONS.WORK_DAYS, workDay.id), updatedWorkDay);
-        console.log('Work day marked as paid:', workDay.id);
-      });
-
-      await Promise.all(updatePromises);
-      console.log('All work days marked as paid successfully');
 
       return { payment, success: true };
     } catch (error) {
       console.error('Error creating payment and marking work days:', error);
-      // TODO: Implement rollback logic here if needed
-      throw new Error(`Failed to process payment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // ROLLBACK: Restore original work day states if something failed
+      if (originalWorkDayStates.length > 0) {
+        console.log('Rolling back work day changes...');
+        try {
+          const rollbackPromises = originalWorkDayStates.map(async ({ id, paid }) => {
+            const workDaysSnapshot = await getDocs(collection(db, COLLECTIONS.WORK_DAYS));
+            const allWorkDays = workDaysSnapshot.docs.map(doc => doc.data() as WorkDay);
+            const workDay = allWorkDays.find(wd => wd.id === id);
+            if (workDay) {
+              const restoredWorkDay: WorkDay = { ...workDay, paid };
+              await setDoc(doc(db, COLLECTIONS.WORK_DAYS, id), restoredWorkDay);
+              console.log('Rolled back work day:', id, 'to paid:', paid);
+            }
+          });
+          await Promise.all(rollbackPromises);
+          console.log('Work day rollback completed');
+        } catch (rollbackError) {
+          console.error('Failed to rollback work day changes:', rollbackError);
+          // Log this for manual cleanup
+          console.error('MANUAL CLEANUP NEEDED: Work days may be in inconsistent state:', originalWorkDayStates);
+        }
+      }
+
+      // ROLLBACK: Delete payment record if it was created but work days failed
+      if (paymentCreated && payment) {
+        console.log('Rolling back payment record...');
+        try {
+          await deleteDoc(doc(db, COLLECTIONS.PAYMENTS, payment.id));
+          console.log('Payment record rollback completed');
+        } catch (rollbackError) {
+          console.error('Failed to rollback payment record:', rollbackError);
+          console.error('MANUAL CLEANUP NEEDED: Payment record may exist without corresponding paid work days:', payment.id);
+        }
+      }
+
+      throw new Error(`Failed to process payment atomically: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
