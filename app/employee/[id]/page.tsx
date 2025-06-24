@@ -1291,10 +1291,7 @@ export default function EmployeeDetail() {
                                   <>
                                     <span className="text-gray-300">•</span>
                                     <span className="text-xs text-gray-600">
-                                      Paid on {format(parseISO(relatedPayment.date), 'MMM d, yyyy')}
-                                    </span>
-                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                                      {relatedPayment.paymentType}
+                                      {format(parseISO(relatedPayment.date), 'MMM d')}
                                     </span>
                                   </>
                                 )}

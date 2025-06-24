@@ -186,7 +186,7 @@ export default function WorkDayEditModal({
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 pt-8 border-b">
           <h2 className="text-xl font-semibold text-gray-800">
-            Edit Work Day
+            {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,15 +197,6 @@ export default function WorkDayEditModal({
 
         {!showPaymentConfirmation ? (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Date Display */}
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="font-semibold text-gray-800">
-                {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
-              </div>
-              <div className="text-sm text-gray-600 mt-1">
-                {format(parseISO(workDay.date), 'MMM d, yyyy')}
-              </div>
-            </div>
 
             {/* Show editing options only if not paid */}
             {!formData.paid ? (
@@ -303,12 +294,6 @@ export default function WorkDayEditModal({
                         <span>Amount Paid:</span>
                         <span className="font-medium">£{getWorkDayAmount().toFixed(2)}</span>
                       </div>
-                      {relatedPayment.notes && (
-                        <div className="mt-3 pt-3 border-t border-green-300">
-                          <span className="font-medium">Payment Notes:</span>
-                          <p className="mt-1 text-green-600">{relatedPayment.notes}</p>
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div className="space-y-2 text-sm text-green-700">
@@ -346,77 +331,15 @@ export default function WorkDayEditModal({
                     )}
                   </div>
                 </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-start space-x-2">
-                    <svg className="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">Work Details Locked</p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Work details cannot be modified once payment is completed. 
-                        You can unmark as paid if changes are needed.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* Payment Status Section */}
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Status</h3>
-              
-              {/* Current Status Display */}
-              <div className={`rounded-lg p-4 mb-3 ${
-                formData.paid 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-orange-50 border border-orange-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      formData.paid ? 'bg-green-500' : 'bg-orange-500'
-                    }`}></div>
-                    <span className={`font-medium ${
-                      formData.paid ? 'text-green-800' : 'text-orange-800'
-                    }`}>
-                      {formData.paid ? 'Paid' : 'Unpaid'}
-                    </span>
-                  </div>
-                  <span className={`text-lg font-bold ${
-                    formData.paid ? 'text-green-600' : 'text-orange-600'
-                  }`}>
-                    £{getWorkDayAmount().toFixed(2)}
-                  </span>
-                </div>
-
-                {/* Payment Record Info */}
-                {formData.paid && relatedPayment && (
-                  <div className="mt-2 text-xs text-green-700">
-                    <div>Payment Record: {relatedPayment.paymentType}</div>
-                    <div>Paid on: {format(parseISO(relatedPayment.date), 'MMM d, yyyy')}</div>
-                    {relatedPayment.notes && (
-                      <div>Notes: {relatedPayment.notes}</div>
-                    )}
-                  </div>
-                )}
-
-                {/* Warning for paid work day without payment record */}
-                {formData.paid && !relatedPayment && (
-                  <div className="mt-2 text-xs text-red-600 flex items-center space-x-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <span>Warning: Marked as paid but no payment record found</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Payment Action Buttons */}
-              <div className="space-y-2">
-                {!formData.paid ? (
+            {/* Payment Actions - Only for unpaid work days */}
+            {!formData.paid && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Actions</h3>
+                
+                <div className="space-y-2">
                   <button
                     type="button"
                     onClick={handleMarkAsPaid}
@@ -425,7 +348,31 @@ export default function WorkDayEditModal({
                   >
                     {!formData.worked ? 'Cannot Pay (Not Worked)' : 'Mark as Paid'}
                   </button>
-                ) : (
+                </div>
+
+                {/* Payment Error */}
+                {paymentError && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-red-800">Payment Error</p>
+                        <p className="text-sm text-red-700 mt-1">{paymentError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Unmark Payment Action - Only for paid work days */}
+            {formData.paid && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Actions</h3>
+                
+                <div className="space-y-2">
                   <button
                     type="button"
                     onClick={handleUnmarkAsPaid}
@@ -433,24 +380,27 @@ export default function WorkDayEditModal({
                   >
                     Unmark as Paid
                   </button>
-                )}
+                </div>
               </div>
+            )}
 
-              {/* Payment Error */}
-              {paymentError && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-red-800">Payment Error</p>
-                      <p className="text-sm text-red-700 mt-1">{paymentError}</p>
-                    </div>
+            {/* Work Details Locked Info - Only for paid work days */}
+            {formData.paid && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Work Details Locked</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Work details cannot be modified once payment is completed. 
+                      You can unmark as paid if changes are needed.
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex flex-col space-y-3 pt-4">
               {!formData.paid ? (
