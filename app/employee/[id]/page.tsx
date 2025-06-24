@@ -761,8 +761,8 @@ export default function EmployeeDetail() {
           </div>
           
           <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-              <div className="flex-1">
+            <div className="space-y-4">
+              <div>
                 <label className="block text-white/90 text-sm font-medium mb-2">Select Date</label>
                 <input
                   type="date"
@@ -771,7 +771,7 @@ export default function EmployeeDetail() {
                   className="w-full px-4 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all duration-200"
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex justify-center">
                 <button
                   onClick={quickAddWorkDay}
                   disabled={syncStatus === 'syncing'}
@@ -783,13 +783,6 @@ export default function EmployeeDetail() {
                   <span>{syncStatus === 'syncing' ? 'Adding...' : 'Add Day'}</span>
                 </button>
               </div>
-            </div>
-            
-            <div className="mt-4 flex items-center space-x-2 text-white/70 text-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Today is {format(new Date(), 'EEEE, MMMM d, yyyy')}</span>
             </div>
           </div>
         </div>
@@ -809,9 +802,7 @@ export default function EmployeeDetail() {
                  <div className="relative z-10">
            <div className="flex items-center space-x-4 mb-8">
              <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
-               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-               </svg>
+               <span className="text-white font-bold text-2xl">£</span>
              </div>
              <div>
                <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">Financial Summary</h2>
@@ -910,12 +901,14 @@ export default function EmployeeDetail() {
               >
                 Select All Unpaid
               </button>
-              <button
-                onClick={clearSelection}
-                className="text-sm bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Clear
-              </button>
+              {selectedWorkDays.length > 0 && (
+                <button
+                  onClick={clearSelection}
+                  className="text-sm bg-gray-100 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
