@@ -159,6 +159,11 @@ export default function DayViewPage() {
 
   const dayEmployees = getDayEmployees()
   const dateString = format(date, 'yyyy-MM-dd')
+  
+  // Get day notes (stored as special work days with employeeId 'day-note')
+  const dayNotes = workDays.filter(day => day.date === dateString && day.employeeId === 'day-note')
+  
+  // Filter out day notes from regular work entries
   const allWorkEntries = dayEmployees.filter(({ workDay }) => workDay) // Any work entry (completed or scheduled)
   const completedWork = dayEmployees.filter(({ workDay }) => workDay?.worked === true) // Only completed work
   const scheduledWork = dayEmployees.filter(({ workDay }) => workDay?.worked === false) // Only scheduled work
@@ -312,6 +317,31 @@ export default function DayViewPage() {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Day Notes */}
+        {dayNotes.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Day Notes</h3>
+            <div className="space-y-2">
+              {dayNotes.map(note => (
+                <div key={note.id} className="card border-l-4 border-l-gray-500 bg-gray-50/50">
+                  <div className="card-body py-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-gray-700">{(note as any).notes || 'No note content'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
