@@ -372,8 +372,24 @@ export default function EmployeeDetail() {
   }
 
   const handleWorkDayClick = (workDay: WorkDay) => {
-    setSelectedWorkDay(workDay)
-    setShowWorkDayEditModal(true)
+    if (workDay.paid) {
+      // For paid work days, find the payment record and show payment modal
+      const relatedPayment = payments.find(payment => 
+        payment.workDayIds.includes(workDay.id)
+      )
+      if (relatedPayment) {
+        setSelectedPayment(relatedPayment)
+        setShowPaymentEditModal(true)
+      } else {
+        // Fallback to work day modal if no payment record found
+        setSelectedWorkDay(workDay)
+        setShowWorkDayEditModal(true)
+      }
+    } else {
+      // For unpaid work days, show work day edit modal
+      setSelectedWorkDay(workDay)
+      setShowWorkDayEditModal(true)
+    }
   }
 
   const handleWorkDayUpdated = () => {
