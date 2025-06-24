@@ -55,45 +55,23 @@ export default function PaymentModal({
     setError('')
     
     try {
-      console.log('Starting payment process...', {
+      console.log('Starting robust payment process...', {
         employeeId: employee.id,
         selectedWorkDays: selectedWorkDays.length,
         totalAmount
       })
 
-      // Create payment object with proper handling of optional fields
-      const paymentData: any = {
-        id: Date.now().toString(),
-        employeeId: employee.id,
-        workDayIds: selectedWorkDays.map(day => day.id),
-        amount: totalAmount,
+      // Use the robust payment service that maintains data integrity
+      const result = await firebaseService.createPaymentAndMarkWorkDays(
+        employee.id,
+        selectedWorkDays.map(day => day.id),
+        totalAmount,
         paymentType,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        createdAt: new Date().toISOString()
-      }
+        notes.trim() || undefined,
+        format(new Date(), 'yyyy-MM-dd')
+      )
 
-      // Only add notes if it's not empty
-      if (notes.trim()) {
-        paymentData.notes = notes.trim()
-      }
-
-      console.log('Payment object created:', paymentData)
-      
-      // Add payment record first
-      console.log('Adding payment to Firebase...')
-      await firebaseService.addPayment(paymentData)
-      console.log('Payment added successfully')
-
-      // Mark work days as paid
-      console.log('Updating work days as paid...')
-      const updatePromises = selectedWorkDays.map(async (workDay) => {
-        const updatedWorkDay = { ...workDay, paid: true }
-        console.log('Updating work day:', workDay.id, 'as paid')
-        return firebaseService.addWorkDay(updatedWorkDay)
-      })
-
-      await Promise.all(updatePromises)
-      console.log('All work days updated successfully')
+      console.log('Payment processed successfully:', result.payment.id)
       
       onPaymentComplete()
       onClose()

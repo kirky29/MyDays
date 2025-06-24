@@ -31,6 +31,7 @@ export default function DayViewPage() {
   const { 
     employees, 
     workDays, 
+    payments,
     loading, 
     toggleWorkDay, 
     togglePayment 
@@ -502,6 +503,7 @@ export default function DayViewPage() {
           employee={selectedEmployee}
           onWorkDayUpdated={handleWorkDayUpdated}
           onWorkDayRemoved={handleWorkDayRemoved}
+          payments={payments}
         />
       )}
 

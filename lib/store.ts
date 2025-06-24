@@ -161,14 +161,43 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   togglePayment: async (employeeId, date) => {
-    const { workDays } = get()
+    const { employees, workDays } = get()
     const existingDay = workDays.find(day => day.employeeId === employeeId && day.date === date)
+    const employee = employees.find(emp => emp.id === employeeId)
     
-    if (existingDay) {
+    if (existingDay && employee) {
       try {
         set({ syncStatus: 'syncing', errorMessage: '' })
-        const updatedWorkDay = { ...existingDay, paid: !existingDay.paid }
-        await firebaseService.addWorkDay(updatedWorkDay)
+        
+        if (!existingDay.paid) {
+          // Mark as paid using robust service
+          const amount = existingDay.customAmount !== undefined 
+            ? existingDay.customAmount 
+            : employee.dailyWage
+            
+          await firebaseService.createPaymentAndMarkWorkDays(
+            employeeId,
+            [existingDay.id],
+            amount,
+            'Cash', // Default payment type
+            `Quick payment for work on ${date}`
+          )
+        } else {
+          // Unmark as paid using robust service
+          const result = await firebaseService.unmarkWorkDaysAsPaid([existingDay.id])
+          
+          if (result.requiresConfirmation) {
+            // Show confirmation for payment records
+            if (confirm(result.confirmationMessage)) {
+              await firebaseService.forceUnmarkWorkDaysAsPaid([existingDay.id], 'update')
+            } else {
+              // User cancelled
+              set({ syncStatus: 'synced' })
+              return
+            }
+          }
+        }
+        
         // Real-time listener will update the state
       } catch (error: any) {
         console.error('Error updating payment:', error)

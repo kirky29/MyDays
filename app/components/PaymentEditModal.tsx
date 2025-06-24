@@ -55,15 +55,11 @@ export default function PaymentEditModal({
     setError('')
     
     try {
-      // Handle work days that were removed from the payment
+      // Handle work days that were removed from the payment using robust service
       const removedWorkDayIds = payment.workDayIds.filter(id => !selectedWorkDayIds.includes(id))
       if (removedWorkDayIds.length > 0) {
-        const removedWorkDays = workDays.filter(wd => removedWorkDayIds.includes(wd.id))
-        const updatePromises = removedWorkDays.map(async (workDay) => {
-          const updatedWorkDay = { ...workDay, paid: false }
-          return firebaseService.addWorkDay(updatedWorkDay)
-        })
-        await Promise.all(updatePromises)
+        console.log('Unmarking removed work days:', removedWorkDayIds)
+        await firebaseService.forceUnmarkWorkDaysAsPaid(removedWorkDayIds, 'update')
       }
 
       // Update payment record with new work day selection and amount
@@ -80,7 +76,21 @@ export default function PaymentEditModal({
         updatedPayment.notes = notes.trim()
       }
 
+      console.log('Updating payment record:', updatedPayment)
       await firebaseService.addPayment(updatedPayment)
+      
+      // Mark new work days as paid (if any were added)
+      const addedWorkDayIds = selectedWorkDayIds.filter(id => !payment.workDayIds.includes(id))
+      if (addedWorkDayIds.length > 0) {
+        console.log('Marking new work days as paid:', addedWorkDayIds)
+        const workDaysToUpdate = workDays.filter(wd => addedWorkDayIds.includes(wd.id))
+        const updatePromises = workDaysToUpdate.map(async (workDay) => {
+          const updatedWorkDay = { ...workDay, paid: true }
+          return firebaseService.addWorkDay(updatedWorkDay)
+        })
+        await Promise.all(updatePromises)
+      }
+      
       onPaymentUpdated()
       onClose()
     } catch (error: any) {
@@ -104,17 +114,15 @@ export default function PaymentEditModal({
     setError('')
     
     try {
-      // Mark all work days as unpaid
-      const updatePromises = paidWorkDays.map(async (workDay) => {
-        const updatedWorkDay = { ...workDay, paid: false }
-        return firebaseService.addWorkDay(updatedWorkDay)
-      })
-
-      await Promise.all(updatePromises)
+      console.log('Deleting payment and unmarking work days:', payment.id)
+      
+      // Use robust service to unmark work days and delete payment
+      await firebaseService.forceUnmarkWorkDaysAsPaid(payment.workDayIds, 'delete')
       
       // Delete the payment record
       await firebaseService.deletePayment(payment.id)
       
+      console.log('Payment deleted successfully')
       onPaymentUpdated()
       onClose()
     } catch (error: any) {

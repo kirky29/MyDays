@@ -1064,6 +1064,7 @@ export default function EmployeeDetail() {
           employee={employee}
           onWorkDayUpdated={updateWorkDay}
           onWorkDayRemoved={removeWorkDay}
+          payments={payments}
         />
       )}
 
