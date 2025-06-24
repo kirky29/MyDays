@@ -271,67 +271,79 @@ export default function DayViewPage() {
           </div>
         )}
 
-        {/* Quick Complete Section - Show when some but not all employees worked */}
-        {dayEmployees.length > 0 && workedEmployees.length > 0 && workedEmployees.length < dayEmployees.length && (
-          <div className="card mb-6 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+        {/* Day Progress Overview - Show when there are activities */}
+        {workedEmployees.length > 0 && (
+          <div className="card mb-6">
             <div className="card-body">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="inline-flex items-center justify-center w-10 h-10 bg-amber-100 rounded-xl">
-                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Quick Complete</h4>
-                    <p className="text-sm text-gray-600">{dayEmployees.length - workedEmployees.length} employee{dayEmployees.length - workedEmployees.length !== 1 ? 's' : ''} haven't worked yet</p>
-                  </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Day Progress</h3>
+                  <p className="text-sm text-gray-600">
+                    {workedEmployees.length} of {dayEmployees.length} employees working
+                  </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-amber-700">{workedEmployees.length}/{dayEmployees.length}</div>
-                  <div className="text-xs text-gray-600">Working</div>
+                  <div className="text-sm text-gray-600">
+                    {paidEmployees.length === workedEmployees.length ? (
+                      <span className="text-green-600 font-semibold">✓ All Paid</span>
+                    ) : (
+                      <span className="text-amber-600 font-semibold">{workedEmployees.length - paidEmployees.length} Unpaid</span>
+                    )}
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    // Mark remaining employees as worked
-                    dayEmployees.forEach(({ employee, workDay }) => {
-                      if (!workDay?.worked) {
-                        toggleWorkDay(employee.id, dateString)
-                      }
-                    })
-                  }}
-                  className="btn btn-primary btn-sm"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Mark All Worked
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      // Mark all worked employees as paid
-                      for (const { employee, workDay } of dayEmployees) {
-                        if (workDay?.worked && !workDay?.paid) {
-                          await togglePayment(employee.id, dateString)
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Error marking worked as paid:', error)
-                    }
-                  }}
-                  className="btn btn-success btn-sm"
-                  disabled={paidEmployees.length === workedEmployees.length}
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                  Pay Worked ({workedEmployees.length - paidEmployees.length})
-                </button>
+              {/* Progress Bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span>Working Progress</span>
+                  <span>{Math.round((workedEmployees.length / dayEmployees.length) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${(workedEmployees.length / dayEmployees.length) * 100}%` }}
+                  ></div>
+                </div>
               </div>
+
+              {/* Quick Actions - Only show if incomplete */}
+              {(workedEmployees.length < dayEmployees.length || paidEmployees.length < workedEmployees.length) && (
+                <div className="flex gap-2">
+                  {workedEmployees.length < dayEmployees.length && (
+                    <button
+                      onClick={() => {
+                        dayEmployees.forEach(({ employee, workDay }) => {
+                          if (!workDay?.worked) {
+                            toggleWorkDay(employee.id, dateString)
+                          }
+                        })
+                      }}
+                      className="btn btn-primary btn-sm flex-1"
+                    >
+                      Complete All ({dayEmployees.length - workedEmployees.length} remaining)
+                    </button>
+                  )}
+                  {paidEmployees.length < workedEmployees.length && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          for (const { employee, workDay } of dayEmployees) {
+                            if (workDay?.worked && !workDay?.paid) {
+                              await togglePayment(employee.id, dateString)
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Error marking worked as paid:', error)
+                        }
+                      }}
+                      className="btn btn-success btn-sm flex-1"
+                    >
+                      Pay All ({workedEmployees.length - paidEmployees.length})
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -354,23 +366,32 @@ export default function DayViewPage() {
             </div>
           </div>
         ) : workedEmployees.length > 0 ? (
-          <div className="space-y-4">
+          <>
+            {/* Employee Section Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Team Members</h3>
+              <div className="text-sm text-gray-600">
+                {dayEmployees.length} employee{dayEmployees.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
             {dayEmployees.map(({ employee, workDay }) => {
               const isWorked = workDay?.worked || false
               const isPaid = workDay?.paid || false
               const isSelected = selectedEmployees.includes(employee.id)
               
               return (
-                <div key={employee.id} className={`card border-2 transition-all ${
+                <div key={employee.id} className={`card transition-all ${
                   isWorked 
                     ? isPaid 
-                      ? 'border-green-200 bg-green-50' 
-                      : 'border-amber-200 bg-amber-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                      ? 'border-l-4 border-l-green-500 bg-green-50/50' 
+                      : 'border-l-4 border-l-amber-500 bg-amber-50/50'
+                    : 'border-l-4 border-l-gray-300 bg-white'
                 } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-                  <div className="card-body">
-                    {/* Employee Header */}
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="card-body py-4">
+                    {/* Simplified Employee Header */}
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         {showBulkActions && (
                           <input
@@ -380,115 +401,89 @@ export default function DayViewPage() {
                             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                           />
                         )}
-                        <div className={`avatar avatar-lg ${
+                        <div className={`avatar avatar-md ${
                           isWorked 
-                            ? isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-600'
+                            ? isPaid ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'
+                            : 'bg-gray-400 text-white'
                         }`}>
-                          <span className="font-bold text-lg">{employee.name.charAt(0).toUpperCase()}</span>
+                          <span className="font-bold">{employee.name.charAt(0).toUpperCase()}</span>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-lg">{employee.name}</h3>
-                          <p className="text-gray-600">Daily rate: £{employee.dailyWage}</p>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900">{employee.name}</h3>
+                          <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
                         </div>
                       </div>
                       
-                      {/* Status Badge */}
-                      <div className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${
-                        isWorked 
-                          ? isPaid 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : 'bg-amber-100 text-amber-800 border-amber-200'
-                          : 'bg-gray-100 text-gray-600 border-gray-200'
-                      }`}>
-                        {isWorked 
-                          ? isPaid ? '✓ Paid' : '⏳ Worked - Unpaid'
-                          : '○ Not Worked'}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-1 gap-3">
-                      {/* Work Status Button */}
-                      <button
-                        onClick={() => toggleWorkDay(employee.id, dateString)}
-                        className={`p-4 rounded-xl font-semibold transition-all ${
-                          isWorked
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 border-2 border-blue-600'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {isWorked 
-                          ? (
-                            <div className="flex items-center justify-center space-x-2">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>Worked Today (Click to Remove)</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center space-x-2">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                              <span>Mark as Worked</span>
-                            </div>
-                          )
-                        }
-                      </button>
-                      
-                      {/* Payment Button - Only show if worked */}
-                      {isWorked && (
+                      {/* Quick Actions */}
+                      <div className="flex items-center space-x-2">
+                        {/* Work Toggle */}
                         <button
-                          onClick={() => togglePayment(employee.id, dateString)}
-                          className={`p-4 rounded-xl font-semibold transition-all ${
-                            isPaid
-                              ? 'bg-green-600 text-white hover:bg-green-700 border-2 border-green-600'
-                              : 'bg-amber-500 text-white hover:bg-amber-600 border-2 border-amber-500'
+                          onClick={() => toggleWorkDay(employee.id, dateString)}
+                          className={`p-2 rounded-lg transition-all ${
+                            isWorked
+                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                           }`}
+                          title={isWorked ? 'Remove work day' : 'Mark as worked'}
                         >
-                          {isPaid ? (
-                            <div className="flex items-center justify-center space-x-2">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                              </svg>
-                              <span>Paid £{employee.dailyWage} (Click to Undo)</span>
-                            </div>
+                          {isWorked ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
                           ) : (
-                            <div className="flex items-center justify-center space-x-2">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                              </svg>
-                              <span>Mark Paid £{employee.dailyWage}</span>
-                            </div>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
                           )}
                         </button>
-                      )}
+                        
+                        {/* Payment Toggle - Only show if worked */}
+                        {isWorked && (
+                          <button
+                            onClick={() => togglePayment(employee.id, dateString)}
+                            className={`p-2 rounded-lg transition-all ${
+                              isPaid
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-amber-500 text-white hover:bg-amber-600'
+                            }`}
+                            title={isPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                          </button>
+                        )}
 
-                      {/* Secondary Actions */}
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                        {/* Profile Link */}
                         <button
                           onClick={() => router.push(`/employee/${employee.id}`)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors"
+                          className="p-2 text-gray-400 hover:text-blue-600 rounded-lg transition-colors"
+                          title="View employee profile"
                         >
-                          View Profile →
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Add quick note functionality here if needed
-                            console.log('Quick note for', employee.name)
-                          }}
-                          className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          Add Note
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </button>
                       </div>
                     </div>
+
+                    {/* Status Info */}
+                    {isWorked && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={`font-medium ${isPaid ? 'text-green-700' : 'text-amber-700'}`}>
+                            {isPaid ? '✓ Paid' : '⏳ Payment Pending'}
+                          </span>
+                          <span className="font-semibold text-gray-900">£{employee.dailyWage}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
             })}
-          </div>
+                        </div>
+          </>
         ) : null}
       </div>
 
