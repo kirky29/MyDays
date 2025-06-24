@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays, subDays } from 'date-fns'
+import { format, parseISO, isSameDay, eachDayOfInterval } from 'date-fns'
 import { firebaseService, PAYMENT_TYPES } from '../../../lib/firebase'
 import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
@@ -49,7 +49,6 @@ export default function EmployeeDetail() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showPaymentEditModal, setShowPaymentEditModal] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [currentWeek, setCurrentWeek] = useState(new Date())
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
   const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
@@ -516,20 +515,7 @@ export default function EmployeeDetail() {
     await toggleWorkDay(quickAddDate)
   }
 
-  const getWeekDays = (weekStart: Date) => {
-    return eachDayOfInterval({
-      start: startOfWeek(weekStart, { weekStartsOn: 1 }), // Monday start
-      end: endOfWeek(weekStart, { weekStartsOn: 1 })
-    })
-  }
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeek(prev => 
-      direction === 'prev' 
-        ? subDays(prev, 7)
-        : addDays(prev, 7)
-    )
-  }
 
   // Don't render anything until mounted (prevents hydration issues)
   if (!mounted) {
@@ -598,7 +584,6 @@ export default function EmployeeDetail() {
   const stats = calculateStats()
   const unpaidWorkDays = workDays.filter(day => day.worked && !day.paid)
   const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
-  const weekDays = getWeekDays(currentWeek)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 pb-20 sm:pb-24">
@@ -752,135 +737,7 @@ export default function EmployeeDetail() {
         </div>
       </div>
 
-      {/* Weekly View */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-6">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">Weekly View</h2>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => navigateWeek('prev')}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span className="text-sm font-medium text-gray-700 px-3 py-1 bg-gray-100 rounded-lg">
-              {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d')} - {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d, yyyy')}
-            </span>
-            <button
-              onClick={() => navigateWeek('next')}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-2 mb-5">
-          {weekDays.map((day) => {
-            const dateStr = format(day, 'yyyy-MM-dd')
-            const workDay = getWorkDay(dateStr)
-            const isToday = isSameDay(day, new Date())
-            
-            return (
-              <div key={dateStr} className="text-center">
-                <div className="text-xs text-gray-500 mb-2 font-medium">
-                  {format(day, 'EEE')}
-                </div>
-                <div className="relative">
-                  {/* View-only day display */}
-                  <div
-                    className={`w-full h-12 rounded-xl flex flex-col items-center justify-center text-xs font-medium transition-all duration-200 ${
-                      isToday ? 'ring-2 ring-blue-300' : ''
-                    } ${
-                      workDay?.worked && workDay?.paid
-                        ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                        : workDay?.worked
-                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                          : 'bg-gray-50 text-gray-600 border-2 border-gray-200'
-                    }`}
-                  >
-                    <div className="text-sm font-bold">{format(day, 'd')}</div>
-                    {workDay?.worked && (
-                      <div className="text-xs">
-                        {workDay.paid ? '£' : '✓'}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Edit button for worked days */}
-                  {workDay?.worked ? (
-                    <button
-                      onClick={() => handleWorkDayClick(workDay)}
-                      className="absolute inset-0 bg-transparent hover:bg-white/30 rounded-xl transition-colors z-10 group"
-                      title="Edit work day details"
-                    >
-                      <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <svg className="w-2 h-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </div>
-                    </button>
-                  ) : (
-                    /* Add work day button for non-worked days */
-                    <button
-                      onClick={() => {
-                        if (confirm(`Add work day for ${format(day, 'EEEE, MMMM d, yyyy')}?`)) {
-                          toggleWorkDay(dateStr)
-                        }
-                      }}
-                      disabled={syncStatus === 'syncing'}
-                      className="absolute inset-0 bg-transparent hover:bg-blue-50 hover:border-blue-300 rounded-xl transition-colors z-10 group disabled:opacity-50"
-                      title="Click to add work day"
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-6 h-6 bg-blue-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        
-        {/* Legend */}
-        <div className="flex justify-center items-center space-x-6 text-xs bg-gray-50 rounded-xl p-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-gray-200 border-2 border-gray-300 rounded"></div>
-            <span className="text-gray-600 font-medium">Not worked</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-100 border-2 border-blue-300 rounded"></div>
-            <span className="text-gray-600 font-medium">Worked</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-100 border-2 border-green-300 rounded"></div>
-            <span className="text-gray-600 font-medium">Paid</span>
-          </div>
-        </div>
-        
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-500">
-            <strong>Tip:</strong> Hover over days to add work • Click worked days to edit details
-          </p>
-        </div>
-      </div>
+
 
       {/* Financial Summary */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
