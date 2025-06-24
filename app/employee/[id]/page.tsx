@@ -633,117 +633,161 @@ export default function EmployeeDetail() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-start mb-6">
+      <div className="flex items-center justify-start mb-8">
         <button
           onClick={handleBackNavigation}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+          className="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 group"
         >
-          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back
+          <span className="font-medium">Back to Team</span>
         </button>
       </div>
 
       {/* Employee Info */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">{employee.name}</h1>
-        <p className="text-lg text-gray-600 mb-4">£{employee.dailyWage}/day</p>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+        {/* Header Section */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <span className="text-white font-bold text-2xl">
+              {employee.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{employee.name}</h1>
+          <div className="inline-flex items-center bg-blue-100 text-blue-700 px-4 py-2 rounded-xl font-semibold">
+            £{employee.dailyWage}/day
+          </div>
+        </div>
         
         {/* Employee Details */}
-        <div className="space-y-2 text-sm mb-4">
-          {employee.email && (
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-              </svg>
-              <span className="text-gray-600">{employee.email}</span>
+        {(employee.email || employee.phone || employee.startDate || employee.notes) && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact & Info</h3>
+            <div className="space-y-3">
+              {employee.email && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </div>
+                  <span className="text-gray-700 text-sm">{employee.email}</span>
+                </div>
+              )}
+              {employee.phone && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </div>
+                  <span className="text-gray-700 text-sm">{employee.phone}</span>
+                </div>
+              )}
+              {employee.startDate && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-gray-700 text-sm">Started: {format(new Date(employee.startDate), 'MMM d, yyyy')}</span>
+                </div>
+              )}
+              {employee.notes && (
+                <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                    <p className="text-gray-700 text-sm leading-relaxed">{employee.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          {employee.phone && (
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span className="text-gray-600">{employee.phone}</span>
-            </div>
-          )}
-          {employee.startDate && (
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-gray-600">Started: {format(new Date(employee.startDate), 'MMM d, yyyy')}</span>
-            </div>
-          )}
-          {employee.notes && (
-            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-              <p className="text-gray-600 text-sm">{employee.notes}</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalWorked}</div>
-            <div className="text-sm text-blue-800">Days Worked</div>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1">{stats.totalWorked}</div>
+            <div className="text-sm font-medium text-blue-700">Days Worked</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.totalPaid}</div>
-            <div className="text-sm text-green-800">Days Paid</div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-1">{stats.totalPaid}</div>
+            <div className="text-sm font-medium text-green-700">Days Paid</div>
           </div>
         </div>
       </div>
 
       {/* Add Work Day */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">Log Work Day</h2>
-        <div className="flex space-x-2">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Log Work Day</h2>
+        </div>
+        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
           <input
             type="date"
             value={quickAddDate}
             onChange={(e) => setQuickAddDate(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
           />
           <button
             onClick={quickAddWorkDay}
             disabled={syncStatus === 'syncing'}
-            className="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 font-medium shadow-sm flex items-center justify-center space-x-2"
           >
-            Add Day
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Day</span>
           </button>
         </div>
       </div>
 
       {/* Weekly View */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-700">Weekly View</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">Weekly View</h2>
+          </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => navigateWeek('prev')}
-              className="p-1 text-gray-600 hover:text-gray-800"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-700 px-3 py-1 bg-gray-100 rounded-lg">
               {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d')} - {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d, yyyy')}
             </span>
             <button
               onClick={() => navigateWeek('next')}
-              className="p-1 text-gray-600 hover:text-gray-800"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
         </div>
         
-        <div className="grid grid-cols-7 gap-2">
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-2 mb-5">
           {weekDays.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd')
             const workDay = getWorkDay(dateStr)
@@ -751,36 +795,63 @@ export default function EmployeeDetail() {
             
             return (
               <div key={dateStr} className="text-center">
-                <div className="text-xs text-gray-600 mb-1">
+                <div className="text-xs text-gray-500 mb-2 font-medium">
                   {format(day, 'EEE')}
                 </div>
                 <div className="relative">
-                  <button
-                    onClick={() => toggleWorkDay(dateStr)}
-                    disabled={syncStatus === 'syncing'}
-                    className={`w-full h-10 text-xs rounded-md transition-colors disabled:opacity-50 ${
+                  {/* View-only day display */}
+                  <div
+                    className={`w-full h-12 rounded-xl flex flex-col items-center justify-center text-xs font-medium transition-all duration-200 ${
                       isToday ? 'ring-2 ring-blue-300' : ''
                     } ${
                       workDay?.worked && workDay?.paid
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-green-100 text-green-700 border-2 border-green-300'
                         : workDay?.worked
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                          : 'bg-gray-50 text-gray-600 border-2 border-gray-200'
                     }`}
                   >
-                    <div>{format(day, 'd')}</div>
+                    <div className="text-sm font-bold">{format(day, 'd')}</div>
                     {workDay?.worked && (
                       <div className="text-xs">
                         {workDay.paid ? '£' : '✓'}
                       </div>
                     )}
-                  </button>
-                  {workDay?.worked && (
+                  </div>
+                  
+                  {/* Edit button for worked days */}
+                  {workDay?.worked ? (
                     <button
                       onClick={() => handleWorkDayClick(workDay)}
-                      className="absolute inset-0 bg-transparent hover:bg-white/20 rounded-md transition-colors z-10"
+                      className="absolute inset-0 bg-transparent hover:bg-white/30 rounded-xl transition-colors z-10 group"
                       title="Edit work day details"
-                    />
+                    >
+                      <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <svg className="w-2 h-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </div>
+                    </button>
+                  ) : (
+                    /* Add work day button for non-worked days */
+                    <button
+                      onClick={() => {
+                        if (confirm(`Add work day for ${format(day, 'EEEE, MMMM d, yyyy')}?`)) {
+                          toggleWorkDay(dateStr)
+                        }
+                      }}
+                      disabled={syncStatus === 'syncing'}
+                      className="absolute inset-0 bg-transparent hover:bg-blue-50 hover:border-blue-300 rounded-xl transition-colors z-10 group disabled:opacity-50"
+                      title="Click to add work day"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-6 h-6 bg-blue-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                      </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -788,35 +859,51 @@ export default function EmployeeDetail() {
           })}
         </div>
         
-        <div className="flex justify-center space-x-4 mt-4 text-xs">
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-gray-200 rounded"></div>
-            <span className="text-gray-600">Not worked</span>
+        {/* Legend */}
+        <div className="flex justify-center items-center space-x-6 text-xs bg-gray-50 rounded-xl p-3">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-gray-200 border-2 border-gray-300 rounded"></div>
+            <span className="text-gray-600 font-medium">Not worked</span>
           </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-blue-500 rounded"></div>
-            <span className="text-gray-600">Worked</span>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-blue-100 border-2 border-blue-300 rounded"></div>
+            <span className="text-gray-600 font-medium">Worked</span>
           </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-green-500 rounded"></div>
-            <span className="text-gray-600">Paid</span>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-100 border-2 border-green-300 rounded"></div>
+            <span className="text-gray-600 font-medium">Paid</span>
           </div>
+        </div>
+        
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-500">
+            <strong>Tip:</strong> Hover over days to add work • Click worked days to edit details
+          </p>
         </div>
       </div>
 
       {/* Financial Summary */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">Financial Summary</h2>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Financial Summary</h2>
+        </div>
         
         {/* Overpayment Warning */}
         {stats.isOverpaid && (
-          <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
             <div className="flex items-start space-x-3">
-              <svg className="w-5 h-5 text-orange-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
               <div>
-                <h4 className="font-medium text-orange-800">Overpayment Detected</h4>
+                <h4 className="font-semibold text-orange-800">Overpayment Detected</h4>
                 <p className="text-sm text-orange-700 mt-1">
                   This employee has been paid £{stats.creditAmount.toFixed(2)} more than their current calculated earnings.
                 </p>
@@ -825,26 +912,58 @@ export default function EmployeeDetail() {
           </div>
         )}
 
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Total Earned (at current wage):</span>
-            <span className="font-semibold text-gray-800">£{stats.totalEarned.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Total Paid (actual):</span>
-            <span className="font-semibold text-green-600">£{stats.actualPaidAmount.toFixed(2)}</span>
-          </div>
-          <div className="border-t pt-3">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-800">
+        {/* Financial Breakdown */}
+        <div className="bg-gray-50 rounded-xl p-5 mb-6">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Total Earned</span>
+              <span className="font-bold text-gray-900 text-lg">£{stats.totalEarned.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Total Paid</span>
+              <span className="font-bold text-green-600 text-lg">£{stats.actualPaidAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center py-3">
+              <span className="text-xl font-bold text-gray-900">
                 {stats.isOverpaid ? 'In Credit:' : 'Outstanding:'}
               </span>
-              <span className={`text-lg font-bold ${stats.isOverpaid ? 'text-blue-600' : stats.totalOwed > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <span className={`text-xl font-bold ${stats.isOverpaid ? 'text-blue-600' : stats.totalOwed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                 {stats.isOverpaid ? `£${stats.creditAmount.toFixed(2)}` : `£${stats.totalOwed.toFixed(2)}`}
               </span>
             </div>
-            {stats.isOverpaid && (
-              <p className="text-sm text-blue-600 mt-1">Employee has been overpaid</p>
+          </div>
+        </div>
+
+        {/* Status Indicator */}
+        <div className={`rounded-xl p-4 text-center ${
+          stats.isOverpaid 
+            ? 'bg-blue-50 border border-blue-200' 
+            : stats.totalOwed > 0 
+              ? 'bg-amber-50 border border-amber-200' 
+              : 'bg-green-50 border border-green-200'
+        }`}>
+          <div className="flex items-center justify-center space-x-2">
+            {stats.isOverpaid ? (
+              <>
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span className="font-semibold text-blue-800">Employee has been overpaid</span>
+              </>
+            ) : stats.totalOwed > 0 ? (
+              <>
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-semibold text-amber-800">Payment pending</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold text-green-800">All payments up to date</span>
+              </>
             )}
           </div>
         </div>
