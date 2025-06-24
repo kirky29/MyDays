@@ -194,10 +194,10 @@ export default function WorkDayEditModal({
             <button
               type="button"
               onClick={() => onWorkDayRemoved(workDay)}
-              disabled={formData.paid}
+              disabled={workDay.paid}
               className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              {formData.paid ? 'Cannot Remove (Already Paid)' : 'Remove Work Day'}
+              {workDay.paid ? 'Cannot Remove (Already Paid)' : 'Remove Work Day'}
             </button>
             
             {/* Action Buttons */}

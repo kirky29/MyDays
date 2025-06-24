@@ -408,6 +408,8 @@ export default function EmployeeDetail() {
         setSyncStatus('syncing')
         setErrorMessage('')
         
+        console.log('Removing work day:', workDay)
+        
         // Mark as not worked and clear custom data to effectively "remove" it
         const removedWorkDay = {
           ...workDay,
@@ -416,13 +418,20 @@ export default function EmployeeDetail() {
           notes: undefined
         }
         
+        console.log('Updated work day:', removedWorkDay)
         await firebaseService.addWorkDay(removedWorkDay)
+        
+        console.log('Work day removed successfully')
         setShowWorkDayEditModal(false)
         setSelectedWorkDay(null)
+        
+        // Show success message
+        alert('Work day removed successfully!')
       } catch (error: any) {
         console.error('Error removing work day:', error)
         setSyncStatus('error')
         setErrorMessage(`Failed to remove work day: ${error.message}`)
+        alert(`Failed to remove work day: ${error.message}`)
       }
     }
   }
