@@ -348,7 +348,11 @@ export default function ActivityLog() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {workDays.filter(wd => wd.worked && new Date(wd.date) <= new Date()).length}
+                {(() => {
+                  const today = new Date()
+                  today.setHours(23, 59, 59, 999) // End of today
+                  return workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length
+                })()}
               </div>
               <div className="text-sm text-gray-600">Work Days Recorded</div>
             </div>
