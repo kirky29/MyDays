@@ -49,15 +49,25 @@ export default function AddEmployee() {
         throw new Error('Employee name is required')
       }
 
-      // Create employee with generated ID
+      // Create employee with generated ID, only including fields with values
       const employeeData: Employee = {
-        ...formData,
         id: Date.now().toString(),
         name: formData.name.trim(),
-        email: formData.email?.trim() || undefined,
-        phone: formData.phone?.trim() || undefined,
-        startDate: formData.startDate || undefined,
-        notes: formData.notes?.trim() || undefined
+        dailyWage: formData.dailyWage
+      }
+
+      // Only add optional fields if they have actual values
+      if (formData.email && formData.email.trim()) {
+        employeeData.email = formData.email.trim()
+      }
+      if (formData.phone && formData.phone.trim()) {
+        employeeData.phone = formData.phone.trim()
+      }
+      if (formData.startDate) {
+        employeeData.startDate = formData.startDate
+      }
+      if (formData.notes && formData.notes.trim()) {
+        employeeData.notes = formData.notes.trim()
       }
 
       await firebaseService.addEmployee(employeeData)

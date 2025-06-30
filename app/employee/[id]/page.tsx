@@ -438,15 +438,42 @@ export default function EmployeeDetail() {
       setSyncStatus('syncing')
       setErrorMessage('')
       
+      // Clean the employee data to remove undefined values
+      const cleanEmployeeData: Employee = {
+        id: updatedEmployee.id,
+        name: updatedEmployee.name.trim(),
+        dailyWage: updatedEmployee.dailyWage
+      }
+
+      // Only add optional fields if they have actual values
+      if (updatedEmployee.email && updatedEmployee.email.trim()) {
+        cleanEmployeeData.email = updatedEmployee.email.trim()
+      }
+      if (updatedEmployee.phone && updatedEmployee.phone.trim()) {
+        cleanEmployeeData.phone = updatedEmployee.phone.trim()
+      }
+      if (updatedEmployee.startDate) {
+        cleanEmployeeData.startDate = updatedEmployee.startDate
+      }
+      if (updatedEmployee.notes && updatedEmployee.notes.trim()) {
+        cleanEmployeeData.notes = updatedEmployee.notes.trim()
+      }
+      if (updatedEmployee.wageChangeDate) {
+        cleanEmployeeData.wageChangeDate = updatedEmployee.wageChangeDate
+      }
+      if (updatedEmployee.previousWage !== undefined) {
+        cleanEmployeeData.previousWage = updatedEmployee.previousWage
+      }
+      
       // If wage changed and we have work days, handle the wage change logic
-      if (wageUpdateOption && updatedEmployee.dailyWage !== employee?.dailyWage) {
-        await handleWageChange(updatedEmployee, wageUpdateOption)
+      if (wageUpdateOption && cleanEmployeeData.dailyWage !== employee?.dailyWage) {
+        await handleWageChange(cleanEmployeeData, wageUpdateOption)
       }
       
       // Update employee
-      await firebaseService.addEmployee(updatedEmployee)
+      await firebaseService.addEmployee(cleanEmployeeData)
       
-      setEmployee(updatedEmployee)
+      setEmployee(cleanEmployeeData)
       setShowEditModal(false)
     } catch (error: any) {
       console.error('Error updating employee:', error)
@@ -728,7 +755,7 @@ export default function EmployeeDetail() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
                 <textarea
                   value={formData.notes || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || '' }))}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   placeholder="Any additional notes about this employee..."

@@ -233,7 +233,7 @@ export default function WorkDayEditModal({
                   </label>
                   <textarea
                     value={formData.notes || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || undefined }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || '' }))}
                     rows={3}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none touch-manipulation"
                     placeholder="Add notes about this work day (e.g., half day, overtime, special project...)"
