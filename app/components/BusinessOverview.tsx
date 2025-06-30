@@ -47,40 +47,36 @@ export default function BusinessOverview() {
   ]
 
   return (
-    <div className="px-4 pb-6 space-y-4">
-      {/* Payment Summary Cards - Mobile First */}
-      {paymentSummary.map((item) => (
-        <div key={item.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+    <div className="bg-gray-50 px-4 py-6 mb-8">
+      {/* Payment Summary Cards - 3 Column Grid */}
+      <div className="grid grid-cols-3 gap-3">
+        {paymentSummary.map((item) => (
+          <div key={item.label} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-3">
+              <div className="text-center">
+                <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 ${
                   item.color === 'green' ? 'bg-green-100' : 
                   item.color === 'amber' ? 'bg-amber-100' : 'bg-blue-100'
                 }`}>
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-lg">{item.icon}</span>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-900 mb-1">
-                    {item.label}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className={`text-2xl font-bold ${
+                <p className={`text-lg font-bold mb-1 ${
                   item.color === 'green' ? 'text-green-600' : 
                   item.color === 'amber' ? 'text-amber-600' : 'text-blue-600'
                 }`}>
                   £{item.value.toFixed(2)}
                 </p>
+                <h3 className="text-xs font-semibold text-gray-800 mb-1">
+                  {item.label}
+                </h3>
+                <p className="text-xs text-gray-500 leading-tight">
+                  {item.description}
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 } 
