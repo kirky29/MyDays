@@ -22,15 +22,7 @@ export default function BusinessOverview() {
     return total + (stats.totalPaid * emp.dailyWage)
   }, 0)
 
-  const metrics = [
-    {
-      label: "Team Members",
-      value: employees.length,
-      icon: "👥",
-      color: "blue",
-      suffix: "",
-      onClick: () => router.push('/')
-    },
+  const workMetrics = [
     {
       label: "Work Days",
       value: workDays.filter(day => day.worked).length,
@@ -46,30 +38,30 @@ export default function BusinessOverview() {
       color: "green",
       suffix: "",
       onClick: () => router.push('/')
-    },
-    {
-      label: "Outstanding",
-      value: totalOutstanding,
-      icon: "💰",
-      color: totalOutstanding > 0 ? "amber" : "green",
-      suffix: "£",
-      prefix: true,
-      onClick: () => router.push('/')
     }
   ]
 
-  const financialSummary = [
+  const paymentSummary = [
     {
-      label: "Total Employees have earned",
-      value: totalEarned,
-      color: "blue",
-      icon: "📈"
-    },
-    {
-      label: "Total Currently Paid Out",
+      label: "Total Paid Out",
       value: totalPaid,
       color: "green",
-      icon: "✅"
+      icon: "💳",
+      description: "Amount you've paid to employees"
+    },
+    {
+      label: "Total Outstanding",
+      value: totalOutstanding,
+      color: totalOutstanding > 0 ? "amber" : "green",
+      icon: "💰",
+      description: "Amount still owed to employees"
+    },
+    {
+      label: "Total Earned",
+      value: totalEarned,
+      color: "blue",
+      icon: "📈",
+      description: "Total amount employees have earned"
     }
   ]
 
@@ -89,32 +81,30 @@ export default function BusinessOverview() {
           <div className="flex items-center mb-4 sm:mb-6">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center mr-3 backdrop-blur-sm">
               <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold">Business Overview</h2>
-              <p className="text-white/80 text-sm">Your workspace at a glance</p>
+              <h2 className="text-lg sm:text-xl font-bold">Payment Overview</h2>
+              <p className="text-white/80 text-sm">Track your financial commitments</p>
             </div>
           </div>
           
-          {/* Clickable Metrics Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {metrics.map((metric) => (
+          {/* Work Days Metrics - Smaller, Secondary */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {workMetrics.map((metric) => (
               <button
                 key={metric.label}
                 onClick={metric.onClick}
-                className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20 hover:bg-white/20 transition-all duration-200 text-left group"
+                className="bg-white/5 backdrop-blur-sm rounded-lg p-3 border border-white/10 hover:bg-white/10 transition-all duration-200 text-left group"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-lg sm:text-xl group-hover:scale-110 transition-transform duration-200">{metric.icon}</span>
-                  <div className="text-right">
-                    <div className="text-xl sm:text-2xl font-bold text-white">
-                      {metric.prefix ? `${metric.suffix}${metric.value.toFixed(0)}` : `${metric.value}${metric.suffix}`}
-                    </div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm group-hover:scale-110 transition-transform duration-200">{metric.icon}</span>
+                  <div className="text-lg font-semibold text-white">
+                    {metric.value}{metric.suffix}
                   </div>
                 </div>
-                <div className="text-white/80 text-xs sm:text-sm font-medium">
+                <div className="text-white/70 text-xs font-medium">
                   {metric.label}
                 </div>
               </button>
@@ -123,25 +113,30 @@ export default function BusinessOverview() {
         </div>
       </div>
 
-      {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {financialSummary.map((item) => (
-          <div key={item.label} className="card">
+      {/* Payment Summary Cards - Main Focus */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        {paymentSummary.map((item) => (
+          <div key={item.label} className="card hover:shadow-lg transition-shadow duration-200">
             <div className="card-body py-4 sm:py-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">{item.label}</p>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
+                  item.color === 'green' ? 'bg-green-100' : 
+                  item.color === 'amber' ? 'bg-amber-100' : 'bg-blue-100'
+                }`}>
+                  <span className="text-lg sm:text-xl">{item.icon}</span>
+                </div>
+                <div className="text-right">
                   <p className={`text-xl sm:text-2xl font-bold ${
-                    item.color === 'green' ? 'text-green-600' : 'text-blue-600'
+                    item.color === 'green' ? 'text-green-600' : 
+                    item.color === 'amber' ? 'text-amber-600' : 'text-blue-600'
                   }`}>
                     £{item.value.toFixed(2)}
                   </p>
                 </div>
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
-                  item.color === 'green' ? 'bg-green-100' : 'bg-blue-100'
-                }`}>
-                  <span className="text-lg sm:text-xl">{item.icon}</span>
-                </div>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800 mb-1">{item.label}</p>
+                <p className="text-xs text-gray-500">{item.description}</p>
               </div>
             </div>
           </div>
