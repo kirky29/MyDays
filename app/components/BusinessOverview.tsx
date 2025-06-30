@@ -37,7 +37,7 @@ export default function BusinessOverview() {
       icon: "📅",
       color: "indigo",
       suffix: "",
-      onClick: () => router.push('/calendar')
+      onClick: () => router.push('/team')
     },
     {
       label: "Days Paid",
@@ -45,7 +45,7 @@ export default function BusinessOverview() {
       icon: "✅",
       color: "green",
       suffix: "",
-      onClick: () => router.push('/calendar')
+      onClick: () => router.push('/team')
     },
     {
       label: "Outstanding",

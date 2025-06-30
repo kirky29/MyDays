@@ -33,7 +33,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4 sm:py-6 max-w-md">
           {/* Header Section */}
           <div className="space-y-mobile">
-            <AppHeader />
+            <AppHeader onNavigate={handleNavigate} />
           </div>
           
           {/* Main Content Grid */}

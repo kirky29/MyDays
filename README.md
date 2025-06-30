@@ -11,9 +11,7 @@ A comprehensive, mobile-friendly work tracking and payroll management app built 
 - **Edit Employee Details**: Update employee information anytime
 
 ### 📅 **Advanced Work Day Management**
-- **Weekly Calendar View**: Visual 7-day calendar with color-coded work status
 - **Quick Add Work Days**: Single-click work day addition from any date
-- **Interactive Calendar**: Navigate between weeks, see today highlighted
 - **Visual Status Indicators**: 
   - Gray = Not worked
   - Blue = Worked (unpaid)
@@ -83,7 +81,6 @@ A comprehensive, mobile-friendly work tracking and payroll management app built 
 ### Work Day Tracking
 - 📅 **Daily Tracking**: Mark work days as worked/not worked
 - 💳 **Payment Status**: Track payment status for each work day
-- 📊 **Visual Calendar**: Weekly view with status indicators
 - ⚡ **Quick Add**: Add work days with single date picker
 
 ### Payment Management
@@ -125,12 +122,6 @@ A comprehensive, mobile-friendly work tracking and payroll management app built 
 
 **Method 2: Employee Profile**
 - Use "Quick Add Work Day" section
-- Or click on days in the Weekly View calendar
-
-**Method 3: Weekly Calendar (Employee Profile)**
-- Navigate between weeks with arrow buttons
-- Click any day to toggle work status
-- Today is highlighted with a blue ring
 
 ### Processing Payments
 
