@@ -52,7 +52,6 @@ export default function EmployeeDetail() {
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
   const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
-  const [dailyWageInput, setDailyWageInput] = useState<string>(employee?.dailyWage.toString() || '')
 
   // Handle browser navigation with a different approach
   useEffect(() => {
