@@ -1172,26 +1172,42 @@ export default function EmployeeDetail() {
                     <div className="flex space-x-2">
                       <button
                         onClick={selectAllUnpaid}
-                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
                       >
                         Select All
                       </button>
                       {selectedWorkDays.length > 0 && (
                         <button
                           onClick={clearSelection}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
                         >
-                          Clear
+                          Clear ({selectedWorkDays.length})
                         </button>
                       )}
                     </div>
                   </div>
+                  
+                  {selectedWorkDays.length > 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <div className="text-sm text-green-800 mb-2">
+                        <strong>{selectedWorkDays.length}</strong> work day{selectedWorkDays.length !== 1 ? 's' : ''} selected
+                      </div>
+                      <div className="text-xs text-green-700">
+                        Total amount: <strong>£{selectedWorkDayObjects.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0).toFixed(2)}</strong>
+                      </div>
+                    </div>
+                  )}
+                  
                   {selectedWorkDays.length > 0 && (
                     <button
                       onClick={() => setShowPaymentModal(true)}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium touch-manipulation"
+                      style={{ 
+                        touchAction: 'manipulation',
+                        minHeight: '44px'
+                      }}
                     >
-                      Pay £{selectedWorkDayObjects.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0).toFixed(2)} for {selectedWorkDays.length} day{selectedWorkDays.length !== 1 ? 's' : ''}
+                      Pay Selected Days
                     </button>
                   )}
                 </div>
@@ -1271,25 +1287,47 @@ export default function EmployeeDetail() {
                     return (
                       <div 
                         key={workDay.id} 
-                        className={`p-4 rounded-lg border cursor-pointer hover:shadow-md transition-all ${
-                          workDay.paid 
-                            ? 'bg-green-50 border-green-200 hover:bg-green-100' 
-                            : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-                        }`}
-                        onClick={() => handleWorkDayClick(workDay)}
+                        className={`p-4 rounded-lg border transition-all ${
+                          selectedWorkDays.includes(workDay.id)
+                            ? 'border-blue-300 bg-blue-50 shadow-md'
+                            : workDay.paid 
+                              ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                              : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                        } ${!workDay.paid ? 'cursor-pointer hover:shadow-md' : ''}`}
+                        onClick={() => !selectedWorkDays.includes(workDay.id) ? handleWorkDayClick(workDay) : null}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedWorkDays.includes(workDay.id)}
-                              onChange={(e) => {
+                            <div 
+                              onClick={(e) => {
                                 e.stopPropagation()
-                                toggleWorkDaySelection(workDay.id)
+                                if (!workDay.paid) {
+                                  toggleWorkDaySelection(workDay.id)
+                                }
                               }}
-                              disabled={workDay.paid}
-                              className="w-4 h-4 text-blue-600 rounded"
-                            />
+                              onTouchStart={(e) => {
+                                e.stopPropagation()
+                              }}
+                              className="p-2 -m-2 touch-manipulation"
+                              style={{ 
+                                touchAction: 'manipulation',
+                                WebkitTapHighlightColor: 'transparent',
+                                minWidth: '44px',
+                                minHeight: '44px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedWorkDays.includes(workDay.id)}
+                                onChange={() => {}} // Handled by parent div click
+                                disabled={workDay.paid}
+                                className="w-5 h-5 text-blue-600 rounded pointer-events-none"
+                                style={{ touchAction: 'manipulation' }}
+                              />
+                            </div>
                             <div>
                               <div className="font-medium text-gray-900 text-sm">
                                 {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
