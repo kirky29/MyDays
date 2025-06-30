@@ -58,6 +58,7 @@ export default function WorkDayEditModal({
 }: WorkDayEditModalProps) {
   const [formData, setFormData] = useState<WorkDay>(workDay)
   const [useCustomAmount, setUseCustomAmount] = useState(false)
+  const [customAmountInput, setCustomAmountInput] = useState<string>('')
   
   // Prevent background scrolling when modal is open
   useBodyScrollLock(isOpen)
@@ -66,6 +67,7 @@ export default function WorkDayEditModal({
   useEffect(() => {
     setFormData(workDay)
     setUseCustomAmount(workDay.customAmount !== undefined)
+    setCustomAmountInput(workDay.customAmount?.toString() || '')
   }, [workDay])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -208,11 +210,13 @@ export default function WorkDayEditModal({
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.customAmount ?? ''}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        customAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 
-                      }))}
+                      value={customAmountInput}
+                      onChange={(e) => {
+                        setCustomAmountInput(e.target.value)
+                        // Update formData with parsed number, default to 0 if empty or invalid
+                        const parsedValue = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                        setFormData(prev => ({ ...prev, customAmount: parsedValue }))
+                      }}
                       className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 touch-manipulation"
                       placeholder="0.00"
                     />

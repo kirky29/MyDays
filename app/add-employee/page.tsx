@@ -15,46 +15,60 @@ interface Employee {
 }
 
 export default function AddEmployee() {
-  const [formData, setFormData] = useState<Partial<Employee>>({
+  const [formData, setFormData] = useState<Employee>({
+    id: '',
     name: '',
     dailyWage: 0,
+    email: '',
+    phone: '',
+    startDate: '',
     notes: ''
   })
+  const [dailyWageInput, setDailyWageInput] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string>('')
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const handleInputChange = (field: keyof Employee, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear any previous errors when user starts typing
+    if (errorMessage) {
+      setErrorMessage('')
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!formData.name?.trim() || typeof formData.dailyWage !== 'number' || formData.dailyWage < 0) {
-      setError('Please fill in the required fields')
-      return
-    }
-
     setIsSubmitting(true)
-    setError('')
+    setErrorMessage('')
+    setSyncStatus('syncing')
 
     try {
-      const employeeId = Date.now().toString()
-      const employee: Employee = {
-        id: employeeId,
-        name: formData.name.trim(),
-        dailyWage: Number(formData.dailyWage),
-        ...(formData.notes?.trim() && { notes: formData.notes.trim() })
+      // Validate required fields
+      if (!formData.name.trim()) {
+        throw new Error('Employee name is required')
       }
 
-      await firebaseService.addEmployee(employee)
+      // Create employee with generated ID
+      const employeeData: Employee = {
+        ...formData,
+        id: Date.now().toString(),
+        name: formData.name.trim(),
+        email: formData.email?.trim() || undefined,
+        phone: formData.phone?.trim() || undefined,
+        startDate: formData.startDate || undefined,
+        notes: formData.notes?.trim() || undefined
+      }
+
+      await firebaseService.addEmployee(employeeData)
       
-      // Navigate to the employee's profile
-      window.location.href = `/employee/${employeeId}`
-      
+      // Redirect to employee detail page
+      window.location.href = `/employee/${employeeData.id}`
     } catch (error: any) {
       console.error('Error adding employee:', error)
-      setError(`Failed to add employee: ${error.message}`)
+      setErrorMessage(error.message || 'Failed to add employee')
+      setSyncStatus('error')
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -88,19 +102,19 @@ export default function AddEmployee() {
         </div>
 
         {/* Error Message */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
+        {errorMessage && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
               </div>
-              <div className="ml-3 flex-1">
-                <h3 className="text-sm font-semibold text-red-800">Error</h3>
-                <p className="mt-1 text-sm text-red-700">{error}</p>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error adding employee</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{errorMessage}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -147,8 +161,13 @@ export default function AddEmployee() {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.dailyWage ?? ''}
-                      onChange={(e) => handleInputChange('dailyWage', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                      value={dailyWageInput}
+                      onChange={(e) => {
+                        setDailyWageInput(e.target.value)
+                        // Update formData with parsed number, default to 0 if empty or invalid
+                        const parsedValue = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                        handleInputChange('dailyWage', parsedValue)
+                      }}
                       placeholder="0.00"
                       required
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-base"

@@ -52,6 +52,7 @@ export default function EmployeeDetail() {
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
   const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
+  const [dailyWageInput, setDailyWageInput] = useState<string>(employee?.dailyWage.toString() || '')
 
   // Handle browser navigation with a different approach
   useEffect(() => {
@@ -642,6 +643,7 @@ export default function EmployeeDetail() {
     payments: Payment[]
   }) {
     const [formData, setFormData] = useState<Employee>(employee)
+    const [dailyWageInput, setDailyWageInput] = useState<string>(employee.dailyWage.toString())
     const [showWageOptions, setShowWageOptions] = useState(false)
     const [wageUpdateOption, setWageUpdateOption] = useState<'future' | 'all'>('future')
     
@@ -716,8 +718,13 @@ export default function EmployeeDetail() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.dailyWage ?? ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dailyWage: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))}
+                  value={dailyWageInput}
+                  onChange={(e) => {
+                    setDailyWageInput(e.target.value)
+                    // Update formData with parsed number, default to 0 if empty or invalid
+                    const parsedValue = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                    setFormData(prev => ({ ...prev, dailyWage: parsedValue }))
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
