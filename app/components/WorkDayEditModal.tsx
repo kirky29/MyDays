@@ -63,6 +63,9 @@ export default function WorkDayEditModal({
   // Prevent background scrolling when modal is open
   useBodyScrollLock(isOpen)
 
+  // Check if this is a future work day
+  const isFutureWorkDay = new Date(workDay.date) > new Date()
+
   // Reset form when workDay changes
   useEffect(() => {
     setFormData(workDay)
@@ -144,9 +147,14 @@ export default function WorkDayEditModal({
       >
         {/* Header - Fixed */}
         <div className="flex items-center justify-between p-6 pt-8 border-b flex-shrink-0">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">
+              {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
+            </h2>
+            {isFutureWorkDay && (
+              <p className="text-sm text-blue-600 mt-1">Future Work Day</p>
+            )}
+          </div>
           <button 
             onClick={onClose} 
             onTouchStart={() => {}} // Enable touch events on iOS
@@ -167,9 +175,31 @@ export default function WorkDayEditModal({
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
-            {/* Show editing options only if not paid */}
+            {/* Show editing options for unpaid work days */}
             {!formData.paid ? (
               <>
+                {/* Work Status Toggle for Future Work Days */}
+                {isFutureWorkDay && (
+                  <div>
+                    <label className="flex items-start space-x-3 cursor-pointer touch-manipulation">
+                      <input
+                        type="checkbox"
+                        checked={formData.worked}
+                        onChange={(e) => setFormData(prev => ({ ...prev, worked: e.target.checked }))}
+                        className="w-5 h-5 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 touch-manipulation"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700 leading-tight">
+                          Mark as completed
+                        </span>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Check this if the work has been completed
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
                 {/* Custom Amount Toggle */}
                 <div>
                   <label className="flex items-start space-x-3 cursor-pointer touch-manipulation">
@@ -236,9 +266,26 @@ export default function WorkDayEditModal({
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || '' }))}
                     rows={3}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none touch-manipulation"
-                    placeholder="Add notes about this work day (e.g., half day, overtime, special project...)"
+                    placeholder={isFutureWorkDay ? "Add notes about this scheduled work..." : "Add notes about this work day (e.g., half day, overtime, special project...)"}
                   />
                 </div>
+                
+                {/* Future work day info */}
+                {isFutureWorkDay && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start space-x-2">
+                      <svg className="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">Future Work Day</p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Payment options will be available after the work is completed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               /* Show read-only information when paid */

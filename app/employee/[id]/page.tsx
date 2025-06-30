@@ -1258,18 +1258,57 @@ export default function EmployeeDetail() {
                   </svg>
                   Upcoming Work
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="space-y-2">
                   {workDays
                     .filter(day => new Date(day.date) >= new Date())
                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                     .slice(0, 6)
                     .map(workDay => (
-                      <div key={workDay.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="font-medium text-blue-900 text-sm">
-                          {format(parseISO(workDay.date), 'EEE, MMM d')}
-                        </div>
-                        <div className="text-xs text-blue-600 mt-1">
-                          {workDay.worked ? 'Completed' : 'Scheduled'}
+                      <div 
+                        key={workDay.id} 
+                        className="p-4 rounded-lg border cursor-pointer hover:shadow-md transition-all bg-blue-50 border-blue-200 hover:bg-blue-100"
+                        onClick={() => handleWorkDayClick(workDay)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900 text-sm">
+                                {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
+                              </div>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  workDay.worked ? 'bg-blue-500' : 'bg-gray-400'
+                                }`}></div>
+                                <span className={`text-xs font-medium ${
+                                  workDay.worked ? 'text-blue-700' : 'text-gray-600'
+                                }`}>
+                                  {workDay.worked ? 'Completed' : 'Scheduled'}
+                                </span>
+                                {workDay.notes && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-xs text-blue-600">"{workDay.notes}"</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-gray-900">
+                              £{getWorkDayAmount(workDay).toFixed(2)}
+                            </div>
+                            {workDay.customAmount !== undefined && (
+                              <div className="text-xs text-blue-600">Custom rate</div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(workDay.date) > new Date() ? 'Future' : 'Today'}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
