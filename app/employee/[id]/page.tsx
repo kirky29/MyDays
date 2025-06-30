@@ -264,7 +264,12 @@ export default function EmployeeDetail() {
   }
 
   const selectAllUnpaid = () => {
-    const unpaidWorkDays = workDays.filter(day => day.worked && !day.paid)
+    // Only select unpaid work days that are not in the future (past/current work)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    const unpaidWorkDays = workDays.filter(day => 
+      day.worked && !day.paid && new Date(day.date) <= today
+    )
     setSelectedWorkDays(unpaidWorkDays.map(day => day.id))
   }
 
@@ -1284,10 +1289,8 @@ export default function EmployeeDetail() {
                                 <div className={`w-2 h-2 rounded-full ${
                                   workDay.worked ? 'bg-blue-500' : 'bg-gray-400'
                                 }`}></div>
-                                <span className={`text-xs font-medium ${
-                                  workDay.worked ? 'text-blue-700' : 'text-gray-600'
-                                }`}>
-                                  {workDay.worked ? 'Completed' : 'Scheduled'}
+                                <span className="text-xs font-medium text-blue-700">
+                                  Upcoming
                                 </span>
                                 {workDay.notes && (
                                   <>
