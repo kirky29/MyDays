@@ -17,10 +17,6 @@ export default function WorkHistory() {
   // Initialize Firebase data loading
   useFirebaseData()
 
-  if (loading) {
-    return <LoadingScreen />
-  }
-
   // Get all past worked days (not future scheduled work)
   const pastWorkedDays = useMemo(() => {
     const today = new Date()
@@ -98,6 +94,11 @@ export default function WorkHistory() {
 
     return { totalWorkDays, totalPaidDays, totalUnpaidDays, totalAmount, totalPaidAmount, totalOutstanding }
   }, [filteredAndSortedWorkDays])
+
+  // Show loading screen after all hooks have been called
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
