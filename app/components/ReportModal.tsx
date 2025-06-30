@@ -192,10 +192,14 @@ export default function ReportModal({
       let yPosition = 80
 
       if (reportType === 'summary') {
+        // Only count work days that are in the past or today (not future)
+        const today = new Date()
+        today.setHours(23, 59, 59, 999) // End of today
+        
         const tableData = reportData.employees.map(emp => {
           const empWorkDays = reportData.workDays.filter(wd => wd.employeeId === emp.id)
-          const workedDays = empWorkDays.filter(wd => wd.worked)
-          const paidDays = empWorkDays.filter(wd => wd.paid)
+          const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
+          const paidDays = empWorkDays.filter(wd => wd.paid && new Date(wd.date) <= today)
           
           // Calculate total earned properly accounting for custom amounts and wage changes
           let totalEarned = 0
@@ -510,9 +514,13 @@ export default function ReportModal({
                     <h4 className="font-medium text-gray-700 mb-2">Employee Summary</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {reportData.employees.map(emp => {
+                        // Only count work days that are in the past or today (not future)
+                        const today = new Date()
+                        today.setHours(23, 59, 59, 999) // End of today
+                        
                         const empWorkDays = reportData.workDays.filter(wd => wd.employeeId === emp.id)
-                        const workedDays = empWorkDays.filter(wd => wd.worked)
-                        const paidDays = empWorkDays.filter(wd => wd.paid)
+                        const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
+                        const paidDays = empWorkDays.filter(wd => wd.paid && new Date(wd.date) <= today)
                         
                         // Calculate total earned properly accounting for custom amounts and wage changes
                         let totalEarned = 0

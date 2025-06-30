@@ -250,12 +250,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const employee = employees.find(emp => emp.id === employeeId)
     if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0 }
     
+    // Only count work days that are in the past or today (not future)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    
     const workedDays = workDays.filter(day => 
-      day.employeeId === employeeId && day.worked
+      day.employeeId === employeeId && day.worked && new Date(day.date) <= today
     )
     
     const paidDays = workDays.filter(day => 
-      day.employeeId === employeeId && day.paid
+      day.employeeId === employeeId && day.paid && new Date(day.date) <= today
     )
     
     // Calculate total earned based on actual work day rates (including custom amounts)

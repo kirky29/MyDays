@@ -294,9 +294,13 @@ export default function EmployeeDetail() {
   const calculateStats = () => {
     if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0, isOverpaid: false, creditAmount: 0 }
     
-    const workedDays = workDays.filter(day => day.worked)
-    const paidDays = workDays.filter(day => day.paid)
-    const unpaidDays = workDays.filter(day => day.worked && !day.paid)
+    // Only count work days that are in the past or today (not future)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    
+    const workedDays = workDays.filter(day => day.worked && new Date(day.date) <= today)
+    const paidDays = workDays.filter(day => day.paid && new Date(day.date) <= today)
+    const unpaidDays = workDays.filter(day => day.worked && !day.paid && new Date(day.date) <= today)
     
     // Calculate actual amount paid from payment records
     const employeePayments = payments.filter(p => p.employeeId === employee.id)

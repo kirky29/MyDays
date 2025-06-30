@@ -347,7 +347,9 @@ export default function ActivityLog() {
               <div className="text-sm text-gray-600">Total Employees</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{workDays.filter(wd => wd.worked).length}</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {workDays.filter(wd => wd.worked && new Date(wd.date) <= new Date()).length}
+              </div>
               <div className="text-sm text-gray-600">Work Days Recorded</div>
             </div>
             <div className="text-center">
