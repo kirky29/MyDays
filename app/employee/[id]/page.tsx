@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { format, parseISO, isSameDay, eachDayOfInterval } from 'date-fns'
 import { firebaseService, PAYMENT_TYPES } from '../../../lib/firebase'
 import type { Payment } from '../../../lib/store'
@@ -35,6 +35,7 @@ interface WorkDay {
 
 export default function EmployeeDetail() {
   const params = useParams()
+  const router = useRouter()
   const employeeId = params.id as string
   
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -1355,12 +1356,24 @@ export default function EmployeeDetail() {
 
             {/* Recent Work History */}
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-                <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Recent Work History
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-800 flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Recent Work History
+                </h3>
+                <button
+                  onClick={() => router.push('/work-history')}
+                  className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+                  title="View full work history"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  View All
+                </button>
+              </div>
               
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {workDays
