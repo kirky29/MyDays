@@ -178,28 +178,6 @@ export default function WorkDayEditModal({
             {/* Show editing options for unpaid work days */}
             {!formData.paid ? (
               <>
-                {/* Work Status Toggle for Future Work Days */}
-                {isFutureWorkDay && (
-                  <div>
-                    <label className="flex items-start space-x-3 cursor-pointer touch-manipulation">
-                      <input
-                        type="checkbox"
-                        checked={formData.worked}
-                        onChange={(e) => setFormData(prev => ({ ...prev, worked: e.target.checked }))}
-                        className="w-5 h-5 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 touch-manipulation"
-                      />
-                      <div>
-                        <span className="text-sm font-medium text-gray-700 leading-tight">
-                          Mark as completed
-                        </span>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Check this if the work has been completed
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                )}
-
                 {/* Custom Amount Toggle */}
                 <div>
                   <label className="flex items-start space-x-3 cursor-pointer touch-manipulation">
