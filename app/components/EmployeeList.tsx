@@ -91,9 +91,6 @@ export default function EmployeeList() {
                           {employee.name}
                         </h3>
                         <div className="flex items-center space-x-3 mb-2">
-                          <div className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-xl text-sm font-semibold border border-blue-200">
-                            £{employee.dailyWage}/day
-                          </div>
                           {employee.startDate && (
                             <div className="text-xs text-gray-600 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
                               Started {format(new Date(employee.startDate), 'MMM d, yyyy')}
@@ -129,12 +126,12 @@ export default function EmployeeList() {
                   </div>
                 </div>
 
-                {/* Enhanced Financial Summary with stronger background */}
+                {/* Enhanced Financial Summary with daily wage */}
                 <div className="bg-gray-100 border-2 border-gray-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-semibold text-gray-800">Financial Summary</span>
-                    <div className={`text-sm font-bold px-3 py-1.5 rounded-xl border-2 ${stats.totalOwed > 0 ? 'text-amber-800 bg-amber-100 border-amber-200' : 'text-green-800 bg-green-100 border-green-200'}`}>
-                      {stats.totalOwed > 0 ? `£${stats.totalOwed.toFixed(2)} owed` : 'All paid up!'}
+                    <div className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-xl text-sm font-semibold border-2 border-blue-200">
+                      £{employee.dailyWage}/day
                     </div>
                   </div>
                   
