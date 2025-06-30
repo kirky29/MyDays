@@ -23,6 +23,8 @@ interface Employee {
   phone?: string
   startDate?: string
   notes?: string
+  wageChangeDate?: string
+  previousWage?: number
 }
 
 interface WorkDay {
@@ -31,6 +33,7 @@ interface WorkDay {
   date: string
   worked: boolean
   paid: boolean
+  customAmount?: number
 }
 
 interface Payment {
@@ -191,15 +194,49 @@ export default function ReportModal({
       if (reportType === 'summary') {
         const tableData = reportData.employees.map(emp => {
           const empWorkDays = reportData.workDays.filter(wd => wd.employeeId === emp.id)
-          const workedDays = empWorkDays.filter(wd => wd.worked).length
-          const paidDays = empWorkDays.filter(wd => wd.paid).length
-          const totalEarned = workedDays * emp.dailyWage
-          const totalOutstanding = totalEarned - (paidDays * emp.dailyWage)
+          const workedDays = empWorkDays.filter(wd => wd.worked)
+          const paidDays = empWorkDays.filter(wd => wd.paid)
+          
+          // Calculate total earned properly accounting for custom amounts and wage changes
+          let totalEarned = 0
+          for (const workDay of workedDays) {
+            if (workDay.customAmount !== undefined) {
+              totalEarned += workDay.customAmount
+            } else {
+              if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                totalEarned += emp.previousWage
+              } else {
+                totalEarned += emp.dailyWage
+              }
+            }
+          }
+          
+          // Calculate actual paid amount from payment records for this employee in the date range
+          const empPayments = reportData.payments.filter(p => p.employeeId === emp.id)
+          const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+          
+          // Use paid amount if available, otherwise calculate from work days
+          let paidAmount = actualPaidAmount
+          if (paidAmount === 0) {
+            for (const workDay of paidDays) {
+              if (workDay.customAmount !== undefined) {
+                paidAmount += workDay.customAmount
+              } else {
+                if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                  paidAmount += emp.previousWage
+                } else {
+                  paidAmount += emp.dailyWage
+                }
+              }
+            }
+          }
+          
+          const totalOutstanding = totalEarned - paidAmount
           
           return [
             emp.name,
-            workedDays.toString(),
-            paidDays.toString(),
+            workedDays.length.toString(),
+            paidDays.length.toString(),
             `£${totalEarned.toFixed(2)}`,
             `£${totalOutstanding.toFixed(2)}`
           ]
@@ -474,17 +511,51 @@ export default function ReportModal({
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {reportData.employees.map(emp => {
                         const empWorkDays = reportData.workDays.filter(wd => wd.employeeId === emp.id)
-                        const workedDays = empWorkDays.filter(wd => wd.worked).length
-                        const paidDays = empWorkDays.filter(wd => wd.paid).length
-                        const totalEarned = workedDays * emp.dailyWage
-                        const totalOutstanding = totalEarned - (paidDays * emp.dailyWage)
+                        const workedDays = empWorkDays.filter(wd => wd.worked)
+                        const paidDays = empWorkDays.filter(wd => wd.paid)
+                        
+                        // Calculate total earned properly accounting for custom amounts and wage changes
+                        let totalEarned = 0
+                        for (const workDay of workedDays) {
+                          if (workDay.customAmount !== undefined) {
+                            totalEarned += workDay.customAmount
+                          } else {
+                            if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                              totalEarned += emp.previousWage
+                            } else {
+                              totalEarned += emp.dailyWage
+                            }
+                          }
+                        }
+                        
+                        // Calculate actual paid amount from payment records for this employee in the date range
+                        const empPayments = reportData.payments.filter(p => p.employeeId === emp.id)
+                        const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+                        
+                        // Use paid amount if available, otherwise calculate from work days
+                        let paidAmount = actualPaidAmount
+                        if (paidAmount === 0) {
+                          for (const workDay of paidDays) {
+                            if (workDay.customAmount !== undefined) {
+                              paidAmount += workDay.customAmount
+                            } else {
+                              if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                                paidAmount += emp.previousWage
+                              } else {
+                                paidAmount += emp.dailyWage
+                              }
+                            }
+                          }
+                        }
+                        
+                        const totalOutstanding = totalEarned - paidAmount
                         
                         return (
                           <div key={emp.id} className="flex justify-between items-center bg-white rounded p-2 text-sm">
                             <span className="font-medium">{emp.name}</span>
                             <div className="flex space-x-4 text-xs">
-                              <span>{workedDays} worked</span>
-                              <span>{paidDays} paid</span>
+                              <span>{workedDays.length} worked</span>
+                              <span>{paidDays.length} paid</span>
                               <span className={totalOutstanding > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
                                 £{totalOutstanding.toFixed(0)} owed
                               </span>

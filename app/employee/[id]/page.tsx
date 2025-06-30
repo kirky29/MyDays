@@ -1191,7 +1191,7 @@ export default function EmployeeDetail() {
                       onClick={() => setShowPaymentModal(true)}
                       className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                     >
-                      Pay £{(selectedWorkDays.length * employee.dailyWage).toFixed(2)} for {selectedWorkDays.length} day{selectedWorkDays.length !== 1 ? 's' : ''}
+                      Pay £{selectedWorkDayObjects.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0).toFixed(2)} for {selectedWorkDays.length} day{selectedWorkDays.length !== 1 ? 's' : ''}
                     </button>
                   )}
                 </div>

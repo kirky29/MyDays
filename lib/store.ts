@@ -69,6 +69,7 @@ interface AppState {
     totalPaid: number
     totalOwed: number
     totalEarned: number
+    actualPaidAmount: number
   }
 }
 
@@ -245,9 +246,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   calculateEmployeeStats: (employeeId) => {
-    const { employees, workDays } = get()
+    const { employees, workDays, payments } = get()
     const employee = employees.find(emp => emp.id === employeeId)
-    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0 }
+    if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0 }
     
     const workedDays = workDays.filter(day => 
       day.employeeId === employeeId && day.worked
@@ -273,27 +274,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
     
-    // Calculate actual paid amount (same logic but for paid days only)
-    let actualPaidAmount = 0
+    // Calculate actual paid amount from payment records (most accurate method)
+    const employeePayments = payments.filter(p => p.employeeId === employeeId)
+    const actualPaidAmount = employeePayments.reduce((sum, payment) => sum + payment.amount, 0)
+    
+    // For backwards compatibility, also calculate paid amount from work days
+    // This is used as fallback if no payment records exist
+    let calculatedPaidAmount = 0
     for (const workDay of paidDays) {
       if (workDay.customAmount !== undefined) {
-        actualPaidAmount += workDay.customAmount
+        calculatedPaidAmount += workDay.customAmount
       } else {
         if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
-          actualPaidAmount += employee.previousWage
+          calculatedPaidAmount += employee.previousWage
         } else {
-          actualPaidAmount += employee.dailyWage
+          calculatedPaidAmount += employee.dailyWage
         }
       }
     }
     
-    const totalOwed = totalEarned - actualPaidAmount
+    // Use actual payment records if available, otherwise fall back to calculated amount
+    const finalPaidAmount = actualPaidAmount > 0 ? actualPaidAmount : calculatedPaidAmount
+    
+    const totalOwed = totalEarned - finalPaidAmount
     
     return { 
       totalWorked: workedDays.length, 
       totalPaid: paidDays.length, 
       totalOwed, 
-      totalEarned 
+      totalEarned,
+      actualPaidAmount: finalPaidAmount
     }
   }
 })) 

@@ -131,16 +131,32 @@ export default function PaymentEditModal({
           <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="font-medium text-gray-700 mb-3">Work Days Covered ({paidWorkDays.length})</h4>
             <div className="space-y-2">
-              {paidWorkDays.map(workDay => (
-                <div key={workDay.id} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-800">
-                    {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
-                  </span>
-                  <span className="font-medium text-gray-600">
-                    £{employee.dailyWage}
-                  </span>
-                </div>
-              ))}
+              {paidWorkDays.map(workDay => {
+                // Calculate the actual amount for this work day
+                const getWorkDayAmount = (wd: any) => {
+                  if (wd.customAmount !== undefined) {
+                    return wd.customAmount
+                  }
+                  if (employee.wageChangeDate && employee.previousWage && wd.date < employee.wageChangeDate) {
+                    return employee.previousWage
+                  }
+                  return employee.dailyWage
+                }
+                
+                return (
+                  <div key={workDay.id} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-800">
+                      {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
+                    </span>
+                    <span className="font-medium text-gray-600">
+                      £{getWorkDayAmount(workDay).toFixed(2)}
+                      {workDay.customAmount !== undefined && (
+                        <span className="text-blue-600 text-xs ml-1">(Custom)</span>
+                      )}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
             
             {payment.notes && (

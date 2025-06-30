@@ -15,6 +15,8 @@ interface Employee {
   phone?: string
   startDate?: string
   notes?: string
+  wageChangeDate?: string
+  previousWage?: number
 }
 
 interface WorkDay {
@@ -213,20 +215,50 @@ export default function Settings() {
         date: new Date().toLocaleDateString(),
         employees: employees.map(emp => {
           const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
-          const workedDays = empWorkDays.filter(wd => wd.worked).length
-          const paidDays = empWorkDays.filter(wd => wd.paid).length
-          const totalEarned = workedDays * emp.dailyWage
-          const totalPaid = paidDays * emp.dailyWage
-          const outstanding = totalEarned - totalPaid
+          const workedDays = empWorkDays.filter(wd => wd.worked)
+          const paidDays = empWorkDays.filter(wd => wd.paid)
+          
+          // Calculate total earned properly accounting for custom amounts and wage changes
+          let totalEarned = 0
+          for (const workDay of workedDays) {
+            if (workDay.customAmount !== undefined) {
+              totalEarned += workDay.customAmount
+            } else {
+              if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                totalEarned += emp.previousWage
+              } else {
+                totalEarned += emp.dailyWage
+              }
+            }
+          }
+          
+          // Calculate actual paid amount from payment records for this employee in the date range
+          const empPayments = payments.filter(p => p.employeeId === emp.id)
+          const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+          
+          // Use paid amount if available, otherwise calculate from work days
+          let paidAmount = actualPaidAmount
+          if (paidAmount === 0) {
+            for (const workDay of paidDays) {
+              if (workDay.customAmount !== undefined) {
+                paidAmount += workDay.customAmount
+              } else {
+                if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                  paidAmount += emp.previousWage
+                } else {
+                  paidAmount += emp.dailyWage
+                }
+              }
+            }
+          }
           
           return {
             name: emp.name,
             dailyWage: emp.dailyWage,
-            workedDays,
-            paidDays,
+            workedDays: workedDays.length,
+            paidDays: paidDays.length,
             totalEarned,
-            totalPaid,
-            outstanding
+            outstanding: totalEarned - paidAmount
           }
         }),
         summary: {
@@ -235,9 +267,44 @@ export default function Settings() {
           totalPaidDays: workDays.filter(wd => wd.paid).length,
           totalOutstanding: employees.reduce((total, emp) => {
             const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
-            const workedDays = empWorkDays.filter(wd => wd.worked).length
-            const paidDays = empWorkDays.filter(wd => wd.paid).length
-            return total + (workedDays * emp.dailyWage) - (paidDays * emp.dailyWage)
+            const workedDays = empWorkDays.filter(wd => wd.worked)
+            const paidDays = empWorkDays.filter(wd => wd.paid)
+            
+            // Calculate total earned properly accounting for custom amounts and wage changes
+            let totalEarned = 0
+            for (const workDay of workedDays) {
+              if (workDay.customAmount !== undefined) {
+                totalEarned += workDay.customAmount
+              } else {
+                if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                  totalEarned += emp.previousWage
+                } else {
+                  totalEarned += emp.dailyWage
+                }
+              }
+            }
+            
+            // Calculate actual paid amount from payment records for this employee
+            const empPayments = payments.filter(p => p.employeeId === emp.id)
+            const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+            
+            // Use paid amount if available, otherwise calculate from work days
+            let paidAmount = actualPaidAmount
+            if (paidAmount === 0) {
+              for (const workDay of paidDays) {
+                if (workDay.customAmount !== undefined) {
+                  paidAmount += workDay.customAmount
+                } else {
+                  if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
+                    paidAmount += emp.previousWage
+                  } else {
+                    paidAmount += emp.dailyWage
+                  }
+                }
+              }
+            }
+            
+            return total + (totalEarned - paidAmount)
           }, 0)
         }
       }

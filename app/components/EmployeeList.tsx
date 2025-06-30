@@ -148,7 +148,7 @@ export default function EmployeeList() {
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         <span className="text-gray-700 font-medium">Total Paid</span>
                       </div>
-                      <span className="font-bold text-green-600">£{(stats.totalPaid * employee.dailyWage).toFixed(2)}</span>
+                      <span className="font-bold text-green-600">£{stats.actualPaidAmount.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

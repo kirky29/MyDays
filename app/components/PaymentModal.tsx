@@ -12,12 +12,15 @@ interface WorkDay {
   date: string
   worked: boolean
   paid: boolean
+  customAmount?: number
 }
 
 interface Employee {
   id: string
   name: string
   dailyWage: number
+  wageChangeDate?: string
+  previousWage?: number
 }
 
 interface PaymentModalProps {
@@ -45,7 +48,18 @@ export default function PaymentModal({
 
   if (!isOpen) return null
 
-  const totalAmount = selectedWorkDays.length * employee.dailyWage
+  // Calculate total amount properly accounting for custom amounts and wage changes
+  const calculateWorkDayAmount = (workDay: WorkDay) => {
+    if (workDay.customAmount !== undefined) {
+      return workDay.customAmount
+    }
+    if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+      return employee.previousWage
+    }
+    return employee.dailyWage
+  }
+
+  const totalAmount = selectedWorkDays.reduce((sum, workDay) => sum + calculateWorkDayAmount(workDay), 0)
   const selectedDates = selectedWorkDays.map(day => format(new Date(day.date), 'MMM d, yyyy'))
 
   const handlePayment = async () => {
@@ -134,10 +148,10 @@ export default function PaymentModal({
           <div>
             <h3 className="font-medium text-gray-700 mb-3">Selected Work Days ({selectedWorkDays.length})</h3>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {selectedDates.map((date, index) => (
-                <div key={index} className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
-                  <span className="text-sm font-medium text-blue-800">{date}</span>
-                  <span className="text-sm font-bold text-blue-600">£{employee.dailyWage}</span>
+              {selectedWorkDays.map((workDay, index) => (
+                <div key={workDay.id} className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+                  <span className="text-sm font-medium text-blue-800">{format(new Date(workDay.date), 'MMM d, yyyy')}</span>
+                  <span className="text-sm font-bold text-blue-600">£{calculateWorkDayAmount(workDay).toFixed(2)}</span>
                 </div>
               ))}
             </div>

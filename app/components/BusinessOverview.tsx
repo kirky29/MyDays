@@ -19,7 +19,7 @@ export default function BusinessOverview() {
 
   const totalPaid = employees.reduce((total, emp) => {
     const stats = calculateEmployeeStats(emp.id)
-    return total + (stats.totalPaid * emp.dailyWage)
+    return total + stats.actualPaidAmount
   }, 0)
 
   const paymentSummary = [
