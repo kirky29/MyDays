@@ -47,36 +47,40 @@ export default function BusinessOverview() {
   ]
 
   return (
-    <div className="mb-6">
-      {/* Payment Summary Cards - Main Focus */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        {paymentSummary.map((item) => (
-          <div key={item.label} className="card hover:shadow-lg transition-shadow duration-200">
-            <div className="card-body py-4 sm:py-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
+    <div className="px-4 pb-6 space-y-4">
+      {/* Payment Summary Cards - Mobile First */}
+      {paymentSummary.map((item) => (
+        <div key={item.label} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
                   item.color === 'green' ? 'bg-green-100' : 
                   item.color === 'amber' ? 'bg-amber-100' : 'bg-blue-100'
                 }`}>
-                  <span className="text-lg sm:text-xl">{item.icon}</span>
+                  <span className="text-xl">{item.icon}</span>
                 </div>
-                <div className="text-right">
-                  <p className={`text-xl sm:text-2xl font-bold ${
-                    item.color === 'green' ? 'text-green-600' : 
-                    item.color === 'amber' ? 'text-amber-600' : 'text-blue-600'
-                  }`}>
-                    £{item.value.toFixed(2)}
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">
+                    {item.label}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {item.description}
                   </p>
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800 mb-1">{item.label}</p>
-                <p className="text-xs text-gray-500">{item.description}</p>
+              <div className="text-right">
+                <p className={`text-2xl font-bold ${
+                  item.color === 'green' ? 'text-green-600' : 
+                  item.color === 'amber' ? 'text-amber-600' : 'text-blue-600'
+                }`}>
+                  £{item.value.toFixed(2)}
+                </p>
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 } 
