@@ -49,7 +49,7 @@ export default function BusinessOverview() {
   return (
     <div className="mb-6">
       {/* Payment Summary Cards - Main Focus */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {paymentSummary.map((item) => (
           <div key={item.label} className="card hover:shadow-lg transition-shadow duration-200">
             <div className="card-body py-4 sm:py-5">
@@ -77,18 +77,6 @@ export default function BusinessOverview() {
           </div>
         ))}
       </div>
-
-      {/* Outstanding Payments Alert */}
-      {totalOutstanding > 0 && (
-        <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-amber-800">
-              £{totalOutstanding.toFixed(2)} in outstanding payments across {employees.filter(emp => calculateEmployeeStats(emp.id).totalOwed > 0).length} employee{employees.filter(emp => calculateEmployeeStats(emp.id).totalOwed > 0).length !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 } 
