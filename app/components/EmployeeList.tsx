@@ -110,15 +110,15 @@ export default function EmployeeList() {
 
                 {/* Enhanced Stats Grid with stronger borders */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center shadow-sm">
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm">
                     <div className="text-2xl font-bold text-blue-600 mb-1">{stats.totalWorked}</div>
                     <div className="text-xs font-semibold text-blue-700">Days Worked</div>
                   </div>
-                  <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center shadow-sm">
+                  <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm">
                     <div className="text-2xl font-bold text-green-600 mb-1">{stats.totalPaid}</div>
                     <div className="text-xs font-semibold text-green-700">Days Paid</div>
                   </div>
-                  <div className={`${stats.totalOwed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'} border-2 rounded-xl p-4 text-center shadow-sm`}>
+                  <div className={`${stats.totalOwed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'} border-2 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm`}>
                     <div className={`text-2xl font-bold mb-1 ${stats.totalOwed > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                       £{stats.totalOwed.toFixed(0)}
                     </div>
