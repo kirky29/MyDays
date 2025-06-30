@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { firebaseService } from '../../lib/firebase'
 import { useAppStore } from '../../lib/store'
-import BottomNavigation from '../components/BottomNavigation'
+
 import AuthGuard from '../components/AuthGuard'
 import ReportModal from '../components/ReportModal'
 
@@ -451,7 +451,7 @@ export default function Settings() {
   if (loading) {
     return (
       <AuthGuard>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
           <div className="container mx-auto px-4 py-8 max-w-md">
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
@@ -461,7 +461,6 @@ export default function Settings() {
               </div>
             </div>
           </div>
-          <BottomNavigation onNavigate={handleNavigate} />
         </div>
       </AuthGuard>
     )
@@ -469,7 +468,7 @@ export default function Settings() {
 
   return (
     <AuthGuard>
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header */}
         <div className="text-center mb-6">
@@ -945,8 +944,6 @@ export default function Settings() {
         payments={payments}
       />
 
-      {/* Bottom Navigation */}
-      <BottomNavigation onNavigate={handleNavigate} />
     </div>
     </AuthGuard>
   )

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { format, parseISO, differenceInDays, differenceInHours, differenceInMinutes } from 'date-fns'
 import { firebaseService } from '../../lib/firebase'
 import type { Employee, WorkDay, Payment } from '../../lib/store'
-import BottomNavigation from '../components/BottomNavigation'
+
 
 interface ActivityLogEntry {
   id: string
@@ -188,8 +188,6 @@ export default function ActivityLog() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <BottomNavigation onNavigate={handleNavigate} />
     </div>
   )
   }
@@ -197,7 +195,7 @@ export default function ActivityLog() {
   const filteredActivities = getFilteredActivities()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-20 sm:pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
         <div className="mb-8">

@@ -8,7 +8,7 @@ import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
 import PaymentEditModal from '../../components/PaymentEditModal'
 import WorkDayEditModal from '../../components/WorkDayEditModal'
-import BottomNavigation from '../../components/BottomNavigation'
+
 import { useBodyScrollLock } from '../../../lib/hooks/useBodyScrollLock'
 
 interface Employee {
@@ -951,7 +951,7 @@ export default function EmployeeDetail() {
   const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pb-20 sm:pb-24 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
@@ -1454,8 +1454,7 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {/* Bottom Navigation */}
-      <BottomNavigation onNavigate={handleNavigate} />
+
       </div>
     </div>
   )
