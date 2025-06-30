@@ -73,7 +73,7 @@ export default function EmployeeList() {
             <div key={employee.id} className="bg-white rounded-2xl shadow-md border-2 border-gray-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 group cursor-pointer overflow-hidden" onClick={() => navigateToEmployee(employee.id)}>
               {/* Employee Header */}
               <div className="p-6">
-                <div className="flex items-start space-x-4 mb-6">
+                <div className="flex items-center space-x-4 mb-6">
                   {/* Enhanced Avatar */}
                   <div className="relative">
                     <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
@@ -85,12 +85,12 @@ export default function EmployeeList() {
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 text-xl mb-2 truncate">
+                        <h3 className="font-bold text-gray-900 text-xl truncate">
                           {employee.name}
                         </h3>
-                        <div className="flex items-center space-x-3 mb-2">
+                        <div className="flex items-center space-x-3 mt-1">
                           {employee.startDate && (
                             <div className="text-xs text-gray-600 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
                               Started {format(new Date(employee.startDate), 'MMM d, yyyy')}
