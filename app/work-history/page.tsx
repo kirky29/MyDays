@@ -4,13 +4,22 @@ import { useState, useMemo } from 'react'
 import { format, parseISO } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAppStore } from '../../lib/store'
+import { useFirebaseData } from '../../lib/hooks/useFirebaseData'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function WorkHistory() {
   const router = useRouter()
-  const { employees, workDays, payments } = useAppStore()
+  const { employees, workDays, payments, loading } = useAppStore()
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
   const [sortBy, setSortBy] = useState<'date' | 'employee' | 'amount'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Initialize Firebase data loading
+  useFirebaseData()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   // Get all past worked days (not future scheduled work)
   const pastWorkedDays = useMemo(() => {
