@@ -28,7 +28,7 @@ export default function AddEmployeeButton() {
         </button>
         
         <p className="text-xs sm:text-sm text-gray-600 max-w-xs mx-auto">
-          Add team members to start tracking their work days and managing payments
+          Add employees to start tracking their work days and managing payments
         </p>
       </div>
       

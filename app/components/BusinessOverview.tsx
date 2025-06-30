@@ -29,7 +29,7 @@ export default function BusinessOverview() {
       icon: "👥",
       color: "blue",
       suffix: "",
-      onClick: () => router.push('/team')
+      onClick: () => router.push('/')
     },
     {
       label: "Work Days",
@@ -37,7 +37,7 @@ export default function BusinessOverview() {
       icon: "📅",
       color: "indigo",
       suffix: "",
-      onClick: () => router.push('/team')
+      onClick: () => router.push('/')
     },
     {
       label: "Days Paid",
@@ -45,7 +45,7 @@ export default function BusinessOverview() {
       icon: "✅",
       color: "green",
       suffix: "",
-      onClick: () => router.push('/team')
+      onClick: () => router.push('/')
     },
     {
       label: "Outstanding",
@@ -54,7 +54,7 @@ export default function BusinessOverview() {
       color: totalOutstanding > 0 ? "amber" : "green",
       suffix: "£",
       prefix: true,
-      onClick: () => router.push('/team')
+      onClick: () => router.push('/')
     }
   ]
 

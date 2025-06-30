@@ -83,7 +83,7 @@ export default function AddEmployee() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Add New Employee</h1>
-            <p className="text-gray-600 text-sm">Add a team member to start tracking work</p>
+            <p className="text-gray-600 text-sm">Add an employee to start tracking work</p>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ import AppHeader from './components/AppHeader'
 import BusinessOverview from './components/BusinessOverview'
 import EmployeeList from './components/EmployeeList'
 import AddEmployeeButton from './components/AddEmployeeButton'
-import BottomNavigation from './components/BottomNavigation'
+
 import AuthGuard from './components/AuthGuard'
 
 export default function Home() {
@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pb-20 sm:pb-24">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
         {/* Main Content Container */}
         <div className="container mx-auto px-4 py-4 sm:py-6 max-w-md">
           {/* Header Section */}
@@ -43,12 +43,10 @@ export default function Home() {
             {employees.length === 0 && <AddEmployeeButton />}
           </div>
           
-          {/* Bottom Spacing for Navigation */}
-          <div className="h-4 sm:h-6"></div>
+
         </div>
         
-        {/* Fixed Bottom Navigation */}
-        <BottomNavigation onNavigate={handleNavigate} />
+
       </div>
     </AuthGuard>
   )

@@ -57,7 +57,7 @@ export default function EmployeeList() {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Team</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Employees</h2>
           </div>
         </div>
         <p className="text-sm text-gray-600 ml-11">
