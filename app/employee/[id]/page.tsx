@@ -267,9 +267,23 @@ export default function EmployeeDetail() {
     // Only select unpaid work days that are not in the future (past/current work)
     const today = new Date()
     today.setHours(23, 59, 59, 999) // End of today
-    const unpaidWorkDays = workDays.filter(day => 
-      day.worked && !day.paid && new Date(day.date) <= today
-    )
+    
+    const unpaidWorkDays = workDays.filter(day => {
+      const workDate = new Date(day.date)
+      const isPastOrToday = workDate <= today
+      const isWorkedAndUnpaid = day.worked && !day.paid
+      
+      // Debug logging
+      if (day.worked && !isPastOrToday) {
+        console.log('Excluding future worked day:', day.date, '£' + getWorkDayAmount(day))
+      }
+      
+      return isWorkedAndUnpaid && isPastOrToday
+    })
+    
+    console.log('Select All - Found unpaid days:', unpaidWorkDays.length, 
+      'Total amount:', unpaidWorkDays.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0))
+    
     setSelectedWorkDays(unpaidWorkDays.map(day => day.id))
   }
 
@@ -964,8 +978,24 @@ export default function EmployeeDetail() {
   }
 
   const stats = calculateStats()
-  const unpaidWorkDays = workDays.filter(day => day.worked && !day.paid)
-  const selectedWorkDayObjects = workDays.filter(day => selectedWorkDays.includes(day.id))
+  
+  // Get unpaid work days for bulk payment (only past/current work)
+  const today = new Date()
+  today.setHours(23, 59, 59, 999) // End of today
+  const unpaidWorkDays = workDays.filter(day => 
+    day.worked && !day.paid && new Date(day.date) <= today
+  )
+  
+  // Filter selected work days to only include valid payable days (past/current unpaid work)
+  const selectedWorkDayObjects = workDays.filter(day => {
+    const isSelected = selectedWorkDays.includes(day.id)
+    const workDate = new Date(day.date)
+    const isPastOrToday = workDate <= today
+    const isPayable = day.worked && !day.paid && isPastOrToday
+    
+    // Only include if selected AND payable
+    return isSelected && isPayable
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
