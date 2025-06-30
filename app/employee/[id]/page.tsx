@@ -1290,7 +1290,11 @@ export default function EmployeeDetail() {
             </div>
 
             {/* Upcoming Work */}
-            {workDays.filter(day => new Date(day.date) >= new Date()).length > 0 && (
+            {(() => {
+              const today = new Date()
+              today.setHours(23, 59, 59, 999) // End of today
+              return workDays.filter(day => new Date(day.date) > today).length > 0
+            })() && (
               <div className="mb-6">
                 <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
                   <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1299,10 +1303,14 @@ export default function EmployeeDetail() {
                   Upcoming Work
                 </h3>
                 <div className="space-y-2">
-                  {workDays
-                    .filter(day => new Date(day.date) >= new Date())
-                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                    .slice(0, 6)
+                  {(() => {
+                    const today = new Date()
+                    today.setHours(23, 59, 59, 999) // End of today
+                    return workDays
+                      .filter(day => new Date(day.date) > today)
+                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .slice(0, 6)
+                  })()
                     .map(workDay => (
                       <div 
                         key={workDay.id} 
@@ -1344,7 +1352,11 @@ export default function EmployeeDetail() {
                               <div className="text-xs text-blue-600">Custom rate</div>
                             )}
                             <div className="text-xs text-gray-500 mt-1">
-                              {new Date(workDay.date) > new Date() ? 'Future' : 'Today'}
+                              {(() => {
+                                const today = new Date()
+                                today.setHours(23, 59, 59, 999) // End of today
+                                return new Date(workDay.date) > today ? 'Future' : 'Today'
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -1376,10 +1388,14 @@ export default function EmployeeDetail() {
               </div>
               
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {workDays
-                  .filter(day => day.worked && new Date(day.date) < new Date())
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 20)
+                {(() => {
+                  const today = new Date()
+                  today.setHours(23, 59, 59, 999) // End of today
+                  return workDays
+                    .filter(day => day.worked && new Date(day.date) <= today)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 20)
+                })()
                   .map(workDay => {
                     const relatedPayment = payments.find(payment => 
                       payment.workDayIds.includes(workDay.id)
