@@ -269,43 +269,24 @@ export default function EmployeeReports() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
             <div className="flex items-center space-x-3">
-              {/* Sort Icons */}
-              <div className="flex items-center space-x-1">
-                <span className="text-sm text-gray-600 mr-2">Sort:</span>
-                <button
-                  onClick={() => setSortBy('date')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    sortBy === 'date' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title="Sort by Date"
-                >
-                  📅
-                </button>
-                <button
-                  onClick={() => setSortBy('employee')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    sortBy === 'employee' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title="Sort by Employee"
-                >
-                  👤
-                </button>
-                <button
-                  onClick={() => setSortBy('amount')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    sortBy === 'amount' 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title="Sort by Amount"
-                >
-                  💰
-                </button>
-              </div>
+              {/* Sort Button */}
+              <button
+                onClick={() => {
+                  const sortOptions: ('date' | 'employee' | 'amount')[] = ['date', 'employee', 'amount']
+                  const currentIndex = sortOptions.indexOf(sortBy)
+                  const nextIndex = (currentIndex + 1) % sortOptions.length
+                  setSortBy(sortOptions[nextIndex])
+                }}
+                className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                title="Click to cycle through sort options"
+              >
+                <span>Sort:</span>
+                <span className="font-medium">
+                  {sortBy === 'date' && '📅 Date'}
+                  {sortBy === 'employee' && '👤 Employee'}
+                  {sortBy === 'amount' && '💰 Amount'}
+                </span>
+              </button>
               <button
                 onClick={clearAllFilters}
                 className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
