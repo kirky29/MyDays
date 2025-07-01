@@ -283,12 +283,30 @@ body {
   min-width: 44px;
 }
 
-/* Improved text styles */
+/* Enhanced text styles */
 .text-gradient {
   background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Animated gradient text */
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+.bg-300% {
+  background-size: 300% 300%;
 }
 
 /* Enhanced spacing utilities for mobile */
