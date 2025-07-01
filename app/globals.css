@@ -74,6 +74,10 @@
   padding-top: env(safe-area-inset-top);
 }
 
+.h-safe-area-inset-bottom {
+  height: env(safe-area-inset-bottom, 0);
+}
+
 /* Enhanced body styling */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;

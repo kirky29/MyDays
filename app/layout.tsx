@@ -1,13 +1,20 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import BottomNavigation from './components/BottomNavigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Did They Work? - Employee Work Tracker',
   description: 'Track employee work days and payments',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
@@ -23,8 +30,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 pb-20">
           {children}
+          <BottomNavigation />
         </div>
       </body>
     </html>
