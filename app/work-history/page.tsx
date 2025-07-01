@@ -278,24 +278,18 @@ export default function EmployeeReports() {
 
           {/* Employee Selection */}
           <div className="mb-6 text-center">
-            <div className="flex items-center justify-center mb-3">
-              <label className="text-sm font-medium text-gray-700 mr-4">Select Employees</label>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={selectAllEmployees} 
-                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                >
-                  Select All
-                </button>
-                <button 
-                  onClick={clearEmployeeFilters} 
-                  className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Employees</label>
             <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => setSelectedEmployeeIds([])}
+                className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                  selectedEmployeeIds.length === 0 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
               {employees.map(employee => {
                 const isSelected = selectedEmployeeIds.includes(employee.id)
                 return (
@@ -311,9 +305,6 @@ export default function EmployeeReports() {
                 )
               })}
             </div>
-            {selectedEmployeeIds.length === 0 && (
-              <p className="text-sm text-gray-500 mt-2">All employees selected</p>
-            )}
           </div>
 
           {/* Filter Options */}
