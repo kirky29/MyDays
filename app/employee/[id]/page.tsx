@@ -1441,13 +1441,7 @@ export default function EmployeeDetail() {
                             ? 'bg-green-50 border-green-200 hover:bg-green-100' 
                             : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
                         } ${isSelected ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
-                        onClick={() => {
-                          if (isSelectable) {
-                            toggleWorkDaySelection(workDay.id)
-                          } else {
-                            handleWorkDayClick(workDay)
-                          }
-                        }}
+                        onClick={() => handleWorkDayClick(workDay)}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
