@@ -477,7 +477,7 @@ export default function EmployeeReports() {
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
-          <div>
+          <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900">Employee Reports</h1>
             <p className="text-gray-600 mt-1">Track work schedules, payments, and performance across your team</p>
           </div>
