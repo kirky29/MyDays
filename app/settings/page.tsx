@@ -541,19 +541,6 @@ export default function Settings() {
     <AuthGuard>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-6 max-w-md">
-        {/* Back to Dashboard Link */}
-        <div className="mb-4">
-          <button
-            onClick={() => handleNavigate('/')}
-            className="flex items-center text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="font-medium">Back to Dashboard</span>
-          </button>
-        </div>
-
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-500 to-gray-700 rounded-2xl shadow-lg mb-4">
