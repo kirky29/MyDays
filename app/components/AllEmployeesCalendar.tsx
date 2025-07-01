@@ -261,45 +261,47 @@ export default function AllEmployeesCalendar() {
             <div
               key={date.toISOString()}
               className={`
-                relative p-1 min-h-[80px] border border-transparent rounded-lg
+                relative p-2 min-h-[120px] border border-transparent rounded-lg
                 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                 ${isTodayDate ? 'ring-2 ring-indigo-500 ring-opacity-50' : ''}
                 ${dayShifts.length === 0 ? 'hover:bg-blue-50' : ''}
               `}
             >
-              <div className="text-sm font-medium text-center mb-1">
+              <div className="text-sm font-medium text-center mb-2">
                 {format(date, 'd')}
               </div>
               
               {/* Shifts for this day */}
               <div className="space-y-1">
-                {dayShifts.slice(0, 3).map((shift, index) => (
+                {dayShifts.slice(0, 4).map((shift, index) => (
                   <div
                     key={shift.workDay.id}
-                    className={`text-xs p-1 rounded ${shift.status.bgColor} ${shift.status.textColor} cursor-pointer hover:opacity-80`}
+                    className={`text-xs p-1.5 rounded ${shift.status.bgColor} ${shift.status.textColor} cursor-pointer hover:opacity-80`}
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold ${getEmployeeColor(shift.employee.id)}`}>
-                        {shift.employee.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs">£{shift.amount.toFixed(0)}</span>
-                        <span>{shift.status.label}</span>
-                      </div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium truncate flex-1 mr-1">
+                        {shift.employee.name}
+                      </span>
+                      <span>{shift.status.label}</span>
                     </div>
-                    {shift.workDay.notes && (
-                      <div className="text-xs opacity-80 truncate mt-1">
-                        {shift.workDay.notes}
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">
+                        £{shift.amount.toFixed(0)}
+                      </span>
+                      {shift.workDay.notes && (
+                        <span className="text-xs opacity-70 truncate max-w-[60px]">
+                          "{shift.workDay.notes.substring(0, 10)}..."
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
                 
-                {/* Show count if more than 3 shifts */}
-                {dayShifts.length > 3 && (
+                {/* Show count if more than 4 shifts */}
+                {dayShifts.length > 4 && (
                   <div className="text-xs text-gray-500 text-center py-1">
-                    +{dayShifts.length - 3} more
+                    +{dayShifts.length - 4} more
                   </div>
                 )}
               </div>
