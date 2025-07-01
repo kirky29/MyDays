@@ -1367,7 +1367,7 @@ export default function EmployeeDetail() {
                     return workDays
                       .filter(day => new Date(day.date) > today)
                       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                      .slice(0, 6)
+                      .slice(0, 5)
                   })()
                     .map(workDay => (
                       <div 
@@ -1445,14 +1445,14 @@ export default function EmployeeDetail() {
                 </button>
               </div>
               
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2">
                 {(() => {
                   const today = new Date()
                   today.setHours(23, 59, 59, 999) // End of today
                   return workDays
                     .filter(day => day.worked && new Date(day.date) <= today)
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .slice(0, 20)
+                    .slice(0, 10)
                 })()
                   .map(workDay => {
                     const relatedPayment = payments.find(payment => 
