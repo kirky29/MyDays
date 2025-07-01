@@ -9,11 +9,12 @@ import LoadingScreen from '../components/LoadingScreen'
 import PaymentModal from '../components/PaymentModal'
 import PaymentEditModal from '../components/PaymentEditModal'
 import WorkDayEditModal from '../components/WorkDayEditModal'
-import { firebaseService } from '../../lib/firebase'
+import { firebaseService, PAYMENT_TYPES } from '../../lib/firebase'
 import type { Payment } from '../../lib/store'
 
 type WorkStatusFilter = 'all' | 'worked' | 'scheduled'
 type PaymentStatusFilter = 'all' | 'paid' | 'unpaid'
+type PaymentTypeFilter = 'all' | 'Bank Transfer' | 'PayPal' | 'Cash' | 'Other'
 type DateRangeFilter = 'all' | 'today' | 'week' | 'month' | 'last-month' | 'year' | 'custom'
 
 interface Employee {
@@ -46,6 +47,7 @@ export default function EmployeeReports() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
   const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('all')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all')
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState<PaymentTypeFilter>('all')
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>('all')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
@@ -192,6 +194,11 @@ export default function EmployeeReports() {
       filtered = filtered.filter(payment => selectedEmployeeIds.includes(payment.employeeId))
     }
 
+    // Filter by payment type
+    if (paymentTypeFilter !== 'all') {
+      filtered = filtered.filter(payment => payment.paymentType === paymentTypeFilter)
+    }
+
     // Filter by date range
     if (dateRangeFilter !== 'all') {
       const { start, end } = getDateRange()
@@ -209,18 +216,33 @@ export default function EmployeeReports() {
     const sorted = [...filtered].sort((a, b) => {
       let compareValue = 0
       if (sortBy === 'date') {
-        compareValue = new Date(a.date).getTime() - new Date(b.date).getTime()
+        // Ensure consistent date parsing and sorting
+        const dateA = parseISO(a.date)
+        const dateB = parseISO(b.date)
+        compareValue = dateA.getTime() - dateB.getTime()
       } else if (sortBy === 'employee') {
         const empA = employees.find(emp => emp.id === a.employeeId)
         const empB = employees.find(emp => emp.id === b.employeeId)
         compareValue = (empA?.name || '').localeCompare(empB?.name || '')
+        // Secondary sort by date for employees with same name
+        if (compareValue === 0) {
+          const dateA = parseISO(a.date)
+          const dateB = parseISO(b.date)
+          compareValue = dateA.getTime() - dateB.getTime()
+        }
       } else if (sortBy === 'amount') {
         compareValue = a.amount - b.amount
+        // Secondary sort by date for same amounts
+        if (compareValue === 0) {
+          const dateA = parseISO(a.date)
+          const dateB = parseISO(b.date)
+          compareValue = dateA.getTime() - dateB.getTime()
+        }
       }
       return sortOrder === 'desc' ? -compareValue : compareValue
     })
     return sorted
-  }, [payments, selectedEmployeeIds, dateRangeFilter, customStartDate, customEndDate, sortBy, sortOrder, employees])
+  }, [payments, selectedEmployeeIds, paymentTypeFilter, dateRangeFilter, customStartDate, customEndDate, sortBy, sortOrder, employees])
 
   const getWorkDayAmount = (workDay: any) => {
     const employee = employees.find(emp => emp.id === workDay.employeeId)
@@ -261,6 +283,7 @@ export default function EmployeeReports() {
     setSelectedEmployeeIds([])
     setWorkStatusFilter('all')
     setPaymentStatusFilter('all')
+    setPaymentTypeFilter('all')
     setDateRangeFilter('all')
     setCustomStartDate('')
     setCustomEndDate('')
@@ -609,7 +632,7 @@ export default function EmployeeReports() {
           </div>
 
           {/* Filter Options */}
-          <div className={`grid grid-cols-1 ${viewMode === 'workdays' ? 'lg:grid-cols-3' : 'lg:grid-cols-1'} gap-6 mb-6 text-center`}>
+          <div className={`grid grid-cols-1 ${viewMode === 'workdays' ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6 mb-6 text-center`}>
             {/* Work Status Filter - Only show for work days view */}
             {viewMode === 'workdays' && (
               <div>
@@ -652,6 +675,34 @@ export default function EmployeeReports() {
                       className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                         paymentStatusFilter === option.value 
                           ? 'bg-amber-600 text-white shadow-md' 
+                          : option.color + ' hover:bg-opacity-80'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Type Filter - Only show for payments view */}
+            {viewMode === 'payments' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {[
+                    { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700' },
+                    { value: 'Bank Transfer', label: 'Bank Transfer', color: 'bg-green-100 text-green-700' },
+                    { value: 'PayPal', label: 'PayPal', color: 'bg-blue-100 text-blue-700' },
+                    { value: 'Cash', label: 'Cash', color: 'bg-amber-100 text-amber-700' },
+                    { value: 'Other', label: 'Other', color: 'bg-purple-100 text-purple-700' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setPaymentTypeFilter(option.value as PaymentTypeFilter)}
+                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                        paymentTypeFilter === option.value 
+                          ? 'bg-green-600 text-white shadow-md' 
                           : option.color + ' hover:bg-opacity-80'
                       }`}
                     >
