@@ -485,9 +485,6 @@ export default function EmployeeDetail() {
         
         // Also clear any selection state
         clearSelection()
-        
-        // Show success message
-        alert('Work day removed successfully! It has been removed from the calendar.')
       } catch (error: any) {
         console.error('Error removing work day:', error)
         setSyncStatus('error')
