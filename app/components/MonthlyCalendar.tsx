@@ -218,6 +218,10 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
           <span className="text-green-600">💰</span>
           <span className="text-gray-600">Payment Made</span>
         </div>
+        <div className="flex items-center space-x-1">
+          <div className="w-3 h-3 bg-gray-200 rounded-full border border-gray-400"></div>
+          <span className="text-gray-600">Click empty days to mark as worked</span>
+        </div>
       </div>
 
       {/* Calendar Grid */}
@@ -244,9 +248,11 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
                  relative p-2 min-h-[40px] text-center cursor-pointer transition-all
                  ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                  ${isTodayDate ? 'ring-2 ring-indigo-500 ring-opacity-50' : ''}
-                 ${dayStatus ? dayStatus.bgColor : 'hover:bg-gray-50'}
-                 rounded-lg border border-transparent hover:border-gray-200
+                 ${dayStatus ? dayStatus.bgColor : 'hover:bg-blue-50 hover:border-blue-200'}
+                 rounded-lg border border-transparent
+                 ${!dayStatus && isCurrentMonth ? 'hover:shadow-sm' : ''}
                `}
+               title={!dayStatus && isCurrentMonth ? 'Click to mark as worked' : undefined}
              >
                <div className="text-sm font-medium">
                  {format(date, 'd')}

@@ -1240,6 +1240,9 @@ export default function EmployeeDetail() {
               const existingWorkDay = workDays.find(wd => wd.date === dateStr)
               if (existingWorkDay) {
                 handleWorkDayClick(existingWorkDay)
+              } else {
+                // If clicking on an empty day, mark it as worked
+                toggleWorkDay(dateStr)
               }
             }}
           />
