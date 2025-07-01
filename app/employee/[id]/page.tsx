@@ -1582,19 +1582,18 @@ export default function EmployeeDetail() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 text-sm">
                             Paid on {format(parseISO(payment.date), 'EEEE, MMMM d, yyyy')}
                           </div>
                           <div className="flex items-center space-x-2 mt-1">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-xs font-medium text-green-700">
+                            <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                            <span className="text-xs font-medium text-green-700 flex-shrink-0">
                               {payment.paymentType}
                             </span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-xs text-green-600">
-                              {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
-                            </span>
+                          </div>
+                          <div className="text-xs text-green-600 mt-1 truncate">
+                            {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
                           </div>
                         </div>
                       </div>
