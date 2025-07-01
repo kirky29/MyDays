@@ -227,18 +227,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   addDayNote: async (date, note) => {
     const dayNote: DayNote = {
-      id: Date.now().toString(),
+      id: `note-${date}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       date,
       note,
       createdAt: new Date().toISOString()
     }
     
     try {
+      console.log('Adding day note:', dayNote)
       set({ syncStatus: 'syncing', errorMessage: '' })
       await firebaseService.addDayNote(dayNote)
+      console.log('Day note added successfully')
       // Real-time listener will update the state
     } catch (error: any) {
       console.error('Error adding day note:', error)
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      })
       set({ 
         syncStatus: 'error', 
         errorMessage: `Failed to add day note: ${error.message}` 

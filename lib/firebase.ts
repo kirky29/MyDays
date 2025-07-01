@@ -525,10 +525,20 @@ export const firebaseService = {
   // Day notes functions
   async addDayNote(dayNote: DayNote) {
     try {
+      console.log('Firebase: Adding day note to collection:', COLLECTIONS.DAY_NOTES)
+      console.log('Firebase: Day note data:', dayNote)
+      console.log('Firebase: Document ID:', dayNote.id)
+      
       await setDoc(doc(db, COLLECTIONS.DAY_NOTES, dayNote.id), dayNote);
+      console.log('Firebase: Day note saved successfully')
       return { success: true };
     } catch (error) {
-      console.error('Error adding day note:', error);
+      console.error('Firebase: Error adding day note:', error)
+      console.error('Firebase: Error details:', {
+        code: (error as any).code,
+        message: (error as any).message,
+        name: (error as any).name
+      })
       throw error;
     }
   },
