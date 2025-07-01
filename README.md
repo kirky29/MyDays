@@ -232,4 +232,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Built with ❤️ for efficient work tracking and payroll management**  
-*Latest update: Enhanced calendar functionality* 
+*Latest update: Enhanced calendar functionality with payment amounts and click-to-work features* 
