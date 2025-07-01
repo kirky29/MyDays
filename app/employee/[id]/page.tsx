@@ -315,15 +315,29 @@ export default function EmployeeDetail() {
     const employeePayments = payments.filter(p => p.employeeId === employee.id)
     const actualPaidAmount = employeePayments.reduce((sum, payment) => sum + payment.amount, 0)
     
-    // Calculate total earned based on wage change logic and custom amounts
-    let totalEarned = 0
+    // Calculate total earned - but only for UNPAID work days
+    let totalEarnedFromUnpaidWork = 0
     
-    for (const workDay of workedDays) {
+    for (const workDay of unpaidDays) {
       if (workDay.customAmount !== undefined) {
         // Use custom amount if specified
-        totalEarned += workDay.customAmount
+        totalEarnedFromUnpaidWork += workDay.customAmount
       } else {
         // Use wage logic
+        if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+          totalEarnedFromUnpaidWork += employee.previousWage
+        } else {
+          totalEarnedFromUnpaidWork += employee.dailyWage
+        }
+      }
+    }
+    
+    // Calculate total earned (for display purposes)
+    let totalEarned = 0
+    for (const workDay of workedDays) {
+      if (workDay.customAmount !== undefined) {
+        totalEarned += workDay.customAmount
+      } else {
         if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
           totalEarned += employee.previousWage
         } else {
@@ -332,10 +346,27 @@ export default function EmployeeDetail() {
       }
     }
     
-    // Outstanding = what should be earned - what was actually paid
-    const totalOwed = totalEarned - actualPaidAmount
+    // Outstanding = amount owed for unpaid work only
+    // (We shouldn't subtract payments since those are for work already marked as paid)
+    const totalOwed = totalEarnedFromUnpaidWork
     const isOverpaid = totalOwed < 0
     const creditAmount = Math.abs(totalOwed)
+    
+    // Debug logging
+    console.log('💰 Outstanding Balance Debug:', {
+      workedDays: workedDays.length,
+      paidDays: paidDays.length,
+      unpaidDays: unpaidDays.length,
+      unpaidWorkDaysDetails: unpaidDays.map(wd => ({
+        date: wd.date,
+        amount: getWorkDayAmount(wd)
+      })),
+      totalEarnedFromUnpaidWork,
+      totalEarned,
+      actualPaidAmount,
+      totalOwed,
+      employeePayments: employeePayments.length
+    })
     
     return { 
       totalWorked: workedDays.length, 
