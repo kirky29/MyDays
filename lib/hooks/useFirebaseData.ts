@@ -3,6 +3,9 @@ import { firebaseService } from '../firebase'
 import { useAppStore } from '../store'
 import type { Employee, WorkDay, Payment } from '../store'
 
+// Global flag to track if we've ever loaded data in this session
+let hasEverLoadedData = false
+
 export const useFirebaseData = () => {
   const {
     employees,
@@ -30,6 +33,7 @@ export const useFirebaseData = () => {
       if (hasData) {
         setLoading(false)
         setSyncStatus('synced')
+        hasEverLoadedData = true
       }
       return
     }
@@ -39,8 +43,8 @@ export const useFirebaseData = () => {
 
     const loadData = async () => {
       try {
-        // Only show loading on the very first load
-        if (!hasData) {
+        // Only show loading screen if we've never loaded data before (first app load)
+        if (!hasData && !hasEverLoadedData) {
           setLoading(true)
           setSyncStatus('syncing')
         }
@@ -62,6 +66,7 @@ export const useFirebaseData = () => {
           setPayments(paymentsData as Payment[])
           setSyncStatus('synced')
           setLoading(false)
+          hasEverLoadedData = true
         }
       } catch (error: any) {
         console.error('Error loading data:', error)
