@@ -243,10 +243,10 @@ export default function AllEmployeesCalendar() {
       )}
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {/* Day headers */}
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="p-2 text-center text-xs font-medium text-gray-500">
+          <div key={day} className="p-3 text-center text-xs font-medium text-gray-500 min-w-[120px]">
             {day}
           </div>
         ))}
@@ -261,25 +261,25 @@ export default function AllEmployeesCalendar() {
             <div
               key={date.toISOString()}
               className={`
-                relative p-1 min-h-[100px] border border-gray-200 bg-white
+                relative p-2 min-h-[100px] min-w-[120px] border border-gray-300 bg-white
                 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                 ${isTodayDate ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
                 ${dayShifts.length === 0 ? 'hover:bg-blue-50' : ''}
               `}
             >
-              <div className="text-sm font-medium text-left mb-1 px-1">
+              <div className="text-sm font-medium text-left mb-2">
                 {format(date, 'd')}
               </div>
               
               {/* Shifts for this day */}
-              <div className="space-y-0.5 px-1">
+              <div className="space-y-1 flex flex-col items-center">
                 {dayShifts.slice(0, 3).map((shift, index) => (
                   <div
                     key={shift.workDay.id}
-                    className="text-xs cursor-pointer hover:opacity-80"
+                    className="text-xs cursor-pointer hover:opacity-80 w-full flex justify-center"
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
-                    <span className={`font-medium truncate px-2 py-1 rounded text-xs ${shift.status.bgColor} ${shift.status.textColor}`}>
+                    <span className={`font-medium px-2 py-1 rounded text-xs ${shift.status.bgColor} ${shift.status.textColor} text-center max-w-full`}>
                       {shift.employee.name}
                     </span>
                   </div>
