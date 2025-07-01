@@ -26,9 +26,6 @@ export default function EmployeeReports() {
   // Sort states
   const [sortBy, setSortBy] = useState<'date' | 'employee' | 'amount'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  
-  // UI states
-  const [showFilters, setShowFilters] = useState(false)
 
   // Initialize Firebase data loading
   useFirebaseData()
@@ -209,28 +206,26 @@ export default function EmployeeReports() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Employee Reports</h1>
-              <p className="text-gray-600 mt-1">Track work schedules, payments, and performance across your team</p>
-            </div>
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        {/* Header with Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center px-3 py-2 mb-4 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Employee Reports</h1>
+            <p className="text-gray-600 mt-1">Track work schedules, payments, and performance across your team</p>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600 mb-1">{summaryStats.workedDays}</div>
@@ -251,190 +246,177 @@ export default function EmployeeReports() {
           </div>
         </div>
 
-        {/* Filters & Controls */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Filters & View Options</h3>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        {/* Filters Section */}
+        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+            <button
+              onClick={clearAllFilters}
+              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+
+          {/* Employee Selection */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-gray-700">Select Employees</label>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={selectAllEmployees} 
+                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Select All
+                </button>
+                <button 
+                  onClick={clearEmployeeFilters} 
+                  className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {employees.map(employee => {
+                const isSelected = selectedEmployeeIds.includes(employee.id)
+                return (
+                  <button
+                    key={employee.id}
+                    onClick={() => toggleEmployeeFilter(employee.id)}
+                    className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                      isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {employee.name}
+                  </button>
+                )
+              })}
+            </div>
+            {selectedEmployeeIds.length === 0 && (
+              <p className="text-sm text-gray-500 mt-2">All employees selected</p>
+            )}
+          </div>
+
+          {/* Filter Options */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Work Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all', label: 'All' },
+                  { value: 'worked', label: 'Worked' },
+                  { value: 'scheduled', label: 'Scheduled' }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setWorkStatusFilter(option.value as WorkStatusFilter)}
+                    className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                      workStatusFilter === option.value 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all', label: 'All' },
+                  { value: 'paid', label: 'Paid' },
+                  { value: 'unpaid', label: 'Unpaid' }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setPaymentStatusFilter(option.value as PaymentStatusFilter)}
+                    className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                      paymentStatusFilter === option.value 
+                        ? 'bg-amber-600 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+              <select
+                value={dateRangeFilter}
+                onChange={(e) => setDateRangeFilter(e.target.value as DateRangeFilter)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {showFilters ? 'Hide Filters' : 'Show Filters'}
-              </button>
-              <button
-                onClick={clearAllFilters}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Clear All
-              </button>
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="year">This Year</option>
+                <option value="custom">Custom Range</option>
+              </select>
             </div>
           </div>
 
-          {/* Quick Date Filter */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[
-              { value: 'week', label: 'Last 7 Days' },
-              { value: 'month', label: 'This Month' },
-              { value: 'last-month', label: 'Last Month' },
-              { value: 'year', label: 'This Year' },
-              { value: 'all', label: 'All Time' }
-            ].map(option => (
-              <button
-                key={option.value}
-                onClick={() => setDateRangeFilter(option.value as DateRangeFilter)}
-                className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                  dateRangeFilter === option.value 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Expanded Filters */}
-          {showFilters && (
-            <div className="border-t pt-6 space-y-6">
-              {/* Employee Selection */}
+          {/* Custom Date Range */}
+          {dateRangeFilter === 'custom' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium text-gray-700">Select Employees</label>
-                  <div className="flex space-x-2">
-                    <button 
-                      onClick={selectAllEmployees} 
-                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
-                    >
-                      Select All
-                    </button>
-                    <button 
-                      onClick={clearEmployeeFilters} 
-                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {employees.map(employee => {
-                    const isSelected = selectedEmployeeIds.includes(employee.id)
-                    return (
-                      <button
-                        key={employee.id}
-                        onClick={() => toggleEmployeeFilter(employee.id)}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                          isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {employee.name}
-                      </button>
-                    )
-                  })}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-
-              {/* Status Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: 'all', label: 'All' },
-                      { value: 'worked', label: 'Worked' },
-                      { value: 'scheduled', label: 'Scheduled' }
-                    ].map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => setWorkStatusFilter(option.value as WorkStatusFilter)}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                          workStatusFilter === option.value 
-                            ? 'bg-green-600 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: 'all', label: 'All' },
-                      { value: 'paid', label: 'Paid' },
-                      { value: 'unpaid', label: 'Unpaid' }
-                    ].map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => setPaymentStatusFilter(option.value as PaymentStatusFilter)}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                          paymentStatusFilter === option.value 
-                            ? 'bg-amber-600 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Custom Date Range */}
-              {dateRangeFilter === 'custom' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Sort Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as 'date' | 'employee' | 'amount')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="date">Date</option>
-                    <option value="employee">Employee</option>
-                    <option value="amount">Amount</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="desc">Newest First</option>
-                    <option value="asc">Oldest First</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           )}
+
+          {/* Sort Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'date' | 'employee' | 'amount')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="date">Date</option>
+                <option value="employee">Employee</option>
+                <option value="amount">Amount</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Results */}
