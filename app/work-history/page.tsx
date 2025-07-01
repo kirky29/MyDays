@@ -19,7 +19,7 @@ export default function EmployeeReports() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
   const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('all')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all')
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>('month')
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>('all')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   
@@ -33,9 +33,13 @@ export default function EmployeeReports() {
   // Get date range for filtering
   const getDateRange = () => {
     const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset to start of day
+    
     switch (dateRangeFilter) {
       case 'today':
-        return { start: today, end: today }
+        const endOfToday = new Date(today)
+        endOfToday.setHours(23, 59, 59, 999)
+        return { start: today, end: endOfToday }
       case 'week':
         const weekStart = new Date(today)
         weekStart.setDate(today.getDate() - 7)
@@ -97,7 +101,12 @@ export default function EmployeeReports() {
       const { start, end } = getDateRange()
       filtered = filtered.filter(day => {
         const dayDate = parseISO(day.date)
-        return dayDate >= start && dayDate <= end
+        // Reset time to start of day for fair comparison
+        const startOfDay = new Date(start)
+        startOfDay.setHours(0, 0, 0, 0)
+        const endOfDay = new Date(end)
+        endOfDay.setHours(23, 59, 59, 999)
+        return dayDate >= startOfDay && dayDate <= endOfDay
       })
     }
 
@@ -159,7 +168,7 @@ export default function EmployeeReports() {
     setSelectedEmployeeIds([])
     setWorkStatusFilter('all')
     setPaymentStatusFilter('all')
-    setDateRangeFilter('month')
+    setDateRangeFilter('all')
     setCustomStartDate('')
     setCustomEndDate('')
   }
