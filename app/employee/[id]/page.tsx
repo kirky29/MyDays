@@ -1482,7 +1482,7 @@ export default function EmployeeDetail() {
           </h2>
           <div className="space-y-2">
             {payments
-              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .slice(0, 6)
               .map(payment => {
                 const paidWorkDays = workDays.filter(wd => 
