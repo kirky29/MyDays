@@ -33,6 +33,7 @@ interface AddActionModalProps {
   date: string
   employees: Employee[]
   onComplete: () => void
+  existingWorkDays?: WorkDay[]
 }
 
 export default function AddActionModal({
@@ -40,7 +41,8 @@ export default function AddActionModal({
   onClose,
   date,
   employees,
-  onComplete
+  onComplete,
+  existingWorkDays = []
 }: AddActionModalProps) {
   const [step, setStep] = useState<'action' | 'employee' | 'details'>('action')
   const [selectedAction, setSelectedAction] = useState<'work' | 'schedule' | 'note' | null>(null)
@@ -99,6 +101,30 @@ export default function AddActionModal({
   }
 
   const handleEmployeeSelect = (employee: Employee) => {
+    // Check if this employee already has a work day for this date
+    const existingWorkDay = existingWorkDays.find(wd => 
+      wd.employeeId === employee.id && wd.date === date
+    )
+    
+    if (existingWorkDay && (selectedAction === 'work' || selectedAction === 'schedule')) {
+      const existingStatus = existingWorkDay.worked ? 'worked' : 'scheduled'
+      const paidStatus = existingWorkDay.paid ? ' (paid)' : ' (unpaid)'
+      const message = `${employee.name} already has a work entry for ${format(parseISO(date), 'EEEE, MMMM d, yyyy')} - currently marked as ${existingStatus}${existingWorkDay.worked ? paidStatus : ''}.\n\nWould you like to update this existing entry instead?`
+      
+      if (confirm(message)) {
+        setSelectedEmployee(employee)
+        // Pre-populate the form with existing data
+        setWorkDetails({
+          notes: existingWorkDay.notes || '',
+          customAmount: existingWorkDay.customAmount?.toString() || '',
+          useCustomAmount: existingWorkDay.customAmount !== undefined,
+          paid: existingWorkDay.paid
+        })
+        setStep('details')
+      }
+      return
+    }
+    
     setSelectedEmployee(employee)
     setStep('details')
   }
@@ -123,8 +149,13 @@ export default function AddActionModal({
       } else if (selectedAction === 'work' || selectedAction === 'schedule') {
         if (!selectedEmployee) return
 
+        // Check if we're updating an existing work day
+        const existingWorkDay = existingWorkDays.find(wd => 
+          wd.employeeId === selectedEmployee.id && wd.date === date
+        )
+
         const workDay: WorkDay = {
-          id: `${selectedEmployee.id}-${date}`,
+          id: existingWorkDay?.id || `${selectedEmployee.id}-${date}`,
           employeeId: selectedEmployee.id,
           date,
           worked: selectedAction === 'work',
@@ -286,23 +317,46 @@ export default function AddActionModal({
                 </button>
               </div>
               
-              {employees.map(employee => (
-                <button
-                  key={employee.id}
-                  onClick={() => handleEmployeeSelect(employee)}
-                  className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center">
-                      <span className="font-bold text-sm">{employee.name.charAt(0).toUpperCase()}</span>
+              {employees.map(employee => {
+                const existingWorkDay = existingWorkDays.find(wd => 
+                  wd.employeeId === employee.id && wd.date === date
+                )
+                const hasExistingEntry = existingWorkDay && (selectedAction === 'work' || selectedAction === 'schedule')
+                
+                return (
+                  <button
+                    key={employee.id}
+                    onClick={() => handleEmployeeSelect(employee)}
+                    className={`w-full p-3 border rounded-lg transition-all text-left ${
+                      hasExistingEntry 
+                        ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center">
+                          <span className="font-bold text-sm">{employee.name.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{employee.name}</h3>
+                          <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
+                        </div>
+                      </div>
+                      {hasExistingEntry && (
+                        <div className="flex items-center space-x-2 text-amber-600">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span className="text-xs font-medium">
+                            {existingWorkDay.worked ? 'Already worked' : 'Already scheduled'}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{employee.name}</h3>
-                      <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           )}
 

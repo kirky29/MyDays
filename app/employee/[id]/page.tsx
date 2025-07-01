@@ -237,11 +237,19 @@ export default function EmployeeDetail() {
       setSyncStatus('syncing')
       setErrorMessage('')
       if (existingDay) {
+        // Prevent toggling paid work days without confirmation
+        if (existingDay.paid && existingDay.worked) {
+          const confirmMessage = `This work day is already marked as paid. Changing it will affect financial records.\n\nAre you sure you want to continue?`
+          if (!confirm(confirmMessage)) {
+            setSyncStatus('synced')
+            return
+          }
+        }
         const updatedWorkDay = { ...existingDay, worked: !existingDay.worked }
         await firebaseService.addWorkDay(updatedWorkDay)
       } else {
         const newWorkDay: WorkDay = {
-          id: Date.now().toString(),
+          id: `${employeeId}-${date}`, // Use consistent ID format
           employeeId,
           date,
           worked: true,
@@ -556,7 +564,21 @@ export default function EmployeeDetail() {
   }
 
   const quickAddWorkDay = async () => {
-    await toggleWorkDay(quickAddDate)
+    // Check if a work day already exists for this date
+    const existingDay = workDays.find(day => day.date === quickAddDate)
+    
+    if (existingDay) {
+      // Provide clear feedback about existing work day
+      const existingStatus = existingDay.worked ? 'worked' : 'not worked'
+      const paidStatus = existingDay.paid ? ' (paid)' : ' (unpaid)'
+      const message = `A work day already exists for ${format(parseISO(quickAddDate), 'EEEE, MMMM d, yyyy')} - currently marked as ${existingStatus}${existingDay.worked ? paidStatus : ''}.\n\nWould you like to toggle its status?`
+      
+      if (confirm(message)) {
+        await toggleWorkDay(quickAddDate)
+      }
+    } else {
+      await toggleWorkDay(quickAddDate)
+    }
   }
 
   // Add data integrity validation
@@ -1215,6 +1237,27 @@ export default function EmployeeDetail() {
                     {syncStatus === 'syncing' ? '...' : 'Add'}
                   </button>
                 </div>
+                {(() => {
+                  const existingDay = workDays.find(day => day.date === quickAddDate)
+                  if (existingDay && quickAddDate) {
+                    const status = existingDay.worked ? 'worked' : 'not worked'
+                    const paidStatus = existingDay.paid ? ' (paid)' : ' (unpaid)'
+                    return (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-center space-x-2 text-amber-700">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span className="text-xs">
+                            Work day exists: currently marked as <strong>{status}</strong>{existingDay.worked ? paidStatus : ''}. 
+                            Clicking "Add" will toggle this status.
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
 
               {unpaidWorkDays.length > 0 && (
