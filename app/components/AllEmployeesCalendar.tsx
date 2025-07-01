@@ -54,7 +54,7 @@ interface DayShift {
 export default function AllEmployeesCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const { employees, workDays, payments, dayNotes, getDayNotes, addDayNote, deleteDayNote } = useAppStore()
+  const { employees, workDays, payments, dayNotes, getDayNotes, addDayNote, updateDayNote, deleteDayNote } = useAppStore()
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -382,6 +382,7 @@ export default function AllEmployeesCalendar() {
           dayNotes={dayNotes}
           getDayNotes={getDayNotes}
           addDayNote={addDayNote}
+          updateDayNote={updateDayNote}
           deleteDayNote={deleteDayNote}
         />
       )}
@@ -400,15 +401,18 @@ interface DayDetailModalProps {
   dayNotes: DayNote[]
   getDayNotes: (date: string) => DayNote[]
   addDayNote: (date: string, note: string) => Promise<void>
+  updateDayNote: (noteId: string, note: string) => Promise<void>
   deleteDayNote: (noteId: string) => Promise<void>
 }
 
-function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, dayNotes, getDayNotes, addDayNote, deleteDayNote }: DayDetailModalProps) {
+function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, dayNotes, getDayNotes, addDayNote, updateDayNote, deleteDayNote }: DayDetailModalProps) {
   const [isAddingShift, setIsAddingShift] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [shiftType, setShiftType] = useState<'worked' | 'scheduled'>('worked')
   const [isAddingNote, setIsAddingNote] = useState(false)
   const [noteContent, setNoteContent] = useState('')
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingNoteContent, setEditingNoteContent] = useState('')
 
   if (!isOpen) return null
 
@@ -448,6 +452,27 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
       console.error('Error adding note:', error)
       alert('Failed to add note. Please try again.')
     }
+  }
+
+  const handleUpdateNote = async (noteId: string, note: string) => {
+    try {
+      await updateDayNote(noteId, note)
+      setEditingNoteId(null)
+      setEditingNoteContent('')
+    } catch (error) {
+      console.error('Error updating note:', error)
+      alert('Failed to update note. Please try again.')
+    }
+  }
+
+  const startEditingNote = (noteId: string, currentNote: string) => {
+    setEditingNoteId(noteId)
+    setEditingNoteContent(currentNote)
+  }
+
+  const cancelEditingNote = () => {
+    setEditingNoteId(null)
+    setEditingNoteContent('')
   }
 
   const handleDeleteNote = async (noteId: string) => {
@@ -605,22 +630,70 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
               <div className="space-y-2">
                 {modalDayNotes.map(note => (
-                  <div key={note.id} className="flex items-start justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-900">{note.note}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Added {format(new Date(note.createdAt), 'MMM d, h:mm a')}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Delete note"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                  <div key={note.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    {editingNoteId === note.id ? (
+                      // Edit mode
+                      <div className="space-y-3">
+                        <textarea
+                          value={editingNoteContent}
+                          onChange={(e) => setEditingNoteContent(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                          rows={2}
+                          placeholder="Edit your note..."
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-500">
+                            Added {format(new Date(note.createdAt), 'MMM d, h:mm a')}
+                          </p>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleUpdateNote(note.id, editingNoteContent)}
+                              disabled={!editingNoteContent.trim()}
+                              className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEditingNote}
+                              className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded-md hover:bg-gray-400 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-900">{note.note}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Added {format(new Date(note.createdAt), 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                        <div className="flex space-x-3 ml-3">
+                          <button
+                            onClick={() => startEditingNote(note.id, note.note)}
+                            className="text-gray-400 hover:text-indigo-600 transition-colors"
+                            title="Edit note"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete note"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

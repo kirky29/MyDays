@@ -543,6 +543,26 @@ export const firebaseService = {
     }
   },
 
+  async updateDayNote(noteId: string, updates: Partial<Pick<DayNote, 'note'>>) {
+    try {
+      console.log('Firebase: Updating day note:', noteId)
+      console.log('Firebase: Updates:', updates)
+      
+      const noteRef = doc(db, COLLECTIONS.DAY_NOTES, noteId);
+      await setDoc(noteRef, updates, { merge: true });
+      console.log('Firebase: Day note updated successfully')
+      return { success: true };
+    } catch (error) {
+      console.error('Firebase: Error updating day note:', error)
+      console.error('Firebase: Error details:', {
+        code: (error as any).code,
+        message: (error as any).message,
+        name: (error as any).name
+      })
+      throw error;
+    }
+  },
+
   async getDayNotes(): Promise<DayNote[]> {
     try {
       const querySnapshot = await getDocs(collection(db, COLLECTIONS.DAY_NOTES));

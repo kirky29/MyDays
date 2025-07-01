@@ -70,6 +70,7 @@ interface AppState {
   toggleWorkDay: (employeeId: string, date: string) => Promise<void>
   togglePayment: (employeeId: string, date: string) => Promise<void>
   addDayNote: (date: string, note: string) => Promise<void>
+  updateDayNote: (noteId: string, note: string) => Promise<void>
   deleteDayNote: (noteId: string) => Promise<void>
   retryConnection: () => Promise<void>
   
@@ -249,6 +250,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ 
         syncStatus: 'error', 
         errorMessage: `Failed to add day note: ${error.message}` 
+      })
+      throw error
+    }
+  },
+  
+  updateDayNote: async (noteId, note) => {
+    try {
+      set({ syncStatus: 'syncing', errorMessage: '' })
+      await firebaseService.updateDayNote(noteId, { note })
+      // Real-time listener will update the state
+    } catch (error: any) {
+      console.error('Error updating day note:', error)
+      set({ 
+        syncStatus: 'error', 
+        errorMessage: `Failed to update day note: ${error.message}` 
       })
       throw error
     }
