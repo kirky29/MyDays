@@ -70,7 +70,8 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
   // Get day info for a specific date
   const getDayInfo = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    const workDay = workDays.find(wd => wd.date === dateStr)
+    // Only consider work days that are actually worked or scheduled (not removed/cancelled)
+    const workDay = workDays.find(wd => wd.date === dateStr && (wd.worked || new Date(wd.date) > new Date()))
     const payment = payments.find(p => p.date === dateStr)
     const relatedPayment = workDay ? payments.find(p => p.workDayIds.includes(workDay.id)) : null
 
