@@ -793,7 +793,7 @@ export default function EmployeeReports() {
                   }
                   
                   const isSelected = selectedWorkDayIds.includes(workDay.id)
-                  const isSelectable = !workDay.paid
+                  const isSelectable = !workDay.paid && workDay.worked && dayDate <= today
                   
                   return (
                     <div 
