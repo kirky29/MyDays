@@ -6,10 +6,37 @@ import { useRouter } from 'next/navigation'
 import { useAppStore } from '../../lib/store'
 import { useFirebaseData } from '../../lib/hooks/useFirebaseData'
 import LoadingScreen from '../components/LoadingScreen'
+import PaymentModal from '../components/PaymentModal'
+import PaymentEditModal from '../components/PaymentEditModal'
+import WorkDayEditModal from '../components/WorkDayEditModal'
+import { firebaseService } from '../../lib/firebase'
+import type { Payment } from '../../lib/store'
 
 type WorkStatusFilter = 'all' | 'worked' | 'scheduled'
 type PaymentStatusFilter = 'all' | 'paid' | 'unpaid'
 type DateRangeFilter = 'all' | 'today' | 'week' | 'month' | 'last-month' | 'year' | 'custom'
+
+interface Employee {
+  id: string
+  name: string
+  dailyWage: number
+  email?: string
+  phone?: string
+  startDate?: string
+  notes?: string
+  wageChangeDate?: string
+  previousWage?: number
+}
+
+interface WorkDay {
+  id: string
+  employeeId: string
+  date: string
+  worked: boolean
+  paid: boolean
+  customAmount?: number
+  notes?: string
+}
 
 export default function EmployeeReports() {
   const router = useRouter()
@@ -29,6 +56,15 @@ export default function EmployeeReports() {
   
   // View state
   const [viewMode, setViewMode] = useState<'workdays' | 'payments'>('workdays')
+  
+  // Selection and modal states
+  const [selectedWorkDayIds, setSelectedWorkDayIds] = useState<string[]>([])
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showPaymentEditModal, setShowPaymentEditModal] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
+  const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
+  const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('synced')
 
   // Initialize Firebase data loading
   useFirebaseData()
@@ -214,6 +250,124 @@ export default function EmployeeReports() {
     setCustomStartDate('')
     setCustomEndDate('')
     setViewMode('workdays')
+    setSelectedWorkDayIds([])
+  }
+
+  // Selection and modal handlers
+  const toggleWorkDaySelection = (workDayId: string) => {
+    setSelectedWorkDayIds(prev => 
+      prev.includes(workDayId) 
+        ? prev.filter(id => id !== workDayId)
+        : [...prev, workDayId]
+    )
+  }
+
+  const clearSelection = () => {
+    setSelectedWorkDayIds([])
+  }
+
+  const selectAllUnpaidWorkDays = () => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    const unpaidWorkDays = filteredAndSortedWorkDays.filter(day => 
+      day.worked && !day.paid && new Date(day.date) <= today
+    )
+    setSelectedWorkDayIds(unpaidWorkDays.map(day => day.id))
+  }
+
+  const handleCreatePaymentForSelected = () => {
+    if (selectedWorkDayIds.length > 0) {
+      setShowPaymentModal(true)
+    }
+  }
+
+  const handlePaymentComplete = () => {
+    setSelectedWorkDayIds([])
+    setShowPaymentModal(false)
+  }
+
+  const handleWorkDayClick = (workDay: WorkDay) => {
+    if (workDay.paid) {
+      // For paid work days, find the payment record and show payment modal
+      const relatedPayment = payments.find(payment => 
+        payment.workDayIds.includes(workDay.id)
+      )
+      if (relatedPayment) {
+        setSelectedPayment(relatedPayment)
+        setShowPaymentEditModal(true)
+      } else {
+        // Fallback to work day modal if no payment record found
+        setSelectedWorkDay(workDay)
+        setShowWorkDayEditModal(true)
+      }
+    } else {
+      // For unpaid work days, show work day edit modal
+      setSelectedWorkDay(workDay)
+      setShowWorkDayEditModal(true)
+    }
+  }
+
+  const handlePaymentClick = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setShowPaymentEditModal(true)
+  }
+
+  const handlePaymentUpdated = () => {
+    setShowPaymentEditModal(false)
+    setSelectedPayment(null)
+  }
+
+  const handleWorkDayUpdated = () => {
+    setShowWorkDayEditModal(false)
+    setSelectedWorkDay(null)
+  }
+
+  const updateWorkDay = async (updatedWorkDay: WorkDay) => {
+    try {
+      setSyncStatus('syncing')
+      await firebaseService.addWorkDay(updatedWorkDay)
+      setShowWorkDayEditModal(false)
+      setSelectedWorkDay(null)
+      setSyncStatus('synced')
+    } catch (error: any) {
+      console.error('Error updating work day:', error)
+      setSyncStatus('error')
+    }
+  }
+
+  const removeWorkDay = async (workDay: WorkDay) => {
+    if (workDay.paid) {
+      alert('Cannot remove a work day that has been paid. Please adjust the payment record first.')
+      return
+    }
+
+    const confirmMessage = `Are you sure you want to remove this work day?\n\n${format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}\n\nThis will remove the work day from records.`
+    
+    if (confirm(confirmMessage)) {
+      try {
+        setSyncStatus('syncing')
+        
+        // Mark as not worked and clear custom data to effectively "remove" it
+        const removedWorkDay: WorkDay = {
+          id: workDay.id,
+          employeeId: workDay.employeeId,
+          date: workDay.date,
+          worked: false,
+          paid: false
+        }
+        
+        await firebaseService.addWorkDay(removedWorkDay)
+        setShowWorkDayEditModal(false)
+        setSelectedWorkDay(null)
+        setSyncStatus('synced')
+        
+        alert('Work day removed successfully!')
+      } catch (error: any) {
+        console.error('Error removing work day:', error)
+        setSyncStatus('error')
+        alert(`Failed to remove work day: ${error.message}`)
+      }
+    }
   }
 
   // Calculate summary stats for the display (based on fully filtered data)
@@ -562,8 +716,46 @@ export default function EmployeeReports() {
                 <p className="text-gray-600">Try adjusting your filters to see more results.</p>
               </div>
             ) : (
-              <div className="space-y-3 p-6">
-                {filteredAndSortedWorkDays.map(workDay => {
+              <>
+                {/* Payment Selection Controls - Show when days are selected */}
+                {selectedWorkDayIds.length > 0 && (
+                  <div className="mx-6 mt-6 mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-blue-900">
+                        {selectedWorkDayIds.length} day{selectedWorkDayIds.length !== 1 ? 's' : ''} selected
+                      </h4>
+                      <button
+                        onClick={clearSelection}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="flex items-center space-x-3 mb-3">
+                      <button
+                        onClick={selectAllUnpaidWorkDays}
+                        className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+                      >
+                        Select All Unpaid
+                      </button>
+                      <span className="text-sm text-blue-700">
+                        Total: £{(() => {
+                          const selectedDays = filteredAndSortedWorkDays.filter(day => selectedWorkDayIds.includes(day.id))
+                          return selectedDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0).toFixed(2)
+                        })()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCreatePaymentForSelected}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      Create Payment for Selected Days
+                    </button>
+                  </div>
+                )}
+                
+                <div className="space-y-3 p-6">
+                  {filteredAndSortedWorkDays.map(workDay => {
                   const relatedPayment = getRelatedPayment(workDay)
                   const employee = employees.find(emp => emp.id === workDay.employeeId)
                   
@@ -600,14 +792,35 @@ export default function EmployeeReports() {
                     statusTextColor = 'text-gray-700'
                   }
                   
+                  const isSelected = selectedWorkDayIds.includes(workDay.id)
+                  const isSelectable = !workDay.paid
+                  
                   return (
                     <div 
                       key={workDay.id}
-                      className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${statusColor}`}
-                      onClick={() => router.push(`/employee/${workDay.employeeId}`)}
+                      className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${statusColor} ${isSelected ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+                      onClick={() => handleWorkDayClick(workDay)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
+                          {/* Checkbox for selection mode */}
+                          {isSelectable && (
+                            <div 
+                              className="flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleWorkDaySelection(workDay.id)
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}} // Handled by div onClick
+                                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                              />
+                            </div>
+                          )}
+                          
                           <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
                             <span className="text-white font-bold">
                               {getEmployeeName(workDay.employeeId).charAt(0).toUpperCase()}
@@ -653,7 +866,8 @@ export default function EmployeeReports() {
                     </div>
                   )
                 })}
-              </div>
+                </div>
+              </>
             )
           ) : (
             /* Payments View */
@@ -677,7 +891,7 @@ export default function EmployeeReports() {
                     <div 
                       key={payment.id}
                       className="p-4 rounded-lg border bg-green-50 border-green-200 hover:bg-green-100 transition-all cursor-pointer hover:shadow-md"
-                      onClick={() => router.push(`/employee/${payment.employeeId}`)}
+                      onClick={() => handlePaymentClick(payment)}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start space-x-4 flex-1 min-w-0">
@@ -736,6 +950,66 @@ export default function EmployeeReports() {
             )
           )}
         </div>
+
+        {/* Modals */}
+        {(() => {
+          if (!showPaymentModal || selectedWorkDayIds.length === 0) return null
+          const firstWorkDay = filteredAndSortedWorkDays.find(wd => selectedWorkDayIds.includes(wd.id))
+          const employee = firstWorkDay ? employees.find(emp => emp.id === firstWorkDay.employeeId) : null
+          if (!employee) return null
+          
+          return (
+            <PaymentModal
+              isOpen={showPaymentModal}
+              onClose={() => {
+                setShowPaymentModal(false)
+                clearSelection()
+              }}
+              employee={employee}
+              selectedWorkDays={filteredAndSortedWorkDays.filter(day => selectedWorkDayIds.includes(day.id))}
+              onPaymentComplete={handlePaymentComplete}
+            />
+          )
+        })()}
+
+        {selectedPayment && (() => {
+          const employee = employees.find(emp => emp.id === selectedPayment.employeeId)
+          if (!employee) return null
+          
+          return (
+            <PaymentEditModal
+              isOpen={showPaymentEditModal}
+              onClose={() => {
+                setShowPaymentEditModal(false)
+                setSelectedPayment(null)
+              }}
+              payment={selectedPayment}
+              employee={employee}
+              workDays={workDays}
+              onPaymentUpdated={handlePaymentUpdated}
+            />
+          )
+        })()}
+
+        {selectedWorkDay && (() => {
+          const employee = employees.find(emp => emp.id === selectedWorkDay.employeeId)
+          if (!employee) return null
+          
+          return (
+            <WorkDayEditModal
+              isOpen={showWorkDayEditModal}
+              onClose={() => {
+                setShowWorkDayEditModal(false)
+                setSelectedWorkDay(null)
+              }}
+              workDay={selectedWorkDay}
+              employee={employee}
+              onWorkDayUpdated={updateWorkDay}
+              onWorkDayRemoved={removeWorkDay}
+              payments={payments}
+            />
+          )
+        })()}
       </div>
     </div>
   )
