@@ -240,39 +240,32 @@ export default function EmployeeReports() {
         </div>
 
         {/* Colorful Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-3">
-              <span className="text-xl">💼</span>
+        <div className="grid grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-4">
+              <span className="text-2xl">💼</span>
             </div>
-            <div className="text-2xl font-bold text-blue-600 mb-1">{summaryStats.workedDays}</div>
-            <div className="text-sm text-gray-600">Days Worked</div>
+            <div className="text-3xl font-bold text-blue-600 mb-2">{summaryStats.workedDays}</div>
+            <div className="text-sm text-gray-600 font-medium">Days Worked</div>
           </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-green-100 flex items-center justify-center mb-3">
-              <span className="text-xl">📅</span>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-xl bg-amber-100 flex items-center justify-center mb-4">
+              <span className="text-2xl">⏳</span>
             </div>
-            <div className="text-2xl font-bold text-green-600 mb-1">{summaryStats.scheduledDays}</div>
-            <div className="text-sm text-gray-600">Upcoming Shifts</div>
+            <div className="text-3xl font-bold text-amber-600 mb-2">{summaryStats.unpaidDays}</div>
+            <div className="text-sm text-gray-600 font-medium">Unpaid</div>
           </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center mb-3">
-              <span className="text-xl">⏳</span>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-xl bg-purple-100 flex items-center justify-center mb-4">
+              <span className="text-2xl">💰</span>
             </div>
-            <div className="text-2xl font-bold text-amber-600 mb-1">{summaryStats.unpaidDays}</div>
-            <div className="text-sm text-gray-600">Unpaid</div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="w-12 h-12 mx-auto rounded-xl bg-purple-100 flex items-center justify-center mb-3">
-              <span className="text-xl">💰</span>
-            </div>
-            <div className="text-2xl font-bold text-purple-600 mb-1">£{summaryStats.totalAmount.toFixed(0)}</div>
-            <div className="text-sm text-gray-600">Total Value</div>
+            <div className="text-3xl font-bold text-purple-600 mb-2">£{summaryStats.totalAmount.toFixed(0)}</div>
+            <div className="text-sm text-gray-600 font-medium">Total Value</div>
           </div>
         </div>
 
         {/* Filters Section */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8 max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
             <button
@@ -284,9 +277,9 @@ export default function EmployeeReports() {
           </div>
 
           {/* Employee Selection */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">Select Employees</label>
+          <div className="mb-6 text-center">
+            <div className="flex items-center justify-center mb-3">
+              <label className="text-sm font-medium text-gray-700 mr-4">Select Employees</label>
               <div className="flex space-x-2">
                 <button 
                   onClick={selectAllEmployees} 
@@ -302,7 +295,7 @@ export default function EmployeeReports() {
                 </button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-center">
               {employees.map(employee => {
                 const isSelected = selectedEmployeeIds.includes(employee.id)
                 return (
@@ -324,11 +317,11 @@ export default function EmployeeReports() {
           </div>
 
           {/* Filter Options */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 text-center">
             {/* Work Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {[
                   { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700' },
                   { value: 'worked', label: 'Worked', color: 'bg-green-100 text-green-700' },
@@ -352,7 +345,7 @@ export default function EmployeeReports() {
             {/* Payment Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {[
                   { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700' },
                   { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-700' },
