@@ -275,11 +275,11 @@ export default function WorkHistory() {
             <div className="text-sm text-gray-600">Worked</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">{summaryStats.scheduledDays}</div>
+            <div className="text-2xl font-bold text-blue-600">{summaryStats.scheduledDays}</div>
             <div className="text-sm text-gray-600">Scheduled</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="text-2xl font-bold text-emerald-600">{summaryStats.paidDays}</div>
+            <div className="text-2xl font-bold text-green-600">{summaryStats.paidDays}</div>
             <div className="text-sm text-gray-600">Paid</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
@@ -341,7 +341,7 @@ export default function WorkHistory() {
                     key={employee.id}
                     onClick={() => toggleEmployeeFilter(employee.id)}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isSelected ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     {employee.name} ({employeeWorkDays})
@@ -508,17 +508,17 @@ export default function WorkHistory() {
                 const dayDate = parseISO(workDay.date)
                 const isFuture = dayDate > today
                 
-                let statusColor = 'bg-purple-50 border-purple-200 hover:bg-purple-100'
-                let statusIndicator = 'bg-purple-500'
+                let statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                let statusIndicator = 'bg-blue-500'
                 let statusText = 'Scheduled'
-                let statusTextColor = 'text-purple-700'
+                let statusTextColor = 'text-blue-700'
                 
                 if (isFuture) {
                   // Future dates are always "Scheduled" regardless of worked/paid status
-                  statusColor = 'bg-purple-50 border-purple-200 hover:bg-purple-100'
-                  statusIndicator = 'bg-purple-500'
+                  statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                  statusIndicator = 'bg-blue-500'
                   statusText = 'Scheduled'
-                  statusTextColor = 'text-purple-700'
+                  statusTextColor = 'text-blue-700'
                 } else if (workDay.worked && workDay.paid) {
                   // Past dates that were worked and paid
                   statusColor = 'bg-green-50 border-green-200 hover:bg-green-100'
@@ -527,10 +527,10 @@ export default function WorkHistory() {
                   statusTextColor = 'text-green-700'
                 } else if (workDay.worked && !workDay.paid) {
                   // Past dates that were worked but not paid
-                  statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
-                  statusIndicator = 'bg-blue-500'
+                  statusColor = 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                  statusIndicator = 'bg-amber-500'
                   statusText = 'Worked & Unpaid'
-                  statusTextColor = 'text-blue-700'
+                  statusTextColor = 'text-amber-700'
                 } else {
                   // Past dates that were not worked (missed/cancelled)
                   statusColor = 'bg-gray-50 border-gray-200 hover:bg-gray-100'
