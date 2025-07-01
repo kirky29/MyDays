@@ -205,15 +205,21 @@ export default function EmployeeReports() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-pink-400 to-indigo-600 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-gradient-to-br from-green-400 to-blue-600 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style={{animationDelay: '4s'}}></div>
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
         {/* Header with Back Button */}
         <div className="mb-6">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center px-3 py-2 mb-4 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="inline-flex items-center px-4 py-2 mb-4 text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded-xl transition-all duration-200 group backdrop-blur-sm"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back
@@ -224,32 +230,42 @@ export default function EmployeeReports() {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">{summaryStats.workedDays}</div>
-              <div className="text-sm text-gray-600">Days Worked</div>
+        {/* Colorful Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-3">
+              <span className="text-xl">💼</span>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">{summaryStats.scheduledDays}</div>
-              <div className="text-sm text-gray-600">Upcoming Shifts</div>
+            <div className="text-2xl font-bold text-blue-600 mb-1">{summaryStats.workedDays}</div>
+            <div className="text-sm text-gray-600">Days Worked</div>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-green-100 flex items-center justify-center mb-3">
+              <span className="text-xl">📅</span>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-amber-600 mb-1">{summaryStats.unpaidDays}</div>
-              <div className="text-sm text-gray-600">Unpaid</div>
+            <div className="text-2xl font-bold text-green-600 mb-1">{summaryStats.scheduledDays}</div>
+            <div className="text-sm text-gray-600">Upcoming Shifts</div>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center mb-3">
+              <span className="text-xl">⏳</span>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 mb-1">£{summaryStats.totalAmount.toFixed(0)}</div>
-              <div className="text-sm text-gray-600">Total Value</div>
+            <div className="text-2xl font-bold text-amber-600 mb-1">{summaryStats.unpaidDays}</div>
+            <div className="text-sm text-gray-600">Unpaid</div>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+              <span className="text-xl">💰</span>
             </div>
+            <div className="text-2xl font-bold text-purple-600 mb-1">£{summaryStats.totalAmount.toFixed(0)}</div>
+            <div className="text-sm text-gray-600">Total Value</div>
           </div>
         </div>
 
         {/* Filters Section */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
             <button
               onClick={clearAllFilters}
               className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -285,7 +301,7 @@ export default function EmployeeReports() {
                     key={employee.id}
                     onClick={() => toggleEmployeeFilter(employee.id)}
                     className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                      isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     {employee.name}
@@ -305,17 +321,17 @@ export default function EmployeeReports() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'all', label: 'All' },
-                  { value: 'worked', label: 'Worked' },
-                  { value: 'scheduled', label: 'Scheduled' }
+                  { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700' },
+                  { value: 'worked', label: 'Worked', color: 'bg-green-100 text-green-700' },
+                  { value: 'scheduled', label: 'Scheduled', color: 'bg-blue-100 text-blue-700' }
                 ].map(option => (
                   <button
                     key={option.value}
                     onClick={() => setWorkStatusFilter(option.value as WorkStatusFilter)}
                     className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                       workStatusFilter === option.value 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-green-600 text-white shadow-md' 
+                        : option.color + ' hover:bg-opacity-80'
                     }`}
                   >
                     {option.label}
@@ -329,17 +345,17 @@ export default function EmployeeReports() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'all', label: 'All' },
-                  { value: 'paid', label: 'Paid' },
-                  { value: 'unpaid', label: 'Unpaid' }
+                  { value: 'all', label: 'All', color: 'bg-gray-100 text-gray-700' },
+                  { value: 'paid', label: 'Paid', color: 'bg-green-100 text-green-700' },
+                  { value: 'unpaid', label: 'Unpaid', color: 'bg-amber-100 text-amber-700' }
                 ].map(option => (
                   <button
                     key={option.value}
                     onClick={() => setPaymentStatusFilter(option.value as PaymentStatusFilter)}
                     className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                       paymentStatusFilter === option.value 
-                        ? 'bg-amber-600 text-white' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-amber-600 text-white shadow-md' 
+                        : option.color + ' hover:bg-opacity-80'
                     }`}
                   >
                     {option.label}
@@ -354,7 +370,7 @@ export default function EmployeeReports() {
               <select
                 value={dateRangeFilter}
                 onChange={(e) => setDateRangeFilter(e.target.value as DateRangeFilter)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -398,7 +414,7 @@ export default function EmployeeReports() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'date' | 'employee' | 'amount')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="date">Date</option>
                 <option value="employee">Employee</option>
@@ -410,7 +426,7 @@ export default function EmployeeReports() {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="desc">Newest First</option>
                 <option value="asc">Oldest First</option>
@@ -420,7 +436,7 @@ export default function EmployeeReports() {
         </div>
 
         {/* Results */}
-        <div className="bg-white rounded-xl shadow-sm border">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
               Work Records ({filteredAndSortedWorkDays.length} entries)
@@ -438,7 +454,7 @@ export default function EmployeeReports() {
               <p className="text-gray-600">Try adjusting your filters to see more results.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="space-y-3 max-h-96 overflow-y-auto p-6">
               {filteredAndSortedWorkDays.map(workDay => {
                 const relatedPayment = getRelatedPayment(workDay)
                 const employee = employees.find(emp => emp.id === workDay.employeeId)
@@ -449,32 +465,42 @@ export default function EmployeeReports() {
                 const dayDate = parseISO(workDay.date)
                 const isFuture = dayDate > today
                 
-                let statusColor = 'bg-blue-100 text-blue-800'
+                let statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                let statusIndicator = 'bg-blue-500'
                 let statusText = 'Scheduled'
+                let statusTextColor = 'text-blue-700'
                 
                 if (isFuture) {
-                  statusColor = 'bg-blue-100 text-blue-800'
+                  statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                  statusIndicator = 'bg-blue-500'
                   statusText = 'Scheduled'
+                  statusTextColor = 'text-blue-700'
                 } else if (workDay.worked && workDay.paid) {
-                  statusColor = 'bg-green-100 text-green-800'
+                  statusColor = 'bg-green-50 border-green-200 hover:bg-green-100'
+                  statusIndicator = 'bg-green-500'
                   statusText = 'Completed & Paid'
+                  statusTextColor = 'text-green-700'
                 } else if (workDay.worked && !workDay.paid) {
-                  statusColor = 'bg-amber-100 text-amber-800'
+                  statusColor = 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                  statusIndicator = 'bg-amber-500'
                   statusText = 'Worked, Unpaid'
+                  statusTextColor = 'text-amber-700'
                 } else {
-                  statusColor = 'bg-gray-100 text-gray-800'
+                  statusColor = 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  statusIndicator = 'bg-gray-500'
                   statusText = 'Not Worked'
+                  statusTextColor = 'text-gray-700'
                 }
                 
                 return (
                   <div 
                     key={workDay.id}
-                    className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+                    className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${statusColor}`}
                     onClick={() => router.push(`/employee/${workDay.employeeId}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
                           <span className="text-white font-bold">
                             {getEmployeeName(workDay.employeeId).charAt(0).toUpperCase()}
                           </span>
@@ -488,11 +514,15 @@ export default function EmployeeReports() {
                             {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
                           </p>
                           <div className="flex items-center space-x-2 mt-1">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor}`}>
+                            <div className={`w-2 h-2 rounded-full ${statusIndicator}`}></div>
+                            <span className={`text-xs font-medium ${statusTextColor}`}>
                               {statusText}
                             </span>
                             {workDay.notes && (
-                              <span className="text-xs text-gray-500 italic">"{workDay.notes}"</span>
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-xs text-indigo-600">"{workDay.notes}"</span>
+                              </>
                             )}
                           </div>
                         </div>
