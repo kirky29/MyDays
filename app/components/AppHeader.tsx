@@ -48,12 +48,8 @@ export default function AppHeader({ onNavigate }: AppHeaderProps) {
         
         {/* Enhanced subtitle with colorful styling */}
         <p className="text-slate-600 mb-6 sm:mb-8 text-base sm:text-lg max-w-sm mx-auto leading-relaxed font-medium">
-          <span className="bg-gradient-to-r from-slate-700 to-slate-500 bg-clip-text text-transparent">
-            Track work, manage payments, and stay 
-          </span>
-          <br />
-          <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent font-semibold">
-            organised
+          <span className="bg-gradient-to-r from-slate-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent font-semibold">
+            Track work, manage payments, and stay organised
           </span>
         </p>
 
