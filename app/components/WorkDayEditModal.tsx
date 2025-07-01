@@ -63,8 +63,8 @@ export default function WorkDayEditModal({
   // Prevent background scrolling when modal is open
   useBodyScrollLock(isOpen)
 
-  // Check if this is a future work day
-  const isFutureWorkDay = new Date(workDay.date) > new Date()
+  // Check if this is a scheduled shift
+  const isScheduledShift = new Date(workDay.date) > new Date()
 
   // Reset form when workDay changes
   useEffect(() => {
@@ -151,8 +151,8 @@ export default function WorkDayEditModal({
             <h2 className="text-xl font-semibold text-gray-800">
               {format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}
             </h2>
-            {isFutureWorkDay && (
-              <p className="text-sm text-blue-600 mt-1">Future Work Day</p>
+            {isScheduledShift && (
+              <p className="text-sm text-blue-600 mt-1">Scheduled Shift</p>
             )}
           </div>
           <button 
@@ -244,19 +244,19 @@ export default function WorkDayEditModal({
                     onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value || '' }))}
                     rows={3}
                     className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none touch-manipulation"
-                    placeholder={isFutureWorkDay ? "Add notes about this scheduled work..." : "Add notes about this work day (e.g., half day, overtime, special project...)"}
+                    placeholder={isScheduledShift ? "Add notes about this scheduled work..." : "Add notes about this work day (e.g., half day, overtime, special project...)"}
                   />
                 </div>
                 
-                {/* Future work day info */}
-                {isFutureWorkDay && (
+                {/* Scheduled shift info */}
+                {isScheduledShift && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex items-start space-x-2">
                       <svg className="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <p className="text-sm font-medium text-blue-800">Future Work Day</p>
+                        <p className="text-sm font-medium text-blue-800">Scheduled Shift</p>
                         <p className="text-xs text-blue-600 mt-1">
                           Payment options will be available after the work is completed.
                         </p>
