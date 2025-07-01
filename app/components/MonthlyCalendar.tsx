@@ -252,29 +252,7 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
         })}
       </div>
 
-      {/* Summary */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="grid grid-cols-2 gap-4 text-center">
-          <div>
-            <div className="text-lg font-bold text-blue-600">
-              {workDays.filter(wd => {
-                const workDate = parseISO(wd.date)
-                return isSameMonth(workDate, currentDate) && workDate > new Date()
-              }).length}
-            </div>
-            <div className="text-xs text-gray-600">Scheduled</div>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-amber-600">
-              {workDays.filter(wd => {
-                const workDate = parseISO(wd.date)
-                return isSameMonth(workDate, currentDate) && wd.worked && !wd.paid && workDate <= new Date()
-              }).length}
-            </div>
-            <div className="text-xs text-gray-600">Unpaid</div>
-          </div>
-        </div>
-      </div>
+
     </div>
   )
 } 
