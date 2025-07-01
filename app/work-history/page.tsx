@@ -679,39 +679,48 @@ export default function EmployeeReports() {
                       className="p-4 rounded-lg border bg-green-50 border-green-200 hover:bg-green-100 transition-all cursor-pointer hover:shadow-md"
                       onClick={() => router.push(`/employee/${payment.employeeId}`)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start space-x-4 flex-1 min-w-0">
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                             <span className="text-white font-bold">
                               {getEmployeeName(payment.employeeId).charAt(0).toUpperCase()}
                             </span>
                           </div>
 
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-lg">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 text-lg truncate">
                               {getEmployeeName(payment.employeeId)}
                             </h3>
-                            <p className="text-gray-600 text-sm">
-                              Payment made on {format(parseISO(payment.date), 'EEEE, MMMM d, yyyy')}
+                            <p className="text-gray-600 text-sm mb-2">
+                              Payment made on {format(parseISO(payment.date), 'MMMM d, yyyy')}
                             </p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span className="text-xs font-medium text-green-700">
-                                {payment.paymentType}
-                              </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span className="text-xs font-medium text-green-700">
+                                  {payment.paymentType}
+                                </span>
+                              </div>
                               {relatedWorkDays.length > 0 && (
-                                <>
+                                <div className="flex items-center space-x-1">
                                   <span className="text-gray-300">•</span>
                                   <span className="text-xs text-gray-600">
-                                    {relatedWorkDays.length} work day{relatedWorkDays.length !== 1 ? 's' : ''}: {relatedWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
+                                    {relatedWorkDays.length} work day{relatedWorkDays.length !== 1 ? 's' : ''}
                                   </span>
-                                </>
+                                </div>
                               )}
                             </div>
+                            {relatedWorkDays.length > 0 && (
+                              <div className="mt-1">
+                                <span className="text-xs text-gray-500">
+                                  Dates: {relatedWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <div className="text-2xl font-bold text-green-600">
                             £{payment.amount.toFixed(2)}
                           </div>
