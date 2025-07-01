@@ -79,38 +79,19 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
       if (wd.worked) return true // Always show if actually worked
       return dateStr >= today // Show unworked if it's today or future (still scheduled)
     })
-    
-    // Find all payments made on this date for this employee
-    const dayPayments = payments.filter(p => p.date === dateStr)
-    const totalPaymentAmount = dayPayments.reduce((sum, p) => sum + p.amount, 0)
-    
-    const relatedPayment = workDay ? payments.find(p => p.workDayIds.includes(workDay.id)) : null
 
     return {
       workDay,
-      dayPayments,
-      totalPaymentAmount,
-      relatedPayment,
       dateStr
     }
   }
 
   // Get status for a day
   const getDayStatus = (date: Date) => {
-    const { workDay, totalPaymentAmount } = getDayInfo(date)
+    const { workDay } = getDayInfo(date)
     const today = new Date()
     today.setHours(23, 59, 59, 999)
     const isFuture = date > today
-
-    if (totalPaymentAmount > 0) {
-      return {
-        type: 'payment',
-        color: 'bg-green-500',
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-700',
-        label: '💰'
-      }
-    }
 
     if (workDay) {
       if (isFuture) {
@@ -213,10 +194,6 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
           <span className="text-gray-600">Worked & Paid</span>
         </div>
         <div className="flex items-center space-x-1">
-          <span className="text-green-600">💰</span>
-          <span className="text-gray-600">Payment Made</span>
-        </div>
-        <div className="flex items-center space-x-1">
           <div className="w-3 h-3 bg-gray-200 rounded-full border border-gray-400"></div>
           <span className="text-gray-600">Click empty days to mark as worked</span>
         </div>
@@ -234,7 +211,7 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
                  {/* Calendar days */}
          {calendarDays.map(date => {
            const dayStatus = getDayStatus(date)
-           const { workDay, totalPaymentAmount, relatedPayment } = getDayInfo(date)
+           const { workDay } = getDayInfo(date)
            const isCurrentMonth = isSameMonth(date, currentDate)
            const isTodayDate = isToday(date)
 
@@ -270,14 +247,6 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
                    </div>
                  </div>
                )}
- 
-               {totalPaymentAmount > 0 && (
-                 <div className="absolute -bottom-1 -right-1">
-                   <div className="bg-green-500 rounded-full px-1 py-0.5 min-w-6 h-6 flex items-center justify-center shadow-sm">
-                     <span className="text-xs text-white font-medium">£{totalPaymentAmount.toFixed(0)}</span>
-                   </div>
-                 </div>
-               )}
              </div>
           )
         })}
@@ -285,7 +254,7 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
 
       {/* Summary */}
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-2 gap-4 text-center">
           <div>
             <div className="text-lg font-bold text-blue-600">
               {workDays.filter(wd => {
@@ -303,15 +272,6 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
               }).length}
             </div>
             <div className="text-xs text-gray-600">Unpaid</div>
-          </div>
-          <div>
-            <div className="text-lg font-bold text-green-600">
-              £{payments.filter(p => {
-                const paymentDate = parseISO(p.date)
-                return isSameMonth(paymentDate, currentDate)
-              }).reduce((sum, p) => sum + p.amount, 0).toFixed(0)}
-            </div>
-            <div className="text-xs text-gray-600">Paid</div>
           </div>
         </div>
       </div>
