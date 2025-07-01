@@ -391,15 +391,17 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
     }
   }, [isFutureDate])
 
+  // Navigation function
+  const handleEmployeeClick = (employeeId: string) => {
+    window.location.href = `/employee/${employeeId}`
+  }
+
   const getEmployeeStatus = (employeeId: string) => {
     const workDay = dayWorkDays.find(wd => wd.employeeId === employeeId)
-    const today = new Date()
-    today.setHours(23, 59, 59, 999)
-    const isFuture = date > today
 
     if (!workDay) return { status: 'not-scheduled', label: 'Not Scheduled', bgColor: 'bg-gray-100', textColor: 'text-gray-600' }
     
-    if (isFuture) {
+    if (isFutureDate) {
       return { status: 'scheduled', label: 'Scheduled', bgColor: 'bg-blue-100', textColor: 'text-blue-700' }
     } else if (workDay.worked && workDay.paid) {
       return { status: 'worked-paid', label: 'Worked & Paid', bgColor: 'bg-green-100', textColor: 'text-green-700' }
@@ -482,7 +484,11 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
                   const workDay = dayWorkDays.find(wd => wd.employeeId === employee.id)
                   
                   return (
-                    <div key={employee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div 
+                      key={employee.id} 
+                      onClick={() => handleEmployeeClick(employee.id)}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    >
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                           <span className="text-white font-bold text-sm">
@@ -490,7 +496,9 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
                           </span>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{employee.name}</div>
+                          <div className="font-medium text-gray-900 hover:text-indigo-600 transition-colors">
+                            {employee.name}
+                          </div>
                           <div className={`inline-block px-2 py-1 rounded text-xs font-medium ${status.bgColor} ${status.textColor}`}>
                             {status.label}
                           </div>
@@ -502,6 +510,9 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
                             £{workDay.customAmount !== undefined ? workDay.customAmount : employee.dailyWage}
                           </div>
                         )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          Click to view profile →
+                        </div>
                       </div>
                     </div>
                   )
@@ -619,9 +630,7 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
                   {dayWorkDays.filter(wd => {
-                    const today = new Date()
-                    today.setHours(23, 59, 59, 999)
-                    return date > today
+                    return isFutureDate
                   }).length}
                 </div>
                 <div className="text-xs text-blue-600">Scheduled</div>
