@@ -155,6 +155,25 @@ export default function WorkHistory() {
     setCustomEndDate('')
   }
 
+  // Calculate filter counts based on employee selection only (not other filters)
+  const filterCounts = useMemo(() => {
+    let baseFilteredDays = workDays
+    
+    // Apply only employee filter for counts
+    if (selectedEmployeeIds.length > 0) {
+      baseFilteredDays = baseFilteredDays.filter(day => selectedEmployeeIds.includes(day.employeeId))
+    }
+    
+    const totalDays = baseFilteredDays.length
+    const workedDays = baseFilteredDays.filter(day => day.worked).length
+    const scheduledDays = baseFilteredDays.filter(day => !day.worked).length
+    const paidDays = baseFilteredDays.filter(day => day.paid).length
+    const unpaidDays = baseFilteredDays.filter(day => !day.paid).length
+    
+    return { totalDays, workedDays, scheduledDays, paidDays, unpaidDays }
+  }, [workDays, selectedEmployeeIds])
+
+  // Calculate summary stats for the display cards (based on fully filtered data)
   const summaryStats = useMemo(() => {
     const totalWorkDays = filteredAndSortedWorkDays.length
     const workedDays = filteredAndSortedWorkDays.filter(day => day.worked)
@@ -308,9 +327,9 @@ export default function WorkHistory() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'all', label: 'All Days', count: summaryStats.totalWorkDays },
-                  { value: 'worked', label: 'Worked', count: summaryStats.workedDays },
-                  { value: 'scheduled', label: 'Scheduled', count: summaryStats.scheduledDays }
+                  { value: 'all', label: 'All Days', count: filterCounts.totalDays },
+                  { value: 'worked', label: 'Worked', count: filterCounts.workedDays },
+                  { value: 'scheduled', label: 'Scheduled', count: filterCounts.scheduledDays }
                 ].map(option => (
                   <button
                     key={option.value}
@@ -332,9 +351,9 @@ export default function WorkHistory() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'all', label: 'All', count: summaryStats.totalWorkDays },
-                  { value: 'paid', label: 'Paid', count: summaryStats.paidDays },
-                  { value: 'unpaid', label: 'Unpaid', count: summaryStats.unpaidDays }
+                  { value: 'all', label: 'All', count: filterCounts.totalDays },
+                  { value: 'paid', label: 'Paid', count: filterCounts.paidDays },
+                  { value: 'unpaid', label: 'Unpaid', count: filterCounts.unpaidDays }
                 ].map(option => (
                   <button
                     key={option.value}
@@ -433,20 +452,6 @@ export default function WorkHistory() {
             <h2 className="text-xl font-bold text-gray-900">
               Work History ({filteredAndSortedWorkDays.length} days)
             </h2>
-            <div className="flex items-center space-x-4 text-xs">
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Worked & Paid</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Worked & Unpaid</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span>Scheduled</span>
-              </div>
-            </div>
           </div>
 
           {filteredAndSortedWorkDays.length === 0 ? (
