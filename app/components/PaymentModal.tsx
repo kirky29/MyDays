@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { firebaseService, PAYMENT_TYPES, PaymentType } from '../../lib/firebase'
 import type { Payment } from '../../lib/store'
@@ -39,12 +39,22 @@ export default function PaymentModal({
   onPaymentComplete
 }: PaymentModalProps) {
   const [paymentType, setPaymentType] = useState<PaymentType>('Bank Transfer')
+  const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [notes, setNotes] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string>('')
   
   // Prevent background scrolling when modal is open
   useBodyScrollLock(isOpen)
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPaymentDate(format(new Date(), 'yyyy-MM-dd'))
+      setNotes('')
+      setError('')
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -82,7 +92,7 @@ export default function PaymentModal({
         totalAmount,
         paymentType,
         notes.trim() || undefined,
-        format(new Date(), 'yyyy-MM-dd')
+        paymentDate
       )
 
       console.log('Payment processed successfully:', result.payment.id)
@@ -179,6 +189,23 @@ export default function PaymentModal({
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
+          </div>
+
+          {/* Payment Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Date
+            </label>
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              max={format(new Date(), 'yyyy-MM-dd')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select the actual date when this payment was made
+            </p>
           </div>
 
           {/* Notes */}
