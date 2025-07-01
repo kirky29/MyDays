@@ -10,6 +10,10 @@ export default function EmployeeList() {
     router.push(`/employee/${employeeId}`)
   }
 
+  const navigateToAddEmployee = () => {
+    router.push('/add-employee')
+  }
+
   if (employees.length === 0) {
     return (
       <div className="bg-white mx-4 rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
@@ -156,6 +160,34 @@ export default function EmployeeList() {
             </div>
           )
         })}
+        
+        {/* Add New Employee Button */}
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-dashed border-gray-300 hover:border-blue-400 transition-all duration-200 overflow-hidden">
+          <button
+            onClick={navigateToAddEmployee}
+            className="w-full p-8 text-center hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 group"
+          >
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-200">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+              Add New Employee
+            </h3>
+            <p className="text-gray-600 text-sm mb-4 max-w-sm mx-auto">
+              Add another team member to track their work and payments
+            </p>
+            
+            <div className="inline-flex items-center text-blue-600 font-semibold text-sm group-hover:text-blue-700 transition-colors">
+              <span>Get Started</span>
+              <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   )

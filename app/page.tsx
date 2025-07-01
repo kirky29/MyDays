@@ -7,7 +7,6 @@ import LoadingScreen from './components/LoadingScreen'
 import AppHeader from './components/AppHeader'
 import BusinessOverview from './components/BusinessOverview'
 import EmployeeList from './components/EmployeeList'
-import AddEmployeeButton from './components/AddEmployeeButton'
 
 import AuthGuard from './components/AuthGuard'
 
@@ -40,7 +39,6 @@ export default function Home() {
           <div className="space-y-mobile">
             <BusinessOverview />
             <EmployeeList />
-            {employees.length === 0 && <AddEmployeeButton />}
           </div>
           
 
