@@ -1,36 +1,98 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, subDays } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAppStore } from '../../lib/store'
 import { useFirebaseData } from '../../lib/hooks/useFirebaseData'
 import LoadingScreen from '../components/LoadingScreen'
 
+type WorkStatusFilter = 'all' | 'worked' | 'scheduled'
+type PaymentStatusFilter = 'all' | 'paid' | 'unpaid'
+type DateRangeFilter = 'all' | 'today' | 'week' | 'month' | 'last-month' | 'year' | 'custom'
+
 export default function WorkHistory() {
   const router = useRouter()
   const { employees, workDays, payments, loading } = useAppStore()
+  
+  // Filter states
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
+  const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('all')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all')
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>('all')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  
+  // Sort states
   const [sortBy, setSortBy] = useState<'date' | 'employee' | 'amount'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  
+  // UI states
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   // Initialize Firebase data loading
   useFirebaseData()
 
-  // Get all past worked days (not future scheduled work)
-  const pastWorkedDays = useMemo(() => {
+  // Get date range for filtering
+  const getDateRange = () => {
     const today = new Date()
-    today.setHours(23, 59, 59, 999)
-    return workDays.filter(day => day.worked && new Date(day.date) <= today)
-  }, [workDays])
+    switch (dateRangeFilter) {
+      case 'today':
+        return { start: today, end: today }
+      case 'week':
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - 7)
+        return { start: weekStart, end: today }
+      case 'month':
+        return { start: startOfMonth(today), end: endOfMonth(today) }
+      case 'last-month':
+        const lastMonth = subMonths(today, 1)
+        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) }
+      case 'year':
+        return { start: startOfYear(today), end: endOfYear(today) }
+      case 'custom':
+        return {
+          start: customStartDate ? parseISO(customStartDate) : new Date('1900-01-01'),
+          end: customEndDate ? parseISO(customEndDate) : new Date('2100-12-31')
+        }
+      default:
+        return { start: new Date('1900-01-01'), end: new Date('2100-12-31') }
+    }
+  }
 
   // Filter and sort work days
   const filteredAndSortedWorkDays = useMemo(() => {
-    let filtered = pastWorkedDays
+    let filtered = workDays
+
+    // Filter by employee
     if (selectedEmployeeIds.length > 0) {
       filtered = filtered.filter(day => selectedEmployeeIds.includes(day.employeeId))
     }
 
+    // Filter by work status
+    if (workStatusFilter !== 'all') {
+      filtered = filtered.filter(day => 
+        workStatusFilter === 'worked' ? day.worked : !day.worked
+      )
+    }
+
+    // Filter by payment status
+    if (paymentStatusFilter !== 'all') {
+      filtered = filtered.filter(day => 
+        paymentStatusFilter === 'paid' ? day.paid : !day.paid
+      )
+    }
+
+    // Filter by date range
+    if (dateRangeFilter !== 'all') {
+      const { start, end } = getDateRange()
+      filtered = filtered.filter(day => {
+        const dayDate = parseISO(day.date)
+        return dayDate >= start && dayDate <= end
+      })
+    }
+
+    // Sort
     const sorted = [...filtered].sort((a, b) => {
       let compareValue = 0
       if (sortBy === 'date') {
@@ -47,7 +109,7 @@ export default function WorkHistory() {
       return sortOrder === 'desc' ? -compareValue : compareValue
     })
     return sorted
-  }, [pastWorkedDays, selectedEmployeeIds, sortBy, sortOrder, employees])
+  }, [workDays, selectedEmployeeIds, workStatusFilter, paymentStatusFilter, dateRangeFilter, customStartDate, customEndDate, sortBy, sortOrder, employees])
 
   const getWorkDayAmount = (workDay: any) => {
     const employee = employees.find(emp => emp.id === workDay.employeeId)
@@ -84,15 +146,36 @@ export default function WorkHistory() {
     setSelectedEmployeeIds([])
   }
 
+  const clearAllFilters = () => {
+    setSelectedEmployeeIds([])
+    setWorkStatusFilter('all')
+    setPaymentStatusFilter('all')
+    setDateRangeFilter('all')
+    setCustomStartDate('')
+    setCustomEndDate('')
+  }
+
   const summaryStats = useMemo(() => {
     const totalWorkDays = filteredAndSortedWorkDays.length
-    const totalPaidDays = filteredAndSortedWorkDays.filter(day => day.paid).length
-    const totalUnpaidDays = totalWorkDays - totalPaidDays
+    const workedDays = filteredAndSortedWorkDays.filter(day => day.worked)
+    const scheduledDays = filteredAndSortedWorkDays.filter(day => !day.worked)
+    const paidDays = filteredAndSortedWorkDays.filter(day => day.paid)
+    const unpaidDays = filteredAndSortedWorkDays.filter(day => !day.paid)
+    
     const totalAmount = filteredAndSortedWorkDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
-    const totalPaidAmount = filteredAndSortedWorkDays.filter(day => day.paid).reduce((sum, day) => sum + getWorkDayAmount(day), 0)
-    const totalOutstanding = totalAmount - totalPaidAmount
+    const paidAmount = paidDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
+    const unpaidAmount = unpaidDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
 
-    return { totalWorkDays, totalPaidDays, totalUnpaidDays, totalAmount, totalPaidAmount, totalOutstanding }
+    return { 
+      totalWorkDays, 
+      workedDays: workedDays.length,
+      scheduledDays: scheduledDays.length,
+      paidDays: paidDays.length, 
+      unpaidDays: unpaidDays.length, 
+      totalAmount, 
+      paidAmount, 
+      unpaidAmount 
+    }
   }, [filteredAndSortedWorkDays])
 
   // Show loading screen after all hooks have been called
@@ -109,6 +192,7 @@ export default function WorkHistory() {
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-7xl">
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button
@@ -122,78 +206,199 @@ export default function WorkHistory() {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Work History</h1>
-              <p className="text-gray-600 mt-1">Complete history of all worked days across all employees</p>
+              <p className="text-gray-600 mt-1">Complete history of all work days across all employees</p>
             </div>
           </div>
         </div>
 
+        {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">{summaryStats.totalWorkDays}</div>
             <div className="text-sm text-gray-600">Total Days</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{summaryStats.totalPaidDays}</div>
+            <div className="text-2xl font-bold text-green-600">{summaryStats.workedDays}</div>
+            <div className="text-sm text-gray-600">Worked</div>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">{summaryStats.scheduledDays}</div>
+            <div className="text-sm text-gray-600">Scheduled</div>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
+            <div className="text-2xl font-bold text-emerald-600">{summaryStats.paidDays}</div>
             <div className="text-sm text-gray-600">Paid</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="text-2xl font-bold text-amber-600">{summaryStats.totalUnpaidDays}</div>
+            <div className="text-2xl font-bold text-amber-600">{summaryStats.unpaidDays}</div>
             <div className="text-sm text-gray-600">Unpaid</div>
           </div>
           <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
             <div className="text-2xl font-bold text-gray-900">£{summaryStats.totalAmount.toFixed(0)}</div>
-            <div className="text-sm text-gray-600">Total Earned</div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">£{summaryStats.totalPaidAmount.toFixed(0)}</div>
-            <div className="text-sm text-gray-600">Total Paid</div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center">
-            <div className={`text-2xl font-bold ${summaryStats.totalOutstanding > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-              £{summaryStats.totalOutstanding.toFixed(0)}
-            </div>
-            <div className="text-sm text-gray-600">Outstanding</div>
+            <div className="text-sm text-gray-600">Total Value</div>
           </div>
         </div>
 
+        {/* Advanced Filters */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Filter by Employee</h3>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button onClick={selectAllEmployees} className="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors">
-                  Select All
-                </button>
-                <button onClick={clearEmployeeFilters} className="text-sm bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
-                  Clear All
-                </button>
-              </div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
+              >
+                {showAdvancedFilters ? 'Hide Advanced' : 'Show Advanced'}
+              </button>
+              <button
+                onClick={clearAllFilters}
+                className="text-sm bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Work Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Work Status</label>
               <div className="flex flex-wrap gap-2">
-                {employees.map(employee => {
-                  const isSelected = selectedEmployeeIds.includes(employee.id)
-                  const employeeWorkDays = pastWorkedDays.filter(day => day.employeeId === employee.id).length
-                  
-                  return (
-                    <button
-                      key={employee.id}
-                      onClick={() => toggleEmployeeFilter(employee.id)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {employee.name} ({employeeWorkDays})
-                    </button>
-                  )
-                })}
+                {[
+                  { value: 'all', label: 'All Days', count: summaryStats.totalWorkDays },
+                  { value: 'worked', label: 'Worked', count: summaryStats.workedDays },
+                  { value: 'scheduled', label: 'Scheduled', count: summaryStats.scheduledDays }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setWorkStatusFilter(option.value as WorkStatusFilter)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      workStatusFilter === option.value 
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label} ({option.count})
+                  </button>
+                ))}
               </div>
-              {selectedEmployeeIds.length === 0 && (
-                <p className="text-sm text-gray-500 mt-2">All employees selected</p>
-              )}
             </div>
 
-            <div className="lg:w-64">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Sort</h3>
-              <div className="space-y-3">
+            {/* Payment Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all', label: 'All', count: summaryStats.totalWorkDays },
+                  { value: 'paid', label: 'Paid', count: summaryStats.paidDays },
+                  { value: 'unpaid', label: 'Unpaid', count: summaryStats.unpaidDays }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setPaymentStatusFilter(option.value as PaymentStatusFilter)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      paymentStatusFilter === option.value 
+                        ? 'bg-green-600 text-white shadow-md' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label} ({option.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date Range Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+              <select
+                value={dateRangeFilter}
+                onChange={(e) => setDateRangeFilter(e.target.value as DateRangeFilter)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="year">This Year</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+            <div className="border-t border-gray-200 pt-6 space-y-6">
+              {/* Custom Date Range */}
+              {dateRangeFilter === 'custom' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Employee Filter */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">Filter by Employee</label>
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={selectAllEmployees} 
+                      className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button 
+                      onClick={clearEmployeeFilters} 
+                      className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {employees.map(employee => {
+                    const isSelected = selectedEmployeeIds.includes(employee.id)
+                    const employeeWorkDays = workDays.filter(day => day.employeeId === employee.id).length
+                    
+                    return (
+                      <button
+                        key={employee.id}
+                        onClick={() => toggleEmployeeFilter(employee.id)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isSelected ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {employee.name} ({employeeWorkDays})
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedEmployeeIds.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-2">All employees selected</p>
+                )}
+              </div>
+
+              {/* Sort Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
                   <select
@@ -219,9 +424,10 @@ export default function WorkHistory() {
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
+        {/* Work History List */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">
@@ -230,11 +436,15 @@ export default function WorkHistory() {
             <div className="flex items-center space-x-4 text-xs">
               <div className="flex items-center space-x-1">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Paid</span>
+                <span>Worked & Paid</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                <span>Unpaid</span>
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Worked & Unpaid</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                <span>Scheduled</span>
               </div>
             </div>
           </div>
@@ -244,8 +454,8 @@ export default function WorkHistory() {
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Work History Found</h3>
-              <p className="text-gray-600">No worked days found for the selected filters.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Work Days Found</h3>
+              <p className="text-gray-600">No work days found for the selected filters.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -253,12 +463,28 @@ export default function WorkHistory() {
                 const relatedPayment = getRelatedPayment(workDay)
                 const employee = employees.find(emp => emp.id === workDay.employeeId)
                 
+                // Determine status color and background
+                let statusColor = 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+                let statusIndicator = 'bg-purple-500'
+                let statusText = 'Scheduled'
+                let statusTextColor = 'text-purple-700'
+                
+                if (workDay.worked && workDay.paid) {
+                  statusColor = 'bg-green-50 border-green-200 hover:bg-green-100'
+                  statusIndicator = 'bg-green-500'
+                  statusText = 'Worked & Paid'
+                  statusTextColor = 'text-green-700'
+                } else if (workDay.worked && !workDay.paid) {
+                  statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                  statusIndicator = 'bg-blue-500'
+                  statusText = 'Worked & Unpaid'
+                  statusTextColor = 'text-blue-700'
+                }
+                
                 return (
                   <div 
                     key={workDay.id}
-                    className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
-                      workDay.paid ? 'bg-green-50 border-green-200 hover:bg-green-100' : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-                    }`}
+                    className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${statusColor}`}
                     onClick={() => router.push(`/employee/${workDay.employeeId}`)}
                   >
                     <div className="flex items-center justify-between">
@@ -280,11 +506,11 @@ export default function WorkHistory() {
                             </span>
                           </div>
                           <div className="flex items-center space-x-2 mt-1">
-                            <div className={`w-2 h-2 rounded-full ${workDay.paid ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                            <span className={`text-xs font-medium ${workDay.paid ? 'text-green-700' : 'text-amber-700'}`}>
-                              {workDay.paid ? 'Paid' : 'Unpaid'}
+                            <div className={`w-2 h-2 rounded-full ${statusIndicator}`}></div>
+                            <span className={`text-xs font-medium ${statusTextColor}`}>
+                              {statusText}
                             </span>
-                            {workDay.paid && relatedPayment && (
+                            {workDay.worked && workDay.paid && relatedPayment && (
                               <>
                                 <span className="text-gray-300">•</span>
                                 <span className="text-xs text-gray-600">
@@ -295,7 +521,7 @@ export default function WorkHistory() {
                             {workDay.notes && (
                               <>
                                 <span className="text-gray-300">•</span>
-                                <span className="text-xs text-blue-600">"{workDay.notes}"</span>
+                                <span className="text-xs text-indigo-600">"{workDay.notes}"</span>
                               </>
                             )}
                           </div>
