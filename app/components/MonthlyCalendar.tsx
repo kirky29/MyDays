@@ -70,14 +70,28 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
   // Get day info for a specific date
   const getDayInfo = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Start of today for proper comparison
+    const workDate = new Date(dateStr)
+    
     // Only consider work days that are actually worked or scheduled (not removed/cancelled)
-    const workDay = workDays.find(wd => wd.date === dateStr && (wd.worked || new Date(wd.date) > new Date()))
-    const payment = payments.find(p => p.date === dateStr)
+    // Show work days if: worked=true OR (worked=false AND date is today or future - i.e., still scheduled)
+    const workDay = workDays.find(wd => {
+      if (wd.date !== dateStr) return false
+      if (wd.worked) return true // Always show if actually worked
+      return workDate >= today // Show unworked if it's today or future (still scheduled)
+    })
+    
+    // Find all payments made on this date for this employee
+    const dayPayments = payments.filter(p => p.date === dateStr)
+    const totalPaymentAmount = dayPayments.reduce((sum, p) => sum + p.amount, 0)
+    
     const relatedPayment = workDay ? payments.find(p => p.workDayIds.includes(workDay.id)) : null
 
     return {
       workDay,
-      payment,
+      dayPayments,
+      totalPaymentAmount,
       relatedPayment,
       dateStr
     }
@@ -85,12 +99,12 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
 
   // Get status for a day
   const getDayStatus = (date: Date) => {
-    const { workDay, payment } = getDayInfo(date)
+    const { workDay, totalPaymentAmount } = getDayInfo(date)
     const today = new Date()
     today.setHours(23, 59, 59, 999)
     const isFuture = date > today
 
-    if (payment) {
+    if (totalPaymentAmount > 0) {
       return {
         type: 'payment',
         color: 'bg-green-500',
@@ -215,52 +229,52 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
           </div>
         ))}
 
-        {/* Calendar days */}
-        {calendarDays.map(date => {
-          const dayStatus = getDayStatus(date)
-          const { workDay, payment, relatedPayment } = getDayInfo(date)
-          const isCurrentMonth = isSameMonth(date, currentDate)
-          const isTodayDate = isToday(date)
+                 {/* Calendar days */}
+         {calendarDays.map(date => {
+           const dayStatus = getDayStatus(date)
+           const { workDay, totalPaymentAmount, relatedPayment } = getDayInfo(date)
+           const isCurrentMonth = isSameMonth(date, currentDate)
+           const isTodayDate = isToday(date)
 
-          return (
-            <div
-              key={date.toISOString()}
-              onClick={() => onDateClick?.(date)}
-              className={`
-                relative p-2 min-h-[40px] text-center cursor-pointer transition-all
-                ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
-                ${isTodayDate ? 'ring-2 ring-indigo-500 ring-opacity-50' : ''}
-                ${dayStatus ? dayStatus.bgColor : 'hover:bg-gray-50'}
-                rounded-lg border border-transparent hover:border-gray-200
-              `}
-            >
-              <div className="text-sm font-medium">
-                {format(date, 'd')}
-              </div>
-              
-              {dayStatus && (
-                <div className="flex items-center justify-center mt-1">
-                  <div className={`w-2 h-2 rounded-full ${dayStatus.color} mr-1`}></div>
-                  <span className="text-xs">{dayStatus.label}</span>
-                </div>
-              )}
-
-              {workDay && (
-                <div className="absolute -top-1 -right-1">
-                  <div className="text-xs bg-white rounded-full px-1 shadow-sm border">
-                    £{getWorkDayAmount(workDay).toFixed(0)}
-                  </div>
-                </div>
-              )}
-
-              {payment && (
-                <div className="absolute -bottom-1 -right-1">
-                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs text-white">£</span>
-                  </div>
-                </div>
-              )}
-            </div>
+           return (
+             <div
+               key={date.toISOString()}
+               onClick={() => onDateClick?.(date)}
+               className={`
+                 relative p-2 min-h-[40px] text-center cursor-pointer transition-all
+                 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                 ${isTodayDate ? 'ring-2 ring-indigo-500 ring-opacity-50' : ''}
+                 ${dayStatus ? dayStatus.bgColor : 'hover:bg-gray-50'}
+                 rounded-lg border border-transparent hover:border-gray-200
+               `}
+             >
+               <div className="text-sm font-medium">
+                 {format(date, 'd')}
+               </div>
+               
+               {dayStatus && (
+                 <div className="flex items-center justify-center mt-1">
+                   <div className={`w-2 h-2 rounded-full ${dayStatus.color} mr-1`}></div>
+                   <span className="text-xs">{dayStatus.label}</span>
+                 </div>
+               )}
+ 
+               {workDay && (
+                 <div className="absolute -top-1 -right-1">
+                   <div className="text-xs bg-white rounded-full px-1 shadow-sm border">
+                     £{getWorkDayAmount(workDay).toFixed(0)}
+                   </div>
+                 </div>
+               )}
+ 
+               {totalPaymentAmount > 0 && (
+                 <div className="absolute -bottom-1 -right-1">
+                   <div className="bg-green-500 rounded-full px-1 py-0.5 min-w-6 h-6 flex items-center justify-center shadow-sm">
+                     <span className="text-xs text-white font-medium">£{totalPaymentAmount.toFixed(0)}</span>
+                   </div>
+                 </div>
+               )}
+             </div>
           )
         })}
       </div>
