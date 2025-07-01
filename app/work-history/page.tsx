@@ -269,24 +269,19 @@ export default function EmployeeReports() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
             <div className="flex items-center space-x-3">
-              {/* Sort Button */}
-              <button
-                onClick={() => {
-                  const sortOptions: ('date' | 'employee' | 'amount')[] = ['date', 'employee', 'amount']
-                  const currentIndex = sortOptions.indexOf(sortBy)
-                  const nextIndex = (currentIndex + 1) % sortOptions.length
-                  setSortBy(sortOptions[nextIndex])
-                }}
-                className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                title="Click to cycle through sort options"
-              >
-                <span>Sort:</span>
-                <span className="font-medium">
-                  {sortBy === 'date' && '📅 Date'}
-                  {sortBy === 'employee' && '👤 Employee'}
-                  {sortBy === 'amount' && '💰 Amount'}
-                </span>
-              </button>
+              {/* Sort Dropdown */}
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-gray-600">Sort:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'date' | 'employee' | 'amount')}
+                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg border-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="date">Date</option>
+                  <option value="employee">Employee</option>
+                  <option value="amount">Amount</option>
+                </select>
+              </div>
               <button
                 onClick={clearAllFilters}
                 className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
