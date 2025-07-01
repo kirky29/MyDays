@@ -31,6 +31,13 @@ interface WorkDay {
   notes?: string
 }
 
+interface DayNote {
+  id: string
+  date: string
+  content: string
+  createdAt: string
+}
+
 interface DayShift {
   workDay: WorkDay
   employee: Employee
@@ -47,7 +54,20 @@ interface DayShift {
 export default function AllEmployeesCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [dayNotes, setDayNotes] = useState<DayNote[]>([])
   const { employees, workDays, payments } = useAppStore()
+
+  // Load notes from localStorage (temporary solution)
+  useEffect(() => {
+    const savedNotes = localStorage.getItem('dayNotes')
+    if (savedNotes) {
+      try {
+        setDayNotes(JSON.parse(savedNotes))
+      } catch (error) {
+        console.error('Error loading notes from localStorage:', error)
+      }
+    }
+  }, [])
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -95,6 +115,12 @@ export default function AllEmployeesCalendar() {
     
     // Sort by employee name for consistent display
     return dayShifts.sort((a, b) => a.employee.name.localeCompare(b.employee.name))
+  }
+
+  // Get notes for a specific date
+  const getDayNotes = (date: Date): DayNote[] => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return dayNotes.filter(note => note.date === dateStr)
   }
 
   // Get status for a day/work day
@@ -255,8 +281,10 @@ export default function AllEmployeesCalendar() {
         {/* Calendar days */}
         {calendarDays.map(date => {
           const dayShifts = getDayShifts(date)
+          const dayNotesForDate = getDayNotes(date)
           const isCurrentMonth = isSameMonth(date, currentDate)
           const isTodayDate = isToday(date)
+          const totalItems = dayShifts.length + dayNotesForDate.length
 
           return (
             <div
@@ -266,16 +294,17 @@ export default function AllEmployeesCalendar() {
                 relative p-1 min-h-[100px] border border-gray-200 bg-white cursor-pointer
                 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                 ${isTodayDate ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
-                ${dayShifts.length === 0 ? 'hover:bg-blue-50' : 'hover:bg-gray-50'}
+                ${totalItems === 0 ? 'hover:bg-blue-50' : 'hover:bg-gray-50'}
               `}
             >
               <div className="text-sm font-medium text-left mb-1">
                 {format(date, 'd')}
               </div>
               
-              {/* Shifts for this day */}
+              {/* Shifts and Notes for this day */}
               <div className="space-y-0.5">
-                {dayShifts.slice(0, 3).map((shift, index) => (
+                {/* Show shifts first */}
+                {dayShifts.slice(0, 2).map((shift, index) => (
                   <div
                     key={shift.workDay.id}
                     className="text-xs cursor-pointer hover:opacity-80"
@@ -287,10 +316,23 @@ export default function AllEmployeesCalendar() {
                   </div>
                 ))}
                 
-                {/* Show count if more than 3 shifts */}
-                {dayShifts.length > 3 && (
+                {/* Show notes */}
+                {dayNotesForDate.slice(0, 3 - Math.min(dayShifts.length, 2)).map((note, index) => (
+                  <div
+                    key={note.id}
+                    className="text-xs cursor-pointer hover:opacity-80"
+                    title={note.content}
+                  >
+                    <div className="inline-block px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                      Note
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Show count if more items than can be displayed */}
+                {totalItems > 3 && (
                   <div className="text-xs text-gray-500 text-center py-0.5">
-                    +{dayShifts.length - 3} more
+                    +{totalItems - 3} more
                   </div>
                 )}
               </div>
@@ -350,6 +392,8 @@ export default function AllEmployeesCalendar() {
           employees={employees}
           workDays={workDays}
           payments={payments}
+          dayNotes={dayNotes}
+          onNotesUpdate={setDayNotes}
         />
       )}
     </div>
@@ -364,18 +408,23 @@ interface DayDetailModalProps {
   employees: Employee[]
   workDays: WorkDay[]
   payments: any[]
+  dayNotes: DayNote[]
+  onNotesUpdate: (notes: DayNote[]) => void
 }
 
-function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }: DayDetailModalProps) {
+function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, dayNotes, onNotesUpdate }: DayDetailModalProps) {
   const [isAddingShift, setIsAddingShift] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [shiftType, setShiftType] = useState<'worked' | 'scheduled'>('worked')
+  const [isAddingNote, setIsAddingNote] = useState(false)
+  const [noteContent, setNoteContent] = useState('')
 
   if (!isOpen) return null
 
   const dateStr = format(date, 'yyyy-MM-dd')
   const dayWorkDays = workDays.filter(wd => wd.date === dateStr)
   const dayPayments = payments.filter(p => p.date === dateStr)
+  const modalDayNotes = dayNotes.filter(note => note.date === dateStr)
   
   const today = new Date()
   today.setHours(23, 59, 59, 999)
@@ -394,6 +443,30 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
   // Navigation function
   const handleEmployeeClick = (employeeId: string) => {
     window.location.href = `/employee/${employeeId}`
+  }
+
+  // Note management functions (using localStorage temporarily)
+  const handleAddNote = () => {
+    if (!noteContent.trim()) return
+
+    const newNote: DayNote = {
+      id: `note-${dateStr}-${Date.now()}`,
+      date: dateStr,
+      content: noteContent.trim(),
+      createdAt: new Date().toISOString()
+    }
+    
+    const updatedNotes = [...dayNotes, newNote]
+    onNotesUpdate(updatedNotes)
+    localStorage.setItem('dayNotes', JSON.stringify(updatedNotes))
+    setNoteContent('')
+    setIsAddingNote(false)
+  }
+
+  const handleDeleteNote = (noteId: string) => {
+    const updatedNotes = dayNotes.filter(note => note.id !== noteId)
+    onNotesUpdate(updatedNotes)
+    localStorage.setItem('dayNotes', JSON.stringify(updatedNotes))
   }
 
   const getEmployeeStatus = (employeeId: string) => {
@@ -535,6 +608,82 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
               </p>
             </div>
           )}
+
+          {/* Day Notes */}
+          {modalDayNotes.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+              <div className="space-y-2">
+                {modalDayNotes.map(note => (
+                  <div key={note.id} className="flex items-start justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">{note.content}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Added {format(new Date(note.createdAt), 'MMM d, h:mm a')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete note"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add Note */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Note</h3>
+            
+            {!isAddingNote ? (
+              <button
+                onClick={() => setIsAddingNote(true)}
+                className="w-full p-3 border-2 border-dashed border-purple-300 rounded-lg text-purple-600 hover:border-purple-500 hover:text-purple-700 transition-colors"
+              >
+                + Add Note for This Day
+              </button>
+            ) : (
+              <div className="space-y-4 p-4 bg-purple-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Note Content
+                  </label>
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Add a note for this day..."
+                    rows={3}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                  />
+                </div>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!noteContent.trim()}
+                    className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add Note
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddingNote(false)
+                      setNoteContent('')
+                    }}
+                    className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Add New Shift */}
           {unscheduledEmployees.length > 0 && (
