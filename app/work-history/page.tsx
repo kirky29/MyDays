@@ -240,27 +240,27 @@ export default function EmployeeReports() {
         </div>
 
         {/* Colorful Stats Cards */}
-        <div className="grid grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
-            <div className="w-14 h-14 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-4">
-              <span className="text-2xl">💼</span>
+        <div className="grid grid-cols-3 gap-4 mb-8 max-w-3xl mx-auto">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center aspect-square flex flex-col justify-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-blue-100 flex items-center justify-center mb-3">
+              <span className="text-xl">💼</span>
             </div>
-            <div className="text-3xl font-bold text-blue-600 mb-2">{summaryStats.workedDays}</div>
-            <div className="text-sm text-gray-600 font-medium">Days Worked</div>
+            <div className="text-2xl font-bold text-blue-600 mb-1">{summaryStats.workedDays}</div>
+            <div className="text-xs text-gray-600 font-medium">Days Worked</div>
           </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
-            <div className="w-14 h-14 mx-auto rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-              <span className="text-2xl">⏳</span>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center aspect-square flex flex-col justify-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-amber-100 flex items-center justify-center mb-3">
+              <span className="text-xl">⏳</span>
             </div>
-            <div className="text-3xl font-bold text-amber-600 mb-2">{summaryStats.unpaidDays}</div>
-            <div className="text-sm text-gray-600 font-medium">Unpaid</div>
+            <div className="text-2xl font-bold text-amber-600 mb-1">{summaryStats.unpaidDays}</div>
+            <div className="text-xs text-gray-600 font-medium">Unpaid</div>
           </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6 text-center">
-            <div className="w-14 h-14 mx-auto rounded-xl bg-purple-100 flex items-center justify-center mb-4">
-              <span className="text-2xl">💰</span>
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-4 text-center aspect-square flex flex-col justify-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-purple-100 flex items-center justify-center mb-3">
+              <span className="text-xl">💰</span>
             </div>
-            <div className="text-3xl font-bold text-purple-600 mb-2">£{summaryStats.totalAmount.toFixed(0)}</div>
-            <div className="text-sm text-gray-600 font-medium">Total Value</div>
+            <div className="text-2xl font-bold text-purple-600 mb-1">£{summaryStats.totalAmount.toFixed(0)}</div>
+            <div className="text-xs text-gray-600 font-medium">Total Value</div>
           </div>
         </div>
 
@@ -437,7 +437,7 @@ export default function EmployeeReports() {
               <p className="text-gray-600">Try adjusting your filters to see more results.</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto p-6">
+            <div className="space-y-3 p-6">
               {filteredAndSortedWorkDays.map(workDay => {
                 const relatedPayment = getRelatedPayment(workDay)
                 const employee = employees.find(emp => emp.id === workDay.employeeId)
