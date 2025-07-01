@@ -279,7 +279,7 @@ export default function AllEmployeesCalendar() {
                     className="text-xs cursor-pointer hover:opacity-80"
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
-                    <span className="font-medium text-gray-900 truncate">
+                    <span className={`font-medium truncate px-2 py-1 rounded text-xs ${shift.status.bgColor} ${shift.status.textColor}`}>
                       {shift.employee.name}
                     </span>
                   </div>
