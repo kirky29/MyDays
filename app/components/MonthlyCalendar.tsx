@@ -70,16 +70,14 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
   // Get day info for a specific date
   const getDayInfo = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0) // Start of today for proper comparison
-    const workDate = new Date(dateStr)
+    const today = format(new Date(), 'yyyy-MM-dd') // Use string comparison to avoid timezone issues
     
     // Only consider work days that are actually worked or scheduled (not removed/cancelled)
     // Show work days if: worked=true OR (worked=false AND date is today or future - i.e., still scheduled)
     const workDay = workDays.find(wd => {
       if (wd.date !== dateStr) return false
       if (wd.worked) return true // Always show if actually worked
-      return workDate >= today // Show unworked if it's today or future (still scheduled)
+      return dateStr >= today // Show unworked if it's today or future (still scheduled)
     })
     
     // Find all payments made on this date for this employee

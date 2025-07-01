@@ -459,7 +459,7 @@ export default function EmployeeDetail() {
       return
     }
 
-    const confirmMessage = `Are you sure you want to remove this work day?\n\n${format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}\n\nThis will remove the work day from records.`
+    const confirmMessage = `Are you sure you want to remove this work day?\n\n${format(parseISO(workDay.date), 'EEEE, MMMM d, yyyy')}\n\nThis will remove the work day from records and the calendar.`
     
     if (confirm(confirmMessage)) {
       try {
@@ -482,11 +482,17 @@ export default function EmployeeDetail() {
         await firebaseService.addWorkDay(removedWorkDay)
         
         console.log('Work day removed successfully')
+        setSyncStatus('synced')
+        
+        // Close modal and clear selection
         setShowWorkDayEditModal(false)
         setSelectedWorkDay(null)
         
+        // Also clear any selection state
+        clearSelection()
+        
         // Show success message
-        alert('Work day removed successfully!')
+        alert('Work day removed successfully! It has been removed from the calendar.')
       } catch (error: any) {
         console.error('Error removing work day:', error)
         setSyncStatus('error')
