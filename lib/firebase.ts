@@ -25,7 +25,8 @@ export const auth = getAuth(app);
 export const COLLECTIONS = {
   EMPLOYEES: 'employees',
   WORK_DAYS: 'workDays',
-  PAYMENTS: 'payments'
+  PAYMENTS: 'payments',
+  DAY_NOTES: 'dayNotes'
 } as const;
 
 // Payment types
@@ -39,7 +40,7 @@ export const PAYMENT_TYPES = [
 export type PaymentType = typeof PAYMENT_TYPES[number];
 
 // Import types from store to maintain consistency
-import type { Employee, WorkDay, Payment } from './store'
+import type { Employee, WorkDay, Payment, DayNote } from './store'
 
 // Firebase service functions with enhanced error handling
 export const firebaseService = {
@@ -521,6 +522,48 @@ export const firebaseService = {
     }
   },
 
+  // Day notes functions
+  async addDayNote(dayNote: DayNote) {
+    try {
+      await setDoc(doc(db, COLLECTIONS.DAY_NOTES, dayNote.id), dayNote);
+      return { success: true };
+    } catch (error) {
+      console.error('Error adding day note:', error);
+      throw error;
+    }
+  },
+
+  async getDayNotes(): Promise<DayNote[]> {
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTIONS.DAY_NOTES));
+      return querySnapshot.docs.map(doc => doc.data() as DayNote);
+    } catch (error) {
+      console.error('Error getting day notes:', error);
+      throw error;
+    }
+  },
+
+  async getDayNotesForDate(date: string): Promise<DayNote[]> {
+    try {
+      const q = query(collection(db, COLLECTIONS.DAY_NOTES), where("date", "==", date));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as DayNote);
+    } catch (error) {
+      console.error('Error getting day notes for date:', error);
+      throw error;
+    }
+  },
+
+  async deleteDayNote(noteId: string) {
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.DAY_NOTES, noteId));
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting day note:', error);
+      throw error;
+    }
+  },
+
   // Real-time listeners with error handling
   subscribeToEmployees(callback: (employees: Employee[]) => void, errorCallback?: (error: any) => void) {
     try {
@@ -575,6 +618,25 @@ export const firebaseService = {
       );
     } catch (error) {
       console.error('Error setting up payments subscription:', error);
+      if (errorCallback) errorCallback(error);
+    }
+  },
+
+  subscribeToDayNotes(callback: (dayNotes: DayNote[]) => void, errorCallback?: (error: any) => void) {
+    try {
+      return onSnapshot(
+        collection(db, COLLECTIONS.DAY_NOTES), 
+        (snapshot) => {
+          const dayNotes = snapshot.docs.map(doc => doc.data() as DayNote);
+          callback(dayNotes);
+        },
+        (error) => {
+          console.error('Error in day notes subscription:', error);
+          if (errorCallback) errorCallback(error);
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up day notes subscription:', error);
       if (errorCallback) errorCallback(error);
     }
   },

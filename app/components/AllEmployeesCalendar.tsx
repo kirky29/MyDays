@@ -34,7 +34,7 @@ interface WorkDay {
 interface DayNote {
   id: string
   date: string
-  content: string
+  note: string
   createdAt: string
 }
 
@@ -54,20 +54,7 @@ interface DayShift {
 export default function AllEmployeesCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [dayNotes, setDayNotes] = useState<DayNote[]>([])
-  const { employees, workDays, payments } = useAppStore()
-
-  // Load notes from localStorage (temporary solution)
-  useEffect(() => {
-    const savedNotes = localStorage.getItem('dayNotes')
-    if (savedNotes) {
-      try {
-        setDayNotes(JSON.parse(savedNotes))
-      } catch (error) {
-        console.error('Error loading notes from localStorage:', error)
-      }
-    }
-  }, [])
+  const { employees, workDays, payments, dayNotes, getDayNotes, addDayNote, deleteDayNote } = useAppStore()
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -118,9 +105,9 @@ export default function AllEmployeesCalendar() {
   }
 
   // Get notes for a specific date
-  const getDayNotes = (date: Date): DayNote[] => {
+  const getDayNotesForDate = (date: Date): DayNote[] => {
     const dateStr = format(date, 'yyyy-MM-dd')
-    return dayNotes.filter(note => note.date === dateStr)
+    return getDayNotes(dateStr)
   }
 
   // Get status for a day/work day
@@ -281,7 +268,7 @@ export default function AllEmployeesCalendar() {
         {/* Calendar days */}
         {calendarDays.map(date => {
           const dayShifts = getDayShifts(date)
-          const dayNotesForDate = getDayNotes(date)
+          const dayNotesForDate = getDayNotesForDate(date)
           const isCurrentMonth = isSameMonth(date, currentDate)
           const isTodayDate = isToday(date)
           const totalItems = dayShifts.length + dayNotesForDate.length
@@ -321,7 +308,7 @@ export default function AllEmployeesCalendar() {
                   <div
                     key={note.id}
                     className="text-xs cursor-pointer hover:opacity-80"
-                    title={note.content}
+                    title={note.note}
                   >
                     <div className="inline-block px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                       Note
@@ -393,7 +380,9 @@ export default function AllEmployeesCalendar() {
           workDays={workDays}
           payments={payments}
           dayNotes={dayNotes}
-          onNotesUpdate={setDayNotes}
+          getDayNotes={getDayNotes}
+          addDayNote={addDayNote}
+          deleteDayNote={deleteDayNote}
         />
       )}
     </div>
@@ -409,10 +398,12 @@ interface DayDetailModalProps {
   workDays: WorkDay[]
   payments: any[]
   dayNotes: DayNote[]
-  onNotesUpdate: (notes: DayNote[]) => void
+  getDayNotes: (date: string) => DayNote[]
+  addDayNote: (date: string, note: string) => Promise<void>
+  deleteDayNote: (noteId: string) => Promise<void>
 }
 
-function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, dayNotes, onNotesUpdate }: DayDetailModalProps) {
+function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, dayNotes, getDayNotes, addDayNote, deleteDayNote }: DayDetailModalProps) {
   const [isAddingShift, setIsAddingShift] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [shiftType, setShiftType] = useState<'worked' | 'scheduled'>('worked')
@@ -424,7 +415,7 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
   const dateStr = format(date, 'yyyy-MM-dd')
   const dayWorkDays = workDays.filter(wd => wd.date === dateStr)
   const dayPayments = payments.filter(p => p.date === dateStr)
-  const modalDayNotes = dayNotes.filter(note => note.date === dateStr)
+  const modalDayNotes = getDayNotes(dateStr)
   
   const today = new Date()
   today.setHours(23, 59, 59, 999)
@@ -445,28 +436,27 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
     window.location.href = `/employee/${employeeId}`
   }
 
-  // Note management functions (using localStorage temporarily)
-  const handleAddNote = () => {
+  // Note management functions using store
+  const handleAddNote = async () => {
     if (!noteContent.trim()) return
 
-    const newNote: DayNote = {
-      id: `note-${dateStr}-${Date.now()}`,
-      date: dateStr,
-      content: noteContent.trim(),
-      createdAt: new Date().toISOString()
+    try {
+      await addDayNote(dateStr, noteContent.trim())
+      setNoteContent('')
+      setIsAddingNote(false)
+    } catch (error) {
+      console.error('Error adding note:', error)
+      alert('Failed to add note. Please try again.')
     }
-    
-    const updatedNotes = [...dayNotes, newNote]
-    onNotesUpdate(updatedNotes)
-    localStorage.setItem('dayNotes', JSON.stringify(updatedNotes))
-    setNoteContent('')
-    setIsAddingNote(false)
   }
 
-  const handleDeleteNote = (noteId: string) => {
-    const updatedNotes = dayNotes.filter(note => note.id !== noteId)
-    onNotesUpdate(updatedNotes)
-    localStorage.setItem('dayNotes', JSON.stringify(updatedNotes))
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteDayNote(noteId)
+    } catch (error) {
+      console.error('Error deleting note:', error)
+      alert('Failed to delete note. Please try again.')
+    }
   }
 
   const getEmployeeStatus = (employeeId: string) => {
@@ -617,7 +607,7 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
                 {modalDayNotes.map(note => (
                   <div key={note.id} className="flex items-start justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
                     <div className="flex-1">
-                      <p className="text-sm text-gray-900">{note.content}</p>
+                      <p className="text-sm text-gray-900">{note.note}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Added {format(new Date(note.createdAt), 'MMM d, h:mm a')}
                       </p>

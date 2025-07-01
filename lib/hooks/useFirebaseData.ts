@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { firebaseService } from '../firebase'
 import { useAppStore } from '../store'
-import type { Employee, WorkDay, Payment } from '../store'
+import type { Employee, WorkDay, Payment, DayNote } from '../store'
 
 // Global flag to track if we've ever loaded data in this session
 let hasEverLoadedData = false
@@ -11,9 +11,11 @@ export const useFirebaseData = () => {
     employees,
     workDays,
     payments,
+    dayNotes,
     setEmployees,
     setWorkDays,
     setPayments,
+    setDayNotes,
     setLoading,
     setSyncStatus,
     setErrorMessage,
@@ -24,7 +26,7 @@ export const useFirebaseData = () => {
   const listenersRef = useRef<(() => void)[]>([])
 
   // Only load data if we don't have any data yet
-  const hasData = employees.length > 0 || workDays.length > 0 || payments.length > 0
+  const hasData = employees.length > 0 || workDays.length > 0 || payments.length > 0 || dayNotes.length > 0
 
   // Load initial data only if we don't have data and haven't initialized
   useEffect(() => {
@@ -54,16 +56,18 @@ export const useFirebaseData = () => {
         await firebaseService.enableNetwork()
         
         // Load initial data
-        const [employeesData, workDaysData, paymentsData] = await Promise.all([
+        const [employeesData, workDaysData, paymentsData, dayNotesData] = await Promise.all([
           firebaseService.getEmployees(),
           firebaseService.getWorkDays(),
-          firebaseService.getPayments()
+          firebaseService.getPayments(),
+          firebaseService.getDayNotes()
         ])
         
         if (isMounted) {
           setEmployees(employeesData as Employee[])
           setWorkDays(workDaysData as WorkDay[])
           setPayments(paymentsData as Payment[])
+          setDayNotes(dayNotesData as DayNote[])
           setSyncStatus('synced')
           setLoading(false)
           hasEverLoadedData = true
@@ -83,7 +87,7 @@ export const useFirebaseData = () => {
     return () => {
       isMounted = false
     }
-  }, [hasData, setEmployees, setWorkDays, setPayments, setLoading, setSyncStatus, setErrorMessage])
+  }, [hasData, setEmployees, setWorkDays, setPayments, setDayNotes, setLoading, setSyncStatus, setErrorMessage])
 
   // Set up real-time listeners only once
   useEffect(() => {
@@ -142,11 +146,29 @@ export const useFirebaseData = () => {
       }
     )
 
+    const unsubscribeDayNotes = firebaseService.subscribeToDayNotes(
+      (dayNotesData) => {
+        if (isMounted) {
+          setDayNotes(dayNotesData as DayNote[])
+          setSyncStatus('synced')
+          setErrorMessage('')
+        }
+      },
+      (error: any) => {
+        if (isMounted) {
+          console.error('Day notes subscription error:', error)
+          setSyncStatus('error')
+          setErrorMessage(`Day notes sync error: ${error.message}`)
+        }
+      }
+    )
+
     // Store cleanup functions
     listenersRef.current = [
       unsubscribeEmployees,
       unsubscribeWorkDays,
-      unsubscribePayments
+      unsubscribePayments,
+      unsubscribeDayNotes
     ].filter((fn): fn is () => void => typeof fn === 'function')
 
     return () => {
@@ -154,5 +176,5 @@ export const useFirebaseData = () => {
       listenersRef.current.forEach(unsubscribe => unsubscribe?.())
       listenersRef.current = []
     }
-  }, [setEmployees, setWorkDays, setPayments, setSyncStatus, setErrorMessage])
+  }, [setEmployees, setWorkDays, setPayments, setDayNotes, setSyncStatus, setErrorMessage])
 } 

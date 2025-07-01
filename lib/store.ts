@@ -34,6 +34,13 @@ export interface Payment {
   createdAt: string
 }
 
+export interface DayNote {
+  id: string
+  date: string // Format: YYYY-MM-DD
+  note: string
+  createdAt: string
+}
+
 export type SyncStatus = 'syncing' | 'synced' | 'error'
 
 interface AppState {
@@ -41,6 +48,7 @@ interface AppState {
   employees: Employee[]
   workDays: WorkDay[]
   payments: Payment[]
+  dayNotes: DayNote[]
   
   // UI State
   loading: boolean
@@ -51,6 +59,7 @@ interface AppState {
   setEmployees: (employees: Employee[]) => void
   setWorkDays: (workDays: WorkDay[]) => void
   setPayments: (payments: Payment[]) => void
+  setDayNotes: (dayNotes: DayNote[]) => void
   setLoading: (loading: boolean) => void
   setSyncStatus: (status: SyncStatus) => void
   setErrorMessage: (message: string) => void
@@ -60,10 +69,13 @@ interface AppState {
   deleteEmployee: (id: string) => Promise<void>
   toggleWorkDay: (employeeId: string, date: string) => Promise<void>
   togglePayment: (employeeId: string, date: string) => Promise<void>
+  addDayNote: (date: string, note: string) => Promise<void>
+  deleteDayNote: (noteId: string) => Promise<void>
   retryConnection: () => Promise<void>
   
   // Computed/Helper functions
   getWorkDay: (employeeId: string, date: string) => WorkDay | undefined
+  getDayNotes: (date: string) => DayNote[]
   calculateEmployeeStats: (employeeId: string) => {
     totalWorked: number
     totalPaid: number
@@ -78,6 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   employees: [],
   workDays: [],
   payments: [],
+  dayNotes: [],
   loading: false, // Start as false, will be set to true only when actually loading
   syncStatus: 'synced', // Start as synced, will change when actually syncing
   errorMessage: '',
@@ -86,6 +99,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setEmployees: (employees) => set({ employees }),
   setWorkDays: (workDays) => set({ workDays }),
   setPayments: (payments) => set({ payments }),
+  setDayNotes: (dayNotes) => set({ dayNotes }),
   setLoading: (loading) => set({ loading }),
   setSyncStatus: (syncStatus) => set({ syncStatus }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
@@ -211,6 +225,43 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
+  addDayNote: async (date, note) => {
+    const dayNote: DayNote = {
+      id: Date.now().toString(),
+      date,
+      note,
+      createdAt: new Date().toISOString()
+    }
+    
+    try {
+      set({ syncStatus: 'syncing', errorMessage: '' })
+      await firebaseService.addDayNote(dayNote)
+      // Real-time listener will update the state
+    } catch (error: any) {
+      console.error('Error adding day note:', error)
+      set({ 
+        syncStatus: 'error', 
+        errorMessage: `Failed to add day note: ${error.message}` 
+      })
+      throw error
+    }
+  },
+  
+  deleteDayNote: async (noteId) => {
+    try {
+      set({ syncStatus: 'syncing', errorMessage: '' })
+      await firebaseService.deleteDayNote(noteId)
+      // Real-time listener will update the state
+    } catch (error: any) {
+      console.error('Error deleting day note:', error)
+      set({ 
+        syncStatus: 'error', 
+        errorMessage: `Failed to delete day note: ${error.message}` 
+      })
+      throw error
+    }
+  },
+  
   retryConnection: async () => {
     try {
       set({ syncStatus: 'syncing', errorMessage: '' })
@@ -243,6 +294,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   getWorkDay: (employeeId, date) => {
     const { workDays } = get()
     return workDays.find(day => day.employeeId === employeeId && day.date === date)
+  },
+  
+  getDayNotes: (date) => {
+    const { dayNotes } = get()
+    return dayNotes.filter(note => note.date === date)
   },
   
   calculateEmployeeStats: (employeeId) => {
