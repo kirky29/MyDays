@@ -258,8 +258,8 @@ export default function WorkHistory() {
               <span className="font-medium">Back</span>
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Work History</h1>
-              <p className="text-gray-600 mt-1">Complete history of all work days across all employees</p>
+              <h1 className="text-3xl font-bold text-gray-900">Work Schedule</h1>
+              <p className="text-gray-600 mt-1">View work history and upcoming scheduled shifts for all employees</p>
             </div>
           </div>
         </div>
@@ -484,7 +484,7 @@ export default function WorkHistory() {
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">
-              Work History ({filteredAndSortedWorkDays.length} days)
+              Work Schedule ({filteredAndSortedWorkDays.length} days)
             </h2>
           </div>
 
@@ -493,8 +493,8 @@ export default function WorkHistory() {
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Work Days Found</h3>
-              <p className="text-gray-600">No work days found for the selected filters.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Schedule Found</h3>
+              <p className="text-gray-600">No work days or scheduled shifts found for the selected filters.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -502,22 +502,41 @@ export default function WorkHistory() {
                 const relatedPayment = getRelatedPayment(workDay)
                 const employee = employees.find(emp => emp.id === workDay.employeeId)
                 
-                // Determine status color and background
+                // Determine status color and background based on date and work status
+                const today = new Date()
+                today.setHours(23, 59, 59, 999)
+                const dayDate = parseISO(workDay.date)
+                const isFuture = dayDate > today
+                
                 let statusColor = 'bg-purple-50 border-purple-200 hover:bg-purple-100'
                 let statusIndicator = 'bg-purple-500'
                 let statusText = 'Scheduled'
                 let statusTextColor = 'text-purple-700'
                 
-                if (workDay.worked && workDay.paid) {
+                if (isFuture) {
+                  // Future dates are always "Scheduled" regardless of worked/paid status
+                  statusColor = 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+                  statusIndicator = 'bg-purple-500'
+                  statusText = 'Scheduled'
+                  statusTextColor = 'text-purple-700'
+                } else if (workDay.worked && workDay.paid) {
+                  // Past dates that were worked and paid
                   statusColor = 'bg-green-50 border-green-200 hover:bg-green-100'
                   statusIndicator = 'bg-green-500'
                   statusText = 'Worked & Paid'
                   statusTextColor = 'text-green-700'
                 } else if (workDay.worked && !workDay.paid) {
+                  // Past dates that were worked but not paid
                   statusColor = 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                   statusIndicator = 'bg-blue-500'
                   statusText = 'Worked & Unpaid'
                   statusTextColor = 'text-blue-700'
+                } else {
+                  // Past dates that were not worked (missed/cancelled)
+                  statusColor = 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  statusIndicator = 'bg-gray-500'
+                  statusText = 'Not Worked'
+                  statusTextColor = 'text-gray-700'
                 }
                 
                 return (
