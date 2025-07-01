@@ -568,17 +568,15 @@ export default function EmployeeDetail() {
     const existingDay = workDays.find(day => day.date === quickAddDate)
     
     if (existingDay) {
-      // Provide clear feedback about existing work day
-      const existingStatus = existingDay.worked ? 'worked' : 'not worked'
-      const paidStatus = existingDay.paid ? ' (paid)' : ' (unpaid)'
-      const message = `A work day already exists for ${format(parseISO(quickAddDate), 'EEEE, MMMM d, yyyy')} - currently marked as ${existingStatus}${existingDay.worked ? paidStatus : ''}.\n\nWould you like to toggle its status?`
-      
-      if (confirm(message)) {
-        await toggleWorkDay(quickAddDate)
-      }
-    } else {
-      await toggleWorkDay(quickAddDate)
+      // Just show a message that the day is already logged
+      const existingStatus = existingDay.worked ? 'worked' : 'scheduled'
+      const paidStatus = existingDay.paid ? ' and paid' : ''
+      alert(`This day is already logged in the system as ${existingStatus}${paidStatus}.\n\nTo edit this work day, please use the work history section below.`)
+      return
     }
+    
+    // Only add new work day if it doesn't exist
+    await toggleWorkDay(quickAddDate)
   }
 
   // Add data integrity validation
@@ -1240,8 +1238,8 @@ export default function EmployeeDetail() {
                 {(() => {
                   const existingDay = workDays.find(day => day.date === quickAddDate)
                   if (existingDay && quickAddDate) {
-                    const status = existingDay.worked ? 'worked' : 'not worked'
-                    const paidStatus = existingDay.paid ? ' (paid)' : ' (unpaid)'
+                    const status = existingDay.worked ? 'worked' : 'scheduled'
+                    const paidStatus = existingDay.paid ? ' and paid' : ''
                     return (
                       <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="flex items-center space-x-2 text-amber-700">
@@ -1249,8 +1247,8 @@ export default function EmployeeDetail() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                           </svg>
                           <span className="text-xs">
-                            Work day exists: currently marked as <strong>{status}</strong>{existingDay.worked ? paidStatus : ''}. 
-                            Clicking "Add" will toggle this status.
+                            This day is already logged as <strong>{status}</strong>{paidStatus}. 
+                            Use the work history section below to edit.
                           </span>
                         </div>
                       </div>
