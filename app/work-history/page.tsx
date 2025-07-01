@@ -268,12 +268,51 @@ export default function EmployeeReports() {
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8 max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
-            <button
-              onClick={clearAllFilters}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Clear All
-            </button>
+            <div className="flex items-center space-x-3">
+              {/* Sort Icons */}
+              <div className="flex items-center space-x-1">
+                <span className="text-sm text-gray-600 mr-2">Sort:</span>
+                <button
+                  onClick={() => setSortBy('date')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    sortBy === 'date' 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title="Sort by Date"
+                >
+                  📅
+                </button>
+                <button
+                  onClick={() => setSortBy('employee')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    sortBy === 'employee' 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title="Sort by Employee"
+                >
+                  👤
+                </button>
+                <button
+                  onClick={() => setSortBy('amount')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    sortBy === 'amount' 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title="Sort by Amount"
+                >
+                  💰
+                </button>
+              </div>
+              <button
+                onClick={clearAllFilters}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
 
           {/* Employee Selection */}
@@ -400,32 +439,7 @@ export default function EmployeeReports() {
             </div>
           )}
 
-          {/* Sort Options */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sort by</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'date' | 'employee' | 'amount')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="date">Date</option>
-                <option value="employee">Employee</option>
-                <option value="amount">Amount</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
-            </div>
-          </div>
+
         </div>
 
         {/* Results */}
