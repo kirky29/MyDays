@@ -1367,7 +1367,7 @@ export default function EmployeeDetail() {
                     return workDays
                       .filter(day => new Date(day.date) > today)
                       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                      .slice(0, 5)
+                      .slice(0, 3)
                   })()
                     .map(workDay => (
                       <div 
