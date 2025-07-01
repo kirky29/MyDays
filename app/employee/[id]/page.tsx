@@ -1488,7 +1488,7 @@ export default function EmployeeDetail() {
             </svg>
             Recent Payments
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2">
             {payments
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .slice(0, 6)
@@ -1503,20 +1503,34 @@ export default function EmployeeDetail() {
                     onClick={() => handlePaymentClick(payment)}
                     className="p-4 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-green-100 transition-all"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-bold text-green-900 text-lg">
-                        £{payment.amount.toFixed(2)}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">
+                            Paid on {format(parseISO(payment.date), 'EEEE, MMMM d, yyyy')}
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-green-700">
+                              {payment.paymentType}
+                            </span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-xs text-green-600">
+                              {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                        {payment.paymentType}
+                      <div className="text-right">
+                        <div className="font-semibold text-gray-900">
+                          £{payment.amount.toFixed(2)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-sm text-green-700 mb-2">
-                      Paid on {format(parseISO(payment.date), 'MMM d, yyyy')}
-                    </div>
-                    <div className="text-xs text-green-600">
-                      {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {' '}
-                      {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
                     </div>
                   </div>
                 )
