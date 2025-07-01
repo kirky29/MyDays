@@ -52,23 +52,6 @@ export default function EmployeeList() {
 
   return (
     <div className="px-4">
-      {/* Enhanced Header with better visual separation */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Employees</h2>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 ml-13">
-          {employees.length} employee{employees.length !== 1 ? 's' : ''} • Tap any card to view details
-        </p>
-      </div>
-      
       {/* Employee Cards with better separation */}
       <div className="space-y-6">
         {employees.map(employee => {
