@@ -8,6 +8,7 @@ import type { Payment } from '../../../lib/store'
 import PaymentModal from '../../components/PaymentModal'
 import PaymentEditModal from '../../components/PaymentEditModal'
 import WorkDayEditModal from '../../components/WorkDayEditModal'
+import MonthlyCalendar from '../../components/MonthlyCalendar'
 
 import { useBodyScrollLock } from '../../../lib/hooks/useBodyScrollLock'
 
@@ -1225,6 +1226,23 @@ export default function EmployeeDetail() {
               </div>
             )}
           </div>
+
+          {/* Monthly Calendar */}
+          <MonthlyCalendar
+            employee={employee}
+            workDays={workDays}
+            payments={payments}
+            onDateClick={(date) => {
+              const dateStr = format(date, 'yyyy-MM-dd')
+              setQuickAddDate(dateStr)
+              
+              // If clicking on a date with existing data, open the edit modal
+              const existingWorkDay = workDays.find(wd => wd.date === dateStr)
+              if (existingWorkDay) {
+                handleWorkDayClick(existingWorkDay)
+              }
+            }}
+          />
 
           {/* Add or schedule a shift */}
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
