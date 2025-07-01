@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   format, 
   startOfMonth, 
@@ -376,6 +376,20 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
   const dateStr = format(date, 'yyyy-MM-dd')
   const dayWorkDays = workDays.filter(wd => wd.date === dateStr)
   const dayPayments = payments.filter(p => p.date === dateStr)
+  
+  const today = new Date()
+  today.setHours(23, 59, 59, 999)
+  const isFutureDate = date > today
+  const isPastOrTodayDate = date <= today
+  
+  // Set default shift type based on date when modal opens
+  useEffect(() => {
+    if (isFutureDate) {
+      setShiftType('scheduled')
+    } else {
+      setShiftType('worked')
+    }
+  }, [isFutureDate])
 
   const getEmployeeStatus = (employeeId: string) => {
     const workDay = dayWorkDays.find(wd => wd.employeeId === employeeId)
@@ -401,11 +415,15 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
 
     try {
       const { firebaseService } = await import('../../lib/firebase')
+      
+      // Determine worked status based on date and context
+      const isWorked = isPastOrTodayDate ? (shiftType === 'worked') : false
+      
       const newWorkDay: WorkDay = {
         id: `${selectedEmployee}-${dateStr}`,
         employeeId: selectedEmployee,
         date: dateStr,
-        worked: shiftType === 'worked',
+        worked: isWorked,
         paid: false
       }
       
@@ -420,6 +438,11 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
 
   const unscheduledEmployees = employees.filter(emp => 
     !dayWorkDays.some(wd => wd.employeeId === emp.id)
+  )
+  
+  // Only show employees who are actually working (have work days)
+  const workingEmployees = employees.filter(emp =>
+    dayWorkDays.some(wd => wd.employeeId === emp.id)
   )
 
   return (
@@ -447,41 +470,60 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* All Employees Status */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Status</h3>
-            <div className="space-y-3">
-              {employees.map(employee => {
-                const status = getEmployeeStatus(employee.id)
-                const workDay = dayWorkDays.find(wd => wd.employeeId === employee.id)
-                
-                return (
-                  <div key={employee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">
-                          {employee.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{employee.name}</div>
-                        <div className={`inline-block px-2 py-1 rounded text-xs font-medium ${status.bgColor} ${status.textColor}`}>
-                          {status.label}
+          {/* Working Employees Status */}
+          {workingEmployees.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {workingEmployees.length === 1 ? 'Employee Working' : 'Employees Working'}
+              </h3>
+              <div className="space-y-3">
+                {workingEmployees.map(employee => {
+                  const status = getEmployeeStatus(employee.id)
+                  const workDay = dayWorkDays.find(wd => wd.employeeId === employee.id)
+                  
+                  return (
+                    <div key={employee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">
+                            {employee.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{employee.name}</div>
+                          <div className={`inline-block px-2 py-1 rounded text-xs font-medium ${status.bgColor} ${status.textColor}`}>
+                            {status.label}
+                          </div>
                         </div>
                       </div>
+                      <div className="text-right">
+                        {workDay && (
+                          <div className="text-sm text-gray-600">
+                            £{workDay.customAmount !== undefined ? workDay.customAmount : employee.dailyWage}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {workDay && (
-                        <div className="text-sm text-gray-600">
-                          £{workDay.customAmount !== undefined ? workDay.customAmount : employee.dailyWage}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* No employees working message */}
+          {workingEmployees.length === 0 && (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No employees scheduled</h3>
+              <p className="text-gray-600">
+                {isFutureDate ? 'No one is scheduled to work on this day yet.' : 'No one worked on this day.'}
+              </p>
+            </div>
+          )}
 
           {/* Add New Shift */}
           {unscheduledEmployees.length > 0 && (
@@ -520,26 +562,30 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments }
                       Shift Type
                     </label>
                     <div className="flex space-x-4">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          value="worked"
-                          checked={shiftType === 'worked'}
-                          onChange={(e) => setShiftType(e.target.value as 'worked' | 'scheduled')}
-                          className="mr-2"
-                        />
-                        Mark as Worked
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          value="scheduled"
-                          checked={shiftType === 'scheduled'}
-                          onChange={(e) => setShiftType(e.target.value as 'worked' | 'scheduled')}
-                          className="mr-2"
-                        />
-                        Schedule for Future
-                      </label>
+                      {isPastOrTodayDate && (
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            value="worked"
+                            checked={shiftType === 'worked'}
+                            onChange={(e) => setShiftType(e.target.value as 'worked' | 'scheduled')}
+                            className="mr-2"
+                          />
+                          Mark as Worked
+                        </label>
+                      )}
+                      {isFutureDate && (
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            value="scheduled"
+                            checked={shiftType === 'scheduled'}
+                            onChange={(e) => setShiftType(e.target.value as 'worked' | 'scheduled')}
+                            className="mr-2"
+                          />
+                          Schedule for Future
+                        </label>
+                      )}
                     </div>
                   </div>
                   
