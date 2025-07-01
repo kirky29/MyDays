@@ -44,7 +44,6 @@ export default function EmployeeDetail() {
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('syncing')
   const [errorMessage, setErrorMessage] = useState<string>('')
-  const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -264,41 +263,7 @@ export default function EmployeeDetail() {
     }
   }
 
-  const toggleWorkDaySelection = (workDayId: string) => {
-    setSelectedWorkDays(prev => 
-      prev.includes(workDayId) 
-        ? prev.filter(id => id !== workDayId)
-        : [...prev, workDayId]
-    )
-  }
 
-  const selectAllUnpaid = () => {
-    // Only select unpaid work days that are not in the future (past/current work)
-    const today = new Date()
-    today.setHours(23, 59, 59, 999) // End of today
-    
-    const unpaidWorkDays = workDays.filter(day => {
-      const workDate = new Date(day.date)
-      const isPastOrToday = workDate <= today
-      const isWorkedAndUnpaid = day.worked && !day.paid
-      
-      // Debug logging
-      if (day.worked && !isPastOrToday) {
-        console.log('Excluding future worked day:', day.date, '£' + getWorkDayAmount(day))
-      }
-      
-      return isWorkedAndUnpaid && isPastOrToday
-    })
-    
-    console.log('Select All - Found unpaid days:', unpaidWorkDays.length, 
-      'Total amount:', unpaidWorkDays.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0))
-    
-    setSelectedWorkDays(unpaidWorkDays.map(day => day.id))
-  }
-
-  const clearSelection = () => {
-    setSelectedWorkDays([])
-  }
 
   const calculateStats = () => {
     if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0, isOverpaid: false, creditAmount: 0 }
@@ -399,7 +364,7 @@ export default function EmployeeDetail() {
   }
 
   const handlePaymentComplete = () => {
-    setSelectedWorkDays([])
+    // Payment completed, data will be updated via real-time listeners
   }
 
   const handlePaymentClick = (payment: Payment) => {
@@ -1034,24 +999,6 @@ export default function EmployeeDetail() {
   }
 
   const stats = calculateStats()
-  
-  // Get unpaid work days for bulk payment (only past/current work)
-  const today = new Date()
-  today.setHours(23, 59, 59, 999) // End of today
-  const unpaidWorkDays = workDays.filter(day => 
-    day.worked && !day.paid && new Date(day.date) <= today
-  )
-  
-  // Filter selected work days to only include valid payable days (past/current unpaid work)
-  const selectedWorkDayObjects = workDays.filter(day => {
-    const isSelected = selectedWorkDays.includes(day.id)
-    const workDate = new Date(day.date)
-    const isPastOrToday = workDate <= today
-    const isPayable = day.worked && !day.paid && isPastOrToday
-    
-    // Only include if selected AND payable
-    return isSelected && isPayable
-  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 relative overflow-hidden">
@@ -1289,53 +1236,7 @@ export default function EmployeeDetail() {
                 })()}
               </div>
 
-              {unpaidWorkDays.length > 0 && (
-                <div className="pt-3 border-t border-gray-200">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">Bulk Payment</span>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={selectAllUnpaid}
-                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                      >
-                        Select All
-                      </button>
-                      {selectedWorkDays.length > 0 && (
-                        <button
-                          onClick={clearSelection}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
-                        >
-                          Clear ({selectedWorkDays.length})
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {selectedWorkDays.length > 0 && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                      <div className="text-sm text-green-800 mb-2">
-                        <strong>{selectedWorkDays.length}</strong> work day{selectedWorkDays.length !== 1 ? 's' : ''} selected
-                      </div>
-                      <div className="text-xs text-green-700">
-                        Total amount: <strong>£{selectedWorkDayObjects.reduce((sum, wd) => sum + getWorkDayAmount(wd), 0).toFixed(2)}</strong>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedWorkDays.length > 0 && (
-                    <button
-                      onClick={() => setShowPaymentModal(true)}
-                      className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium touch-manipulation"
-                      style={{ 
-                        touchAction: 'manipulation',
-                        minHeight: '44px'
-                      }}
-                    >
-                      Pay Selected Days
-                    </button>
-                  )}
-                </div>
-              )}
+
             </div>
           </div>
         </div>
@@ -1462,46 +1363,19 @@ export default function EmployeeDetail() {
                     return (
                       <div 
                         key={workDay.id} 
-                        className={`p-4 rounded-lg border transition-all ${
-                          selectedWorkDays.includes(workDay.id)
-                            ? 'border-blue-300 bg-blue-50 shadow-md'
-                            : workDay.paid 
-                              ? 'bg-green-50 border-green-200 hover:bg-green-100' 
-                              : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-                        } ${!workDay.paid ? 'cursor-pointer hover:shadow-md' : ''}`}
-                        onClick={() => !selectedWorkDays.includes(workDay.id) ? handleWorkDayClick(workDay) : null}
+                        className={`p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
+                          workDay.paid 
+                            ? 'bg-green-50 border-green-200 hover:bg-green-100' 
+                            : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                        }`}
+                        onClick={() => handleWorkDayClick(workDay)}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div 
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (!workDay.paid) {
-                                  toggleWorkDaySelection(workDay.id)
-                                }
-                              }}
-                              onTouchStart={(e) => {
-                                e.stopPropagation()
-                              }}
-                              className="p-2 -m-2 touch-manipulation"
-                              style={{ 
-                                touchAction: 'manipulation',
-                                WebkitTapHighlightColor: 'transparent',
-                                minWidth: '44px',
-                                minHeight: '44px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedWorkDays.includes(workDay.id)}
-                                onChange={() => {}} // Handled by parent div click
-                                disabled={workDay.paid}
-                                className="w-5 h-5 text-blue-600 rounded pointer-events-none"
-                                style={{ touchAction: 'manipulation' }}
-                              />
+                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
                             </div>
                             <div>
                               <div className="font-medium text-gray-900 text-sm">
@@ -1638,7 +1512,7 @@ export default function EmployeeDetail() {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         employee={employee}
-        selectedWorkDays={selectedWorkDayObjects}
+        selectedWorkDays={[]}
         onPaymentComplete={handlePaymentComplete}
       />
 
