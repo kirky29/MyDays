@@ -243,10 +243,10 @@ export default function AllEmployeesCalendar() {
       )}
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-px">
         {/* Day headers */}
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="p-3 text-center text-xs font-medium text-gray-500 min-w-[120px]">
+          <div key={day} className="p-2 text-center text-xs font-medium text-gray-500">
             {day}
           </div>
         ))}
@@ -261,27 +261,27 @@ export default function AllEmployeesCalendar() {
             <div
               key={date.toISOString()}
               className={`
-                relative p-2 min-h-[100px] min-w-[120px] border border-gray-300 bg-white
+                relative p-1 min-h-[100px] border border-gray-200 bg-white
                 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                 ${isTodayDate ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}
                 ${dayShifts.length === 0 ? 'hover:bg-blue-50' : ''}
               `}
             >
-              <div className="text-sm font-medium text-left mb-2">
+              <div className="text-sm font-medium text-left mb-1">
                 {format(date, 'd')}
               </div>
               
               {/* Shifts for this day */}
-              <div className="space-y-1 flex flex-col items-center">
+              <div className="space-y-0.5">
                 {dayShifts.slice(0, 3).map((shift, index) => (
                   <div
                     key={shift.workDay.id}
-                    className="text-xs cursor-pointer hover:opacity-80 w-full flex justify-center"
+                    className="text-xs cursor-pointer hover:opacity-80"
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
-                    <span className={`font-medium px-2 py-1 rounded text-xs ${shift.status.bgColor} ${shift.status.textColor} text-center max-w-full`}>
+                    <div className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${shift.status.bgColor} ${shift.status.textColor}`}>
                       {shift.employee.name}
-                    </span>
+                    </div>
                   </div>
                 ))}
                 
