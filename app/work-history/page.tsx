@@ -352,6 +352,34 @@ export default function EmployeeReports() {
           )}
         </div>
 
+        {/* View Toggle */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-1">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setViewMode('workdays')}
+                className={`px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  viewMode === 'workdays'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                📅 Work Days
+              </button>
+              <button
+                onClick={() => setViewMode('payments')}
+                className={`px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  viewMode === 'payments'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
+                }`}
+              >
+                💳 Payments
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Filters Section */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6 mb-8 max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
@@ -508,34 +536,6 @@ export default function EmployeeReports() {
           )}
 
 
-        </div>
-
-        {/* View Toggle */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-1">
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setViewMode('workdays')}
-                className={`px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  viewMode === 'workdays'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                }`}
-              >
-                📅 Work Days
-              </button>
-              <button
-                onClick={() => setViewMode('payments')}
-                className={`px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  viewMode === 'payments'
-                    ? 'bg-green-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
-                }`}
-              >
-                💳 Payments
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Results */}
