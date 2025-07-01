@@ -153,15 +153,30 @@ export default function EmployeeReports() {
     const sorted = [...filtered].sort((a, b) => {
       let compareValue = 0
       if (sortBy === 'date') {
-        compareValue = new Date(a.date).getTime() - new Date(b.date).getTime()
+        // Ensure consistent date parsing and sorting
+        const dateA = parseISO(a.date)
+        const dateB = parseISO(b.date)
+        compareValue = dateA.getTime() - dateB.getTime()
       } else if (sortBy === 'employee') {
         const empA = employees.find(emp => emp.id === a.employeeId)
         const empB = employees.find(emp => emp.id === b.employeeId)
         compareValue = (empA?.name || '').localeCompare(empB?.name || '')
+        // Secondary sort by date for employees with same name
+        if (compareValue === 0) {
+          const dateA = parseISO(a.date)
+          const dateB = parseISO(b.date)
+          compareValue = dateA.getTime() - dateB.getTime()
+        }
       } else if (sortBy === 'amount') {
         const amountA = getWorkDayAmount(a)
         const amountB = getWorkDayAmount(b)
         compareValue = amountA - amountB
+        // Secondary sort by date for same amounts
+        if (compareValue === 0) {
+          const dateA = parseISO(a.date)
+          const dateB = parseISO(b.date)
+          compareValue = dateA.getTime() - dateB.getTime()
+        }
       }
       return sortOrder === 'desc' ? -compareValue : compareValue
     })
@@ -403,10 +418,11 @@ export default function EmployeeReports() {
         return dayDate > today
       })
       const paidDays = filteredAndSortedWorkDays.filter(day => day.paid)
-      const unpaidDays = filteredAndSortedWorkDays.filter(day => !day.paid)
+      const unpaidDays = filteredAndSortedWorkDays.filter(day => !day.paid && parseISO(day.date) <= today)
       
-      const totalAmount = filteredAndSortedWorkDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
-      const paidAmount = paidDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
+      // Only include worked days that are in the past/today (exclude scheduled) in total amount
+      const totalAmount = workedDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
+      const paidAmount = paidDays.filter(day => parseISO(day.date) <= today).reduce((sum, day) => sum + getWorkDayAmount(day), 0)
       const unpaidAmount = unpaidDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0)
 
       return { 
@@ -420,7 +436,7 @@ export default function EmployeeReports() {
         unpaidAmount 
       }
     }
-  }, [filteredAndSortedWorkDays, filteredAndSortedPayments, viewMode])
+  }, [filteredAndSortedWorkDays, filteredAndSortedPayments, viewMode, getWorkDayAmount])
 
   // Show loading screen after all hooks have been called
   if (loading) {
@@ -620,8 +636,8 @@ export default function EmployeeReports() {
               </div>
             )}
 
-            {/* Payment Status Filter - Only show for work days view */}
-            {viewMode === 'workdays' && (
+            {/* Payment Status Filter - Only show for work days view AND when not filtering by scheduled */}
+            {viewMode === 'workdays' && workStatusFilter !== 'scheduled' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
                 <div className="flex flex-wrap gap-2 justify-center">
