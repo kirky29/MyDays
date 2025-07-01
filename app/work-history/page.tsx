@@ -71,9 +71,21 @@ export default function WorkHistory() {
 
     // Filter by work status
     if (workStatusFilter !== 'all') {
-      filtered = filtered.filter(day => 
-        workStatusFilter === 'worked' ? day.worked : !day.worked
-      )
+      const today = new Date()
+      today.setHours(23, 59, 59, 999) // End of today
+      
+      filtered = filtered.filter(day => {
+        const dayDate = parseISO(day.date)
+        
+        if (workStatusFilter === 'worked') {
+          // Show past days that were worked
+          return dayDate <= today && day.worked
+        } else if (workStatusFilter === 'scheduled') {
+          // Show future days (scheduled/upcoming shifts)
+          return dayDate > today
+        }
+        return true
+      })
     }
 
     // Filter by payment status
@@ -164,9 +176,20 @@ export default function WorkHistory() {
       baseFilteredDays = baseFilteredDays.filter(day => selectedEmployeeIds.includes(day.employeeId))
     }
     
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    
     const totalDays = baseFilteredDays.length
-    const workedDays = baseFilteredDays.filter(day => day.worked).length
-    const scheduledDays = baseFilteredDays.filter(day => !day.worked).length
+    // Worked = past days that were actually worked
+    const workedDays = baseFilteredDays.filter(day => {
+      const dayDate = parseISO(day.date)
+      return dayDate <= today && day.worked
+    }).length
+    // Scheduled = future days (upcoming shifts)
+    const scheduledDays = baseFilteredDays.filter(day => {
+      const dayDate = parseISO(day.date)
+      return dayDate > today
+    }).length
     const paidDays = baseFilteredDays.filter(day => day.paid).length
     const unpaidDays = baseFilteredDays.filter(day => !day.paid).length
     
@@ -175,9 +198,20 @@ export default function WorkHistory() {
 
   // Calculate summary stats for the display cards (based on fully filtered data)
   const summaryStats = useMemo(() => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    
     const totalWorkDays = filteredAndSortedWorkDays.length
-    const workedDays = filteredAndSortedWorkDays.filter(day => day.worked)
-    const scheduledDays = filteredAndSortedWorkDays.filter(day => !day.worked)
+    // Worked = past days that were actually worked
+    const workedDays = filteredAndSortedWorkDays.filter(day => {
+      const dayDate = parseISO(day.date)
+      return dayDate <= today && day.worked
+    })
+    // Scheduled = future days (upcoming shifts)
+    const scheduledDays = filteredAndSortedWorkDays.filter(day => {
+      const dayDate = parseISO(day.date)
+      return dayDate > today
+    })
     const paidDays = filteredAndSortedWorkDays.filter(day => day.paid)
     const unpaidDays = filteredAndSortedWorkDays.filter(day => !day.paid)
     
