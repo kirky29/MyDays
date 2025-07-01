@@ -50,7 +50,7 @@ export default function EmployeeDetail() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showPaymentEditModal, setShowPaymentEditModal] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-  const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+
   const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
   const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
   const [selectedWorkDayIds, setSelectedWorkDayIds] = useState<string[]>([])
@@ -595,21 +595,7 @@ export default function EmployeeDetail() {
     }
   }
 
-  const quickAddWorkDay = async () => {
-    // Check if a work day already exists for this date
-    const existingDay = workDays.find(day => day.date === quickAddDate)
-    
-    if (existingDay) {
-      // Just show a message that the day is already logged
-      const existingStatus = existingDay.worked ? 'worked' : 'scheduled'
-      const paidStatus = existingDay.paid ? ' and paid' : ''
-      alert(`This day is already logged in the system as ${existingStatus}${paidStatus}.\n\nTo edit this work day, please use the work history section below.`)
-      return
-    }
-    
-    // Only add new work day if it doesn't exist
-    await toggleWorkDay(quickAddDate)
-  }
+
 
   // Add data integrity validation
   const validateAndRepairDataIntegrity = async () => {
@@ -1235,7 +1221,6 @@ export default function EmployeeDetail() {
             payments={payments}
             onDateClick={(date) => {
               const dateStr = format(date, 'yyyy-MM-dd')
-              setQuickAddDate(dateStr)
               
               // If clicking on a date with existing data, open the edit modal
               const existingWorkDay = workDays.find(wd => wd.date === dateStr)
@@ -1248,53 +1233,7 @@ export default function EmployeeDetail() {
             }}
           />
 
-          {/* Add or schedule a shift */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Add or schedule a shift</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Add Work Day</label>
-                <div className="flex space-x-2">
-                  <input
-                    type="date"
-                    value={quickAddDate}
-                    onChange={(e) => setQuickAddDate(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={quickAddWorkDay}
-                    disabled={syncStatus === 'syncing'}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {syncStatus === 'syncing' ? '...' : 'Add'}
-                  </button>
-                </div>
-                {(() => {
-                  const existingDay = workDays.find(day => day.date === quickAddDate)
-                  if (existingDay && quickAddDate) {
-                    const status = existingDay.worked ? 'worked' : 'scheduled'
-                    const paidStatus = existingDay.paid ? ' and paid' : ''
-                    return (
-                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-center space-x-2 text-amber-700">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                          <span className="text-xs">
-                            This day is already logged as <strong>{status}</strong>{paidStatus}. 
-                            Use the work history section below to edit.
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  }
-                  return null
-                })()}
-              </div>
 
-
-            </div>
-          </div>
         </div>
 
         {/* Work History & Timeline - Right Columns */}
