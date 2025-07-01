@@ -1194,9 +1194,9 @@ export default function EmployeeDetail() {
             )}
           </div>
 
-          {/* Quick Actions */}
+          {/* Add or schedule a shift */}
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Add or schedule a shift</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Add Work Day</label>

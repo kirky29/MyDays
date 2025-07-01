@@ -820,7 +820,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Add or schedule a shift */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-3">
@@ -829,7 +829,7 @@ export default function Settings() {
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Add or schedule a shift</h2>
               <p className="text-sm text-gray-600">Fast access to key features</p>
             </div>
           </div>
