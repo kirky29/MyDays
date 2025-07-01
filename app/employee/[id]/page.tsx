@@ -468,18 +468,13 @@ export default function EmployeeDetail() {
         
         console.log('Removing work day:', workDay)
         
-        // Mark as not worked and clear custom data to effectively "remove" it
-        const removedWorkDay: WorkDay = {
-          id: workDay.id,
-          employeeId: workDay.employeeId,
-          date: workDay.date,
-          worked: false,
-          paid: false
-          // Intentionally omit customAmount and notes to remove them
-        }
+        // Actually delete the work day document from Firestore
+        // This is cleaner than trying to update with missing fields
+        const { deleteDoc, doc } = await import('firebase/firestore')
+        const { db, COLLECTIONS } = await import('../../../lib/firebase')
         
-        console.log('Updated work day:', removedWorkDay)
-        await firebaseService.addWorkDay(removedWorkDay)
+        await deleteDoc(doc(db, COLLECTIONS.WORK_DAYS, workDay.id))
+        console.log('Work day document deleted from Firestore:', workDay.id)
         
         console.log('Work day removed successfully')
         setSyncStatus('synced')
