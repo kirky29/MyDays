@@ -279,17 +279,9 @@ export default function AllEmployeesCalendar() {
                     className="text-xs cursor-pointer hover:opacity-80"
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900 truncate">
-                        {shift.employee.name}
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs font-semibold text-blue-600">
-                          £{shift.amount.toFixed(0)}
-                        </span>
-                        <span className="text-xs">{shift.status.label}</span>
-                      </div>
-                    </div>
+                    <span className="font-medium text-gray-900 truncate">
+                      {shift.employee.name}
+                    </span>
                   </div>
                 ))}
                 
