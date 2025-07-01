@@ -1310,7 +1310,7 @@ export default function EmployeeDetail() {
                               £{getWorkDayAmount(workDay).toFixed(2)}
                             </div>
                             {workDay.customAmount !== undefined && (
-                              <div className="text-xs text-blue-600">Custom rate</div>
+                              <div className="text-xs text-blue-600 whitespace-nowrap">Custom rate</div>
                             )}
                             <div className="text-xs text-gray-500 mt-1">
                               {(() => {
@@ -1458,7 +1458,7 @@ export default function EmployeeDetail() {
                               £{getWorkDayAmount(workDay).toFixed(2)}
                             </div>
                             {workDay.customAmount !== undefined && (
-                              <div className="text-xs text-blue-600">Custom rate</div>
+                              <div className="text-xs text-blue-600 whitespace-nowrap">Custom rate</div>
                             )}
                           </div>
                         </div>
