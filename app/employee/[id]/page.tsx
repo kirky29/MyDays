@@ -52,6 +52,8 @@ export default function EmployeeDetail() {
   const [quickAddDate, setQuickAddDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [showWorkDayEditModal, setShowWorkDayEditModal] = useState(false)
   const [selectedWorkDay, setSelectedWorkDay] = useState<WorkDay | null>(null)
+  const [selectedWorkDayIds, setSelectedWorkDayIds] = useState<string[]>([])
+  const [showPaymentSelection, setShowPaymentSelection] = useState(false)
 
   // Handle browser navigation with a different approach
   useEffect(() => {
@@ -402,6 +404,41 @@ export default function EmployeeDetail() {
   const handleWorkDayUpdated = () => {
     setShowWorkDayEditModal(false)
     setSelectedWorkDay(null)
+  }
+
+  const toggleWorkDaySelection = (workDayId: string) => {
+    setSelectedWorkDayIds(prev => 
+      prev.includes(workDayId) 
+        ? prev.filter(id => id !== workDayId)
+        : [...prev, workDayId]
+    )
+  }
+
+  const clearSelection = () => {
+    setSelectedWorkDayIds([])
+    setShowPaymentSelection(false)
+  }
+
+  const selectAllUnpaidWorkDays = () => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    const unpaidWorkDays = workDays.filter(day => 
+      day.worked && !day.paid && new Date(day.date) <= today
+    )
+    setSelectedWorkDayIds(unpaidWorkDays.map(day => day.id))
+  }
+
+  const handleCreatePaymentForSelected = () => {
+    if (selectedWorkDayIds.length > 0) {
+      setShowPaymentModal(true)
+    }
+  }
+
+  const handlePaymentCompleteWithSelection = () => {
+    setSelectedWorkDayIds([])
+    setShowPaymentSelection(false)
+    setShowPaymentModal(false)
+    handlePaymentComplete()
   }
 
   const updateWorkDay = async (updatedWorkDay: WorkDay) => {
@@ -1334,17 +1371,83 @@ export default function EmployeeDetail() {
                   </svg>
                   Recent Work History
                 </h3>
-                <button
-                  onClick={() => router.push('/work-history')}
-                  className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
-                  title="View full work history"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  View All
-                </button>
+                <div className="flex items-center space-x-2">
+                  {!showPaymentSelection && (() => {
+                    const today = new Date()
+                    today.setHours(23, 59, 59, 999)
+                    const unpaidWorkDays = workDays.filter(day => 
+                      day.worked && !day.paid && new Date(day.date) <= today
+                    ).length
+                    return unpaidWorkDays > 0 ? (
+                      <button
+                        onClick={() => setShowPaymentSelection(true)}
+                        className="inline-flex items-center text-sm text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded-lg transition-colors"
+                        title="Select days to create payment"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Create Payment
+                      </button>
+                    ) : null
+                  })()}
+                  <button
+                    onClick={() => router.push('/work-history')}
+                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+                    title="View full work history"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    View All
+                  </button>
+                </div>
               </div>
+
+              {/* Payment Selection Controls */}
+              {showPaymentSelection && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-blue-900">Select days to create payment</h4>
+                    <button
+                      onClick={clearSelection}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <button
+                      onClick={selectAllUnpaidWorkDays}
+                      className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+                    >
+                      Select All Unpaid
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="text-sm bg-gray-100 text-gray-800 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                    {selectedWorkDayIds.length > 0 && (
+                      <span className="text-sm text-blue-700">
+                        {selectedWorkDayIds.length} day{selectedWorkDayIds.length !== 1 ? 's' : ''} selected
+                      </span>
+                    )}
+                  </div>
+                  {selectedWorkDayIds.length > 0 && (
+                    <button
+                      onClick={handleCreatePaymentForSelected}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      Create Payment for Selected Days (£{(() => {
+                        const selectedDays = workDays.filter(day => selectedWorkDayIds.includes(day.id))
+                        return selectedDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0).toFixed(2)
+                      })()})
+                    </button>
+                  )}
+                </div>
+              )}
               
               <div className="space-y-2">
                 {(() => {
@@ -1359,6 +1462,8 @@ export default function EmployeeDetail() {
                     const relatedPayment = payments.find(payment => 
                       payment.workDayIds.includes(workDay.id)
                     )
+                    const isSelected = selectedWorkDayIds.includes(workDay.id)
+                    const isSelectable = showPaymentSelection && !workDay.paid
                     
                     return (
                       <div 
@@ -1367,11 +1472,31 @@ export default function EmployeeDetail() {
                           workDay.paid 
                             ? 'bg-green-50 border-green-200 hover:bg-green-100' 
                             : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
-                        }`}
-                        onClick={() => handleWorkDayClick(workDay)}
+                        } ${isSelected ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+                        onClick={() => {
+                          if (isSelectable) {
+                            toggleWorkDaySelection(workDay.id)
+                          } else {
+                            handleWorkDayClick(workDay)
+                          }
+                        }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
+                            {/* Checkbox for selection mode */}
+                            {isSelectable && (
+                              <div className="flex-shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    e.stopPropagation()
+                                    toggleWorkDaySelection(workDay.id)
+                                  }}
+                                  className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                />
+                              </div>
+                            )}
                             <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1510,10 +1635,15 @@ export default function EmployeeDetail() {
 
       <PaymentModal
         isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
+        onClose={() => {
+          setShowPaymentModal(false)
+          if (selectedWorkDayIds.length > 0) {
+            clearSelection()
+          }
+        }}
         employee={employee}
-        selectedWorkDays={[]}
-        onPaymentComplete={handlePaymentComplete}
+        selectedWorkDays={workDays.filter(day => selectedWorkDayIds.includes(day.id))}
+        onPaymentComplete={handlePaymentCompleteWithSelection}
       />
 
       {selectedPayment && (
