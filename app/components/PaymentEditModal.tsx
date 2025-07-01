@@ -26,6 +26,7 @@ export default function PaymentEditModal({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string>('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [removingWorkDayId, setRemovingWorkDayId] = useState<string | null>(null)
   
   // Prevent background scrolling when modal is open
   useBodyScrollLock(isOpen)
@@ -38,6 +39,74 @@ export default function PaymentEditModal({
   ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
 
+
+  const handleRemoveWorkDay = async (workDayId: string) => {
+    if (!confirm('Remove this work day from the payment? It will be marked as unpaid.')) {
+      return
+    }
+
+    setRemovingWorkDayId(workDayId)
+    setError('')
+    
+    try {
+      console.log('Removing work day from payment:', workDayId)
+      
+      // Calculate new work day IDs array
+      const updatedWorkDayIds = payment.workDayIds.filter(id => id !== workDayId)
+      
+      // If this was the last work day, delete the entire payment
+      if (updatedWorkDayIds.length === 0) {
+        if (confirm('This is the last work day in this payment. Delete the entire payment?')) {
+          await handleDeletePayment()
+          return
+        } else {
+          setRemovingWorkDayId(null)
+          return
+        }
+      }
+      
+      // Unmark the work day as paid
+      const workDayToUpdate = workDays.find(wd => wd.id === workDayId)
+      if (workDayToUpdate) {
+        await firebaseService.addWorkDay({
+          ...workDayToUpdate,
+          paid: false
+        })
+      }
+      
+      // Calculate new payment amount
+      const remainingWorkDays = workDays.filter(wd => updatedWorkDayIds.includes(wd.id))
+      const newAmount = remainingWorkDays.reduce((sum, wd) => {
+        const getWorkDayAmount = (workDay: WorkDay) => {
+          if (workDay.customAmount !== undefined) {
+            return workDay.customAmount
+          }
+          if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+            return employee.previousWage
+          }
+          return employee.dailyWage
+        }
+        return sum + getWorkDayAmount(wd)
+      }, 0)
+      
+      // Update the payment record
+      const updatedPayment = {
+        ...payment,
+        workDayIds: updatedWorkDayIds,
+        amount: newAmount
+      }
+      
+      await firebaseService.addPayment(updatedPayment)
+      
+      console.log('Work day removed from payment successfully')
+      onPaymentUpdated()
+    } catch (error: any) {
+      console.error('Error removing work day from payment:', error)
+      setError(`Failed to remove work day: ${error.message}`)
+    } finally {
+      setRemovingWorkDayId(null)
+    }
+  }
 
   const handleDeletePayment = async () => {
     setIsProcessing(true)
@@ -129,7 +198,20 @@ export default function PaymentEditModal({
 
           {/* Work Days Covered */}
           <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="font-medium text-gray-700 mb-3">Work Days Covered ({paidWorkDays.length})</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-gray-700">Work Days Covered ({paidWorkDays.length})</h4>
+              {paidWorkDays.length > 1 && (
+                <div className="text-xs text-gray-500">Click 🗑️ to remove individual days</div>
+              )}
+            </div>
+            {paidWorkDays.length > 1 && (
+              <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Payment amount will be automatically recalculated when work days are removed.
+              </div>
+            )}
             <div className="space-y-2">
               {paidWorkDays.map(workDay => {
                 // Calculate the actual amount for this work day
@@ -143,17 +225,35 @@ export default function PaymentEditModal({
                   return employee.dailyWage
                 }
                 
+                const isRemoving = removingWorkDayId === workDay.id
+                
                 return (
-                  <div key={workDay.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-800">
-                      {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
-                    </span>
-                    <span className="font-medium text-gray-600">
-                      £{getWorkDayAmount(workDay).toFixed(2)}
-                      {workDay.customAmount !== undefined && (
-                        <span className="text-blue-600 text-xs ml-1">(Custom)</span>
+                  <div key={workDay.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 text-sm">
+                    <div className="flex-1">
+                      <div className="text-gray-800 font-medium">
+                        {format(parseISO(workDay.date), 'EEEE, MMM d, yyyy')}
+                      </div>
+                      <div className="text-gray-600 text-xs mt-1">
+                        £{getWorkDayAmount(workDay).toFixed(2)}
+                        {workDay.customAmount !== undefined && (
+                          <span className="text-blue-600 ml-1">(Custom amount)</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveWorkDay(workDay.id)}
+                      disabled={isRemoving || isProcessing}
+                      className="ml-3 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Remove this work day from payment"
+                    >
+                      {isRemoving ? (
+                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       )}
-                    </span>
+                    </button>
                   </div>
                 )
               })}
@@ -174,9 +274,10 @@ export default function PaymentEditModal({
             <div className="border-t pt-4">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                disabled={removingWorkDayId !== null}
+                className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Delete Payment
+                Delete Entire Payment
               </button>
             </div>
           ) : (
@@ -210,7 +311,7 @@ export default function PaymentEditModal({
           <div className="flex space-x-3 pt-4">
             <button
               onClick={onClose}
-              disabled={isProcessing}
+              disabled={isProcessing || removingWorkDayId !== null}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Close
