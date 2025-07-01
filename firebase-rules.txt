@@ -18,6 +18,11 @@ service cloud.firestore {
     match /payments/{document} {
       allow read, write: if true;
     }
+    
+    // Allow read/write access to dayNotes collection
+    match /dayNotes/{document} {
+      allow read, write: if true;
+    }
   }
 }
 
