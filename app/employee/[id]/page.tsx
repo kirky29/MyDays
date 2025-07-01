@@ -1447,15 +1447,18 @@ export default function EmployeeDetail() {
                           <div className="flex items-center space-x-3">
                             {/* Checkbox for selection mode */}
                             {isSelectable && (
-                              <div className="flex-shrink-0">
+                              <div 
+                                className="flex-shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleWorkDaySelection(workDay.id)
+                                }}
+                              >
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    toggleWorkDaySelection(workDay.id)
-                                  }}
-                                  className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                  onChange={() => {}} // Handled by div onClick
+                                  className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
                                 />
                               </div>
                             )}
