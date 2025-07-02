@@ -40,10 +40,18 @@ interface Payment {
   createdAt: string
 }
 
+interface DayNote {
+  id: string
+  date: string
+  note: string
+  createdAt: string
+}
+
 export default function Settings() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [workDays, setWorkDays] = useState<WorkDay[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
+  const [dayNotes, setDayNotes] = useState<DayNote[]>([])
   const [loading, setLoading] = useState(true)
   const [showClearAllModal, setShowClearAllModal] = useState(false)
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
@@ -57,15 +65,17 @@ export default function Settings() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [employeesData, workDaysData, paymentsData] = await Promise.all([
+        const [employeesData, workDaysData, paymentsData, dayNotesData] = await Promise.all([
           firebaseService.getEmployees(),
           firebaseService.getWorkDays(),
-          firebaseService.getPayments()
+          firebaseService.getPayments(),
+          firebaseService.getDayNotes()
         ])
         
         setEmployees(employeesData as Employee[])
         setWorkDays(workDaysData as WorkDay[])
         setPayments(paymentsData as Payment[])
+        setDayNotes(dayNotesData as DayNote[])
       } catch (error) {
         console.error('Error loading data:', error)
       } finally {
@@ -89,10 +99,12 @@ export default function Settings() {
         employees,
         workDays,
         payments,
+        dayNotes,
         summary: {
           totalEmployees: employees.length,
           totalWorkDays: workDays.length,
           totalPayments: payments.length,
+          totalDayNotes: dayNotes.length,
           totalWorkedDays: workDays.filter(wd => wd.worked).length,
           totalPaidDays: workDays.filter(wd => wd.paid).length
         }
@@ -108,7 +120,7 @@ export default function Settings() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      alert('Complete backup exported successfully! This includes all employees, work days, and payment records.')
+      alert('Complete backup exported successfully! This includes all employees, work days, payment records, and day notes.')
     } catch (error) {
       console.error('Export failed:', error)
       alert('Export failed. Please try again.')
@@ -132,11 +144,16 @@ export default function Settings() {
       if (!data.payments || !Array.isArray(data.payments)) {
         throw new Error('Invalid backup file: Missing or invalid payments data')
       }
+      // Day notes is optional for backward compatibility with older backups
+      if (data.dayNotes && !Array.isArray(data.dayNotes)) {
+        throw new Error('Invalid backup file: Invalid day notes data')
+      }
       
       // Additional validation
       const importedEmployees = data.employees as Employee[]
       const importedWorkDays = data.workDays as WorkDay[]
       const importedPayments = data.payments as Payment[]
+      const importedDayNotes = (data.dayNotes as DayNote[]) || []
       
       // Validate employee structure
       for (const emp of importedEmployees) {
@@ -146,7 +163,7 @@ export default function Settings() {
       }
       
       // Confirm with user before clearing existing data
-      const confirmMessage = `This will replace ALL your current data with the backup data.\n\nBackup contains:\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n\nYour current data will be permanently deleted. Continue?`
+      const confirmMessage = `This will replace ALL your current data with the backup data.\n\nBackup contains:\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n• ${importedDayNotes.length} day notes\n\nYour current data will be permanently deleted. Continue?`
       
       if (!confirm(confirmMessage)) {
         setImporting(false)
@@ -166,7 +183,9 @@ export default function Settings() {
         // Delete all work days
         ...employees.map(employee => firebaseService.deleteWorkDaysForEmployee(employee.id)),
         // Delete all payments
-        firebaseService.deleteAllPayments()
+        firebaseService.deleteAllPayments(),
+        // Delete all day notes
+        ...dayNotes.map(dayNote => firebaseService.deleteDayNote(dayNote.id))
       ])
       
       // Import new data
@@ -176,15 +195,18 @@ export default function Settings() {
         // Import work days
         ...importedWorkDays.map(workDay => firebaseService.addWorkDay(workDay)),
         // Import payments
-        ...importedPayments.map(payment => firebaseService.addPayment(payment))
+        ...importedPayments.map(payment => firebaseService.addPayment(payment)),
+        // Import day notes
+        ...importedDayNotes.map(dayNote => firebaseService.addDayNote(dayNote))
       ])
       
       // Update local state
       setEmployees(importedEmployees)
       setWorkDays(importedWorkDays)
       setPayments(importedPayments)
+      setDayNotes(importedDayNotes)
       
-      alert(`Data imported successfully!\n\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n\nAll data has been restored from the backup.`)
+      alert(`Data imported successfully!\n\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n• ${importedDayNotes.length} day notes\n\nAll data has been restored from the backup.`)
       
     } catch (error: any) {
       console.error('Import failed:', error)
@@ -642,7 +664,7 @@ export default function Settings() {
                 </svg>
                 <div className="text-left">
                   <h3 className="font-medium text-gray-900">Export Backup</h3>
-                  <p className="text-sm text-gray-600">Download complete backup (employees, work days, payments)</p>
+                  <p className="text-sm text-gray-600">Download complete backup (employees, work days, payments, day notes)</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
