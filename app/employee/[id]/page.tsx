@@ -265,8 +265,6 @@ export default function EmployeeDetail() {
     }
   }
 
-
-
   const calculateStats = () => {
     if (!employee) return { totalWorked: 0, totalPaid: 0, totalOwed: 0, totalEarned: 0, actualPaidAmount: 0, isOverpaid: false, creditAmount: 0 }
     
@@ -591,8 +589,6 @@ export default function EmployeeDetail() {
       setErrorMessage(`Failed to add work days: ${error.message}`)
     }
   }
-
-
 
   // Add data integrity validation
   const validateAndRepairDataIntegrity = async () => {
@@ -1230,7 +1226,6 @@ export default function EmployeeDetail() {
             }}
           />
 
-
         </div>
 
         {/* Work History & Timeline - Right Columns */}
@@ -1336,16 +1331,39 @@ export default function EmployeeDetail() {
                 Recent Work History
               </h3>
 
+              {/* Instructions when no days are selected */}
+              {selectedWorkDayIds.length === 0 && workDays.some(wd => wd.worked && !wd.paid && new Date(wd.date) <= new Date()) && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-1">Create a Payment</h4>
+                      <p className="text-sm text-blue-700 mb-2">
+                        Select unpaid work days using the checkboxes below, then click "Create Payment for Selected Days".
+                      </p>
+                      <button
+                        onClick={selectAllUnpaidWorkDays}
+                        className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Select All Unpaid Days
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Payment Selection Controls - Show when days are selected */}
               {selectedWorkDayIds.length > 0 && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-blue-900">
-                      {selectedWorkDayIds.length} day{selectedWorkDayIds.length !== 1 ? 's' : ''} selected
+                    <h4 className="font-medium text-green-900">
+                      {selectedWorkDayIds.length} day{selectedWorkDayIds.length !== 1 ? 's' : ''} selected for payment
                     </h4>
                     <button
                       onClick={clearSelection}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-green-600 hover:text-green-800"
                     >
                       Clear
                     </button>
@@ -1353,11 +1371,11 @@ export default function EmployeeDetail() {
                   <div className="flex items-center space-x-3 mb-3">
                     <button
                       onClick={selectAllUnpaidWorkDays}
-                      className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+                      className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200 transition-colors"
                     >
                       Select All Unpaid
                     </button>
-                    <span className="text-sm text-blue-700">
+                    <span className="text-sm text-green-700">
                       Total: £{(() => {
                         const selectedDays = workDays.filter(day => selectedWorkDayIds.includes(day.id))
                         return selectedDays.reduce((sum, day) => sum + getWorkDayAmount(day), 0).toFixed(2)
@@ -1366,9 +1384,12 @@ export default function EmployeeDetail() {
                   </div>
                   <button
                     onClick={handleCreatePaymentForSelected}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center space-x-2"
                   >
-                    Create Payment for Selected Days
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>Create Payment for Selected Days</span>
                   </button>
                 </div>
               )}
@@ -1512,9 +1533,6 @@ export default function EmployeeDetail() {
                               {payment.paymentType}
                             </span>
                           </div>
-                          <div className="text-xs text-green-600 mt-1 truncate">
-                            {paidWorkDays.length} work day{paidWorkDays.length !== 1 ? 's' : ''}: {paidWorkDays.map(wd => format(parseISO(wd.date), 'MMM d')).join(', ')}
-                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -1554,20 +1572,22 @@ export default function EmployeeDetail() {
         />
       )}
 
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => {
-          setShowPaymentModal(false)
-          if (selectedWorkDayIds.length > 0) {
-            clearSelection()
-          }
-        }}
-        employee={employee}
-        selectedWorkDays={workDays.filter(day => selectedWorkDayIds.includes(day.id))}
-        onPaymentComplete={handlePaymentCompleteWithSelection}
-      />
+      {employee && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false)
+            if (selectedWorkDayIds.length > 0) {
+              clearSelection()
+            }
+          }}
+          employee={employee}
+          selectedWorkDays={workDays.filter(day => selectedWorkDayIds.includes(day.id))}
+          onPaymentComplete={handlePaymentCompleteWithSelection}
+        />
+      )}
 
-      {selectedPayment && (
+      {selectedPayment && employee && (
         <PaymentEditModal
           isOpen={showPaymentEditModal}
           onClose={() => {
@@ -1581,7 +1601,7 @@ export default function EmployeeDetail() {
         />
       )}
 
-      {selectedWorkDay && (
+      {selectedWorkDay && employee && (
         <WorkDayEditModal
           isOpen={showWorkDayEditModal}
           onClose={() => {
@@ -1595,7 +1615,6 @@ export default function EmployeeDetail() {
           payments={payments}
         />
       )}
-
 
       </div>
     </div>
