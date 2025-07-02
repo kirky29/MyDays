@@ -594,6 +594,20 @@ export const firebaseService = {
     }
   },
 
+  async deleteAllDayNotes() {
+    try {
+      console.log('Firebase: Deleting all day notes...');
+      const querySnapshot = await getDocs(collection(db, COLLECTIONS.DAY_NOTES));
+      const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      console.log('Firebase: All day notes deleted successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Firebase: Error deleting all day notes:', error);
+      throw error;
+    }
+  },
+
   // Real-time listeners with error handling
   subscribeToEmployees(callback: (employees: Employee[]) => void, errorCallback?: (error: any) => void) {
     try {

@@ -553,16 +553,55 @@ export default function Settings() {
       const today = new Date()
       today.setHours(23, 59, 59, 999) // End of today
       
-      // Create a simple PDF-like report
+      // Calculate comprehensive business metrics
+      const totalWorkedDays = workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length
+      const totalPaidDays = workDays.filter(wd => wd.paid && new Date(wd.date) <= today).length
+      const totalEarnedAllEmployees = employees.reduce((total, emp) => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id && wd.worked && new Date(wd.date) <= today)
+        return total + empWorkDays.reduce((empTotal, wd) => {
+          if (wd.customAmount !== undefined) return empTotal + wd.customAmount
+          if (emp.wageChangeDate && emp.previousWage && wd.date < emp.wageChangeDate) return empTotal + emp.previousWage
+          return empTotal + emp.dailyWage
+        }, 0)
+      }, 0)
+      const totalPaidAllEmployees = payments.reduce((sum, p) => sum + p.amount, 0)
+      const totalOutstandingAllEmployees = totalEarnedAllEmployees - totalPaidAllEmployees
+      const avgDailyWage = employees.length > 0 ? employees.reduce((sum, emp) => sum + emp.dailyWage, 0) / employees.length : 0
+      const workCompletionRate = totalWorkedDays > 0 && totalPaidDays > 0 ? (totalPaidDays / totalWorkedDays) * 100 : 0
+      
+      // Create comprehensive report data
       const reportData = {
-        title: 'Did They Work? - Work Tracking Report',
-        date: new Date().toLocaleDateString(),
+        title: 'My Days Work Tracker - Executive Business Report',
+        subtitle: 'Comprehensive Workforce Analytics & Financial Summary',
+        date: new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        time: new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+        summary: {
+          totalEmployees: employees.length,
+          totalWorkDays: totalWorkedDays,
+          totalPaidDays: totalPaidDays,
+          totalEarned: totalEarnedAllEmployees,
+          totalPaid: totalPaidAllEmployees,
+          totalOutstanding: totalOutstandingAllEmployees,
+          avgDailyWage: avgDailyWage,
+          workCompletionRate: workCompletionRate,
+          paymentCount: payments.length,
+          dayNotesCount: dayNotes.length
+        },
         employees: employees.map(emp => {
           const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
           const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
           const paidDays = empWorkDays.filter(wd => wd.paid && new Date(wd.date) <= today)
+          const empPayments = payments.filter(p => p.employeeId === emp.id)
           
-          // Calculate total earned properly accounting for custom amounts and wage changes
           let totalEarned = 0
           for (const workDay of workedDays) {
             if (workDay.customAmount !== undefined) {
@@ -576,221 +615,553 @@ export default function Settings() {
             }
           }
           
-          // Calculate actual paid amount from payment records for this employee in the date range
-          const empPayments = payments.filter(p => p.employeeId === emp.id)
-          const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
-          
-          // Use paid amount if available, otherwise calculate from work days
-          let paidAmount = actualPaidAmount
-          if (paidAmount === 0) {
-            for (const workDay of paidDays) {
-              if (workDay.customAmount !== undefined) {
-                paidAmount += workDay.customAmount
-              } else {
-                if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
-                  paidAmount += emp.previousWage
-                } else {
-                  paidAmount += emp.dailyWage
-                }
-              }
-            }
-          }
+          const totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+          const outstanding = Math.max(0, totalEarned - totalPaid)
           
           return {
             name: emp.name,
+            email: emp.email || 'Not provided',
+            phone: emp.phone || 'Not provided',
+            startDate: emp.startDate || 'Not specified',
             dailyWage: emp.dailyWage,
+            previousWage: emp.previousWage,
             workedDays: workedDays.length,
             paidDays: paidDays.length,
             totalEarned,
-            outstanding: totalEarned - paidAmount
+            totalPaid,
+            outstanding,
+            paymentCount: empPayments.length,
+            avgDailyEarnings: workedDays.length > 0 ? totalEarned / workedDays.length : 0,
+            performanceRating: workedDays.length >= 20 ? 'EXCELLENT' : workedDays.length >= 10 ? 'GOOD' : workedDays.length >= 5 ? 'AVERAGE' : 'LOW',
+            priorityLevel: outstanding > 1000 ? 'HIGH' : outstanding > 500 ? 'MEDIUM' : outstanding > 0 ? 'LOW' : 'NONE',
+            notes: emp.notes || ''
           }
-        }),
-        summary: {
-          totalEmployees: employees.length,
-          totalWorkDays: workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length,
-          totalPaidDays: workDays.filter(wd => wd.paid && new Date(wd.date) <= today).length,
-          totalOutstanding: employees.reduce((total, emp) => {
-            const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id)
-            const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
-            const paidDays = empWorkDays.filter(wd => wd.paid && new Date(wd.date) <= today)
-            
-            // Calculate total earned properly accounting for custom amounts and wage changes
-            let totalEarned = 0
-            for (const workDay of workedDays) {
-              if (workDay.customAmount !== undefined) {
-                totalEarned += workDay.customAmount
-              } else {
-                if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
-                  totalEarned += emp.previousWage
-                } else {
-                  totalEarned += emp.dailyWage
-                }
-              }
-            }
-            
-            // Calculate actual paid amount from payment records for this employee
-            const empPayments = payments.filter(p => p.employeeId === emp.id)
-            const actualPaidAmount = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
-            
-            // Use paid amount if available, otherwise calculate from work days
-            let paidAmount = actualPaidAmount
-            if (paidAmount === 0) {
-              for (const workDay of paidDays) {
-                if (workDay.customAmount !== undefined) {
-                  paidAmount += workDay.customAmount
-                } else {
-                  if (emp.wageChangeDate && emp.previousWage && workDay.date < emp.wageChangeDate) {
-                    paidAmount += emp.previousWage
-                  } else {
-                    paidAmount += emp.dailyWage
-                  }
-                }
-              }
-            }
-            
-            return total + (totalEarned - paidAmount)
-          }, 0)
-        }
+        })
       }
 
-      // Create HTML content for the report
+      // Create professional HTML content for the report
       const htmlContent = `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
-          <title>Did They Work? Report</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>My Days Business Report</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
             body { 
-              font-family: Arial, sans-serif; 
-              margin: 20px; 
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
               line-height: 1.6;
-              color: #333;
-            }
-            .header { 
-              text-align: center; 
-              margin-bottom: 30px; 
-              border-bottom: 2px solid #e5e7eb;
-              padding-bottom: 20px;
-            }
-            .header h1 {
               color: #1f2937;
-              margin-bottom: 10px;
+              background: #ffffff;
+              font-size: 14px;
             }
-            .summary { 
-              background: #f9fafb; 
-              padding: 20px; 
-              border-radius: 8px; 
-              margin-bottom: 30px; 
-              border: 1px solid #e5e7eb;
-            }
-            .summary h2 {
-              color: #1f2937;
-              margin-bottom: 15px;
-            }
-            .employee { 
-              border: 1px solid #e5e7eb; 
-              margin: 15px 0; 
-              padding: 20px; 
-              border-radius: 8px; 
+            
+            .page {
+              max-width: 210mm;
+              margin: 0 auto;
+              padding: 20mm;
               background: white;
+              box-shadow: 0 0 20px rgba(0,0,0,0.1);
+              min-height: 297mm;
             }
-            .employee h3 {
-              color: #1f2937;
-              margin-bottom: 10px;
-              border-bottom: 1px solid #e5e7eb;
-              padding-bottom: 10px;
+            
+            /* Header Section */
+            .header {
+              text-align: center;
+              margin-bottom: 40px;
+              padding: 30px 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              border-radius: 12px;
+              position: relative;
+              overflow: hidden;
             }
-            .stats { 
-              display: grid; 
-              grid-template-columns: repeat(4, 1fr); 
-              gap: 15px; 
-              margin-top: 15px; 
+            
+            .header::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="80" r="1" fill="white" opacity="0.1"/><circle cx="40" cy="60" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+              opacity: 0.3;
             }
-            .stat { 
-              text-align: center; 
-              padding: 15px; 
-              background: #f9fafb; 
-              border-radius: 6px; 
-              border: 1px solid #e5e7eb;
+            
+            .header-content {
+              position: relative;
+              z-index: 2;
             }
-            .stat strong {
+            
+            .header h1 {
+              font-size: 2.5rem;
+              font-weight: 700;
+              margin-bottom: 8px;
+              letter-spacing: -0.025em;
+            }
+            
+            .header .subtitle {
+              font-size: 1.1rem;
+              font-weight: 400;
+              opacity: 0.9;
+              margin-bottom: 20px;
+            }
+            
+            .header .meta {
+              font-size: 0.95rem;
+              opacity: 0.8;
+              font-weight: 300;
+            }
+            
+            /* Executive Summary */
+            .executive-summary {
+              background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+              border-radius: 16px;
+              padding: 30px;
+              margin-bottom: 40px;
+              border: 1px solid #e2e8f0;
+              position: relative;
+            }
+            
+            .executive-summary::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 4px;
+              background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+              border-radius: 16px 16px 0 0;
+            }
+            
+            .executive-summary h2 {
+              color: #1e293b;
+              font-size: 1.5rem;
+              font-weight: 600;
+              margin-bottom: 25px;
+              display: flex;
+              align-items: center;
+            }
+            
+            .executive-summary h2::before {
+              content: '📊';
+              margin-right: 10px;
+              font-size: 1.2rem;
+            }
+            
+            .kpi-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 20px;
+              margin-bottom: 25px;
+            }
+            
+            .kpi-card {
+              background: white;
+              padding: 20px;
+              border-radius: 12px;
+              text-align: center;
+              border: 1px solid #e2e8f0;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+              transition: transform 0.2s ease;
+            }
+            
+            .kpi-card:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+            
+            .kpi-value {
+              font-size: 2rem;
+              font-weight: 700;
+              color: #1e293b;
+              margin-bottom: 5px;
               display: block;
-              font-size: 1.2em;
-              color: #1f2937;
+            }
+            
+            .kpi-label {
+              font-size: 0.9rem;
+              color: #64748b;
+              font-weight: 500;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            
+            .kpi-card.earnings .kpi-value { color: #059669; }
+            .kpi-card.outstanding .kpi-value { color: #dc2626; }
+            .kpi-card.performance .kpi-value { color: #7c3aed; }
+            .kpi-card.workforce .kpi-value { color: #2563eb; }
+            
+            /* Performance Indicators */
+            .performance-section {
+              background: white;
+              border-radius: 12px;
+              padding: 25px;
+              margin-bottom: 30px;
+              border: 1px solid #e2e8f0;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .performance-section h3 {
+              color: #1e293b;
+              font-size: 1.3rem;
+              font-weight: 600;
+              margin-bottom: 20px;
+              display: flex;
+              align-items: center;
+            }
+            
+            .performance-section h3::before {
+              content: '📈';
+              margin-right: 10px;
+              font-size: 1.1rem;
+            }
+            
+            .performance-metrics {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+              gap: 15px;
+            }
+            
+            .metric {
+              background: #f8fafc;
+              padding: 15px;
+              border-radius: 8px;
+              border-left: 4px solid #3b82f6;
+            }
+            
+            .metric-label {
+              font-size: 0.85rem;
+              color: #64748b;
+              font-weight: 500;
               margin-bottom: 5px;
             }
-            .footer {
-              margin-top: 30px;
-              text-align: center;
-              color: #6b7280;
-              font-size: 0.9em;
-              border-top: 1px solid #e5e7eb;
-              padding-top: 20px;
+            
+            .metric-value {
+              font-size: 1.2rem;
+              font-weight: 600;
+              color: #1e293b;
             }
-            @media print { 
-              body { margin: 0; }
-              .header { page-break-after: avoid; }
-              .summary { page-break-after: avoid; }
+            
+            /* Employee Details */
+            .employees-section {
+              margin-top: 40px;
+            }
+            
+            .employees-section h2 {
+              color: #1e293b;
+              font-size: 1.5rem;
+              font-weight: 600;
+              margin-bottom: 25px;
+              display: flex;
+              align-items: center;
+            }
+            
+            .employees-section h2::before {
+              content: '👥';
+              margin-right: 10px;
+              font-size: 1.2rem;
+            }
+            
+            .employee-grid {
+              display: grid;
+              gap: 20px;
+            }
+            
+            .employee-card {
+              background: white;
+              border-radius: 12px;
+              padding: 25px;
+              border: 1px solid #e2e8f0;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+              position: relative;
+              overflow: hidden;
+            }
+            
+            .employee-card::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 3px;
+              background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+            }
+            
+            .employee-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 20px;
+            }
+            
+            .employee-info h4 {
+              color: #1e293b;
+              font-size: 1.2rem;
+              font-weight: 600;
+              margin-bottom: 5px;
+            }
+            
+            .employee-meta {
+              font-size: 0.9rem;
+              color: #64748b;
+              line-height: 1.4;
+            }
+            
+            .performance-badge {
+              padding: 4px 12px;
+              border-radius: 20px;
+              font-size: 0.75rem;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            
+            .performance-badge.excellent { background: #dcfce7; color: #166534; }
+            .performance-badge.good { background: #dbeafe; color: #1d4ed8; }
+            .performance-badge.average { background: #fef3c7; color: #92400e; }
+            .performance-badge.low { background: #fee2e2; color: #991b1b; }
+            
+            .priority-badge {
+              padding: 4px 12px;
+              border-radius: 20px;
+              font-size: 0.75rem;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              margin-left: 8px;
+            }
+            
+            .priority-badge.high { background: #fee2e2; color: #991b1b; }
+            .priority-badge.medium { background: #fef3c7; color: #92400e; }
+            .priority-badge.low { background: #dbeafe; color: #1d4ed8; }
+            .priority-badge.none { background: #dcfce7; color: #166534; }
+            
+            .employee-stats {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+              gap: 15px;
+              margin-top: 20px;
+            }
+            
+            .employee-stat {
+              text-align: center;
+              padding: 12px;
+              background: #f8fafc;
+              border-radius: 8px;
+              border: 1px solid #e2e8f0;
+            }
+            
+            .employee-stat-value {
+              font-size: 1.1rem;
+              font-weight: 600;
+              color: #1e293b;
+              display: block;
+              margin-bottom: 3px;
+            }
+            
+            .employee-stat-label {
+              font-size: 0.8rem;
+              color: #64748b;
+              font-weight: 500;
+            }
+            
+            /* Footer */
+            .footer {
+              margin-top: 50px;
+              padding-top: 25px;
+              border-top: 2px solid #e2e8f0;
+              text-align: center;
+              color: #64748b;
+              font-size: 0.9rem;
+            }
+            
+            .footer-brand {
+              font-weight: 600;
+              color: #1e293b;
+              margin-bottom: 5px;
+            }
+            
+            /* Print Styles */
+            @media print {
+              body { 
+                margin: 0; 
+                font-size: 12px;
+              }
+              .page {
+                box-shadow: none;
+                margin: 0;
+                padding: 15mm;
+                max-width: none;
+              }
+              .header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              .executive-summary,
+              .performance-section,
+              .employee-card {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+              .employees-section {
+                page-break-before: auto;
+              }
+              .employee-card {
+                margin-bottom: 15px;
+              }
+            }
+            
+            @page {
+              margin: 15mm;
+              size: A4;
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>${reportData.title}</h1>
-            <p><strong>Generated on:</strong> ${reportData.date}</p>
-          </div>
-          
-          <div class="summary">
-            <h2>Business Summary</h2>
-            <div class="stats">
-              <div class="stat">
-                <strong>${reportData.summary.totalEmployees}</strong>
-                Total Employees
-              </div>
-              <div class="stat">
-                <strong>${reportData.summary.totalWorkDays}</strong>
-                Work Days Logged
-              </div>
-              <div class="stat">
-                <strong>${reportData.summary.totalPaidDays}</strong>
-                Days Paid
-              </div>
-              <div class="stat">
-                <strong>£${reportData.summary.totalOutstanding.toFixed(2)}</strong>
-                Total Outstanding
-              </div>
-            </div>
-          </div>
-          
-          <h2>Employee Details</h2>
-          ${reportData.employees.map(emp => `
-            <div class="employee">
-              <h3>${emp.name}</h3>
-              <p><strong>Daily Wage:</strong> £${emp.dailyWage}</p>
-              <div class="stats">
-                <div class="stat">
-                  <strong>${emp.workedDays}</strong>
-                  Days Worked
-                </div>
-                <div class="stat">
-                  <strong>${emp.paidDays}</strong>
-                  Days Paid
-                </div>
-                <div class="stat">
-                  <strong>£${emp.totalEarned.toFixed(2)}</strong>
-                  Total Earned
-                </div>
-                <div class="stat">
-                  <strong>£${emp.outstanding.toFixed(2)}</strong>
-                  Outstanding
+          <div class="page">
+            <!-- Header -->
+            <header class="header">
+              <div class="header-content">
+                <h1>${reportData.title}</h1>
+                <div class="subtitle">${reportData.subtitle}</div>
+                <div class="meta">
+                  Generated on ${reportData.date} at ${reportData.time}
                 </div>
               </div>
-            </div>
-          `).join('')}
-          
-          <div class="footer">
-            <p>Did They Work? - Work Tracker Report</p>
-            <p>Generated on ${new Date().toLocaleString()}</p>
+            </header>
+
+            <!-- Executive Summary -->
+            <section class="executive-summary">
+              <h2>Executive Summary</h2>
+              
+              <div class="kpi-grid">
+                <div class="kpi-card workforce">
+                  <span class="kpi-value">${reportData.summary.totalEmployees}</span>
+                  <div class="kpi-label">Total Employees</div>
+                </div>
+                <div class="kpi-card performance">
+                  <span class="kpi-value">${reportData.summary.workCompletionRate.toFixed(1)}%</span>
+                  <div class="kpi-label">Completion Rate</div>
+                </div>
+                <div class="kpi-card earnings">
+                  <span class="kpi-value">£${reportData.summary.totalEarned.toFixed(0)}</span>
+                  <div class="kpi-label">Total Earned</div>
+                </div>
+                <div class="kpi-card outstanding">
+                  <span class="kpi-value">£${reportData.summary.totalOutstanding.toFixed(0)}</span>
+                  <div class="kpi-label">Outstanding</div>
+                </div>
+              </div>
+
+              <div class="performance-section">
+                <h3>Key Performance Indicators</h3>
+                <div class="performance-metrics">
+                  <div class="metric">
+                    <div class="metric-label">Work Days Completed</div>
+                    <div class="metric-value">${reportData.summary.totalWorkDays}</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-label">Days Paid</div>
+                    <div class="metric-value">${reportData.summary.totalPaidDays}</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-label">Average Daily Wage</div>
+                    <div class="metric-value">£${reportData.summary.avgDailyWage.toFixed(0)}</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-label">Total Payments</div>
+                    <div class="metric-value">${reportData.summary.paymentCount}</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-label">Amount Paid</div>
+                    <div class="metric-value">£${reportData.summary.totalPaid.toFixed(0)}</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-label">Calendar Notes</div>
+                    <div class="metric-value">${reportData.summary.dayNotesCount}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Employee Details -->
+            <section class="employees-section">
+              <h2>Employee Performance Analysis</h2>
+              
+              <div class="employee-grid">
+                ${reportData.employees.map(emp => `
+                  <div class="employee-card">
+                    <div class="employee-header">
+                      <div class="employee-info">
+                        <h4>${emp.name}</h4>
+                        <div class="employee-meta">
+                          ${emp.email !== 'Not provided' ? `📧 ${emp.email}<br>` : ''}
+                          ${emp.phone !== 'Not provided' ? `📞 ${emp.phone}<br>` : ''}
+                          ${emp.startDate !== 'Not specified' ? `📅 Started: ${emp.startDate}<br>` : ''}
+                          💰 Daily Wage: £${emp.dailyWage}${emp.previousWage ? ` (Previous: £${emp.previousWage})` : ''}
+                        </div>
+                      </div>
+                      <div>
+                        <span class="performance-badge ${emp.performanceRating.toLowerCase()}">${emp.performanceRating}</span>
+                        ${emp.priorityLevel !== 'NONE' ? `<span class="priority-badge ${emp.priorityLevel.toLowerCase()}">${emp.priorityLevel} Priority</span>` : ''}
+                      </div>
+                    </div>
+                    
+                    <div class="employee-stats">
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">${emp.workedDays}</span>
+                        <div class="employee-stat-label">Days Worked</div>
+                      </div>
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">${emp.paidDays}</span>
+                        <div class="employee-stat-label">Days Paid</div>
+                      </div>
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">£${emp.totalEarned.toFixed(0)}</span>
+                        <div class="employee-stat-label">Total Earned</div>
+                      </div>
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">£${emp.totalPaid.toFixed(0)}</span>
+                        <div class="employee-stat-label">Total Paid</div>
+                      </div>
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">£${emp.outstanding.toFixed(0)}</span>
+                        <div class="employee-stat-label">Outstanding</div>
+                      </div>
+                      <div class="employee-stat">
+                        <span class="employee-stat-value">${emp.paymentCount}</span>
+                        <div class="employee-stat-label">Payments</div>
+                      </div>
+                    </div>
+                    
+                    ${emp.notes ? `
+                      <div style="margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 3px; font-weight: 500;">Notes:</div>
+                        <div style="font-size: 0.9rem; color: #1e293b;">${emp.notes}</div>
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer">
+              <div class="footer-brand">My Days Work Tracker</div>
+              <div>Professional Business Report • Generated on ${new Date().toLocaleString()}</div>
+              <div style="margin-top: 10px; font-size: 0.8rem;">
+                This report contains confidential business information. Please handle with appropriate security measures.
+              </div>
+            </footer>
           </div>
         </body>
         </html>
@@ -801,13 +1172,13 @@ export default function Settings() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `my-days-report-${new Date().toISOString().split('T')[0]}.html`
+      a.download = `MyDays-Executive-Report-${new Date().toISOString().split('T')[0]}.html`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      alert('PDF report generated! Open the downloaded HTML file and use "Print to PDF" in your browser.')
+      alert('🎉 Professional PDF Report Generated!\n\n📊 FEATURES:\n• Executive dashboard with KPIs\n• Modern professional design\n• Employee performance analysis\n• Color-coded priority levels\n• Comprehensive business metrics\n• Print-optimized layout\n\n💡 TIP: Open the HTML file and use "Print to PDF" in your browser for best results!')
     } catch (error) {
       console.error('PDF export failed:', error)
       alert('PDF export failed. Please try again.')
@@ -1266,7 +1637,7 @@ export default function Settings() {
 
   const clearAllData = async () => {
     if (confirm('Are you sure you want to clear ALL data? This action cannot be undone.')) {
-      if (confirm('This will delete ALL employees, work days, payments, and activity logs. Are you absolutely sure?')) {
+      if (confirm('This will delete ALL employees, work days, payments, calendar notes, and activity logs. Are you absolutely sure?')) {
         try {
           // Delete all data comprehensively
           await Promise.all([
@@ -1275,13 +1646,17 @@ export default function Settings() {
             // Delete all work days
             ...employees.map(employee => firebaseService.deleteWorkDaysForEmployee(employee.id)),
             // Delete ALL payments (including any orphaned ones)
-            firebaseService.deleteAllPayments()
+            firebaseService.deleteAllPayments(),
+            // Delete ALL day notes (calendar notes)
+            firebaseService.deleteAllDayNotes()
           ])
           
           setEmployees([])
           setWorkDays([])
+          setPayments([])
+          setDayNotes([])
           setShowClearAllModal(false)
-          alert('All data including activity logs has been cleared successfully.')
+          alert('All data including employees, work days, payments, calendar notes, and activity logs has been cleared successfully.')
         } catch (error) {
           console.error('Error clearing data:', error)
           alert('Failed to clear data. Please try again.')
@@ -1593,7 +1968,7 @@ export default function Settings() {
                 </svg>
                 <div className="text-left">
                   <h3 className="font-medium text-red-900">Clear All Data</h3>
-                  <p className="text-sm text-red-600">Delete all employees and records</p>
+                  <p className="text-sm text-red-600">Delete all employees, work records, payments & notes</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1704,7 +2079,7 @@ export default function Settings() {
             </div>
             
             <p className="text-gray-700 mb-6">
-              This will permanently delete all employees, work days, payment records, and activity logs. 
+              This will permanently delete all employees, work days, payment records, calendar notes, and activity logs. 
               Make sure you have exported your data before proceeding.
             </p>
             
