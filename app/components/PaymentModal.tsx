@@ -113,34 +113,34 @@ export default function PaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div className="bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full sm:max-w-md sm:w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-t-lg sm:rounded-lg shadow-xl w-full sm:max-w-md sm:w-full max-h-[75vh] sm:max-h-[70vh] flex flex-col">
         {/* Header - Fixed */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Process Payment</h2>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-800">Process Payment</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-0">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0">
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="ml-3">
+                <div className="ml-2">
                   <h3 className="text-sm font-medium text-red-800">Payment Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
+                  <div className="mt-1 text-sm text-red-700">
                     <p>{error}</p>
                   </div>
                 </div>
@@ -148,18 +148,26 @@ export default function PaymentModal({
             </div>
           )}
 
-          {/* Employee Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-800 mb-2">{employee.name}</h3>
+          {/* Employee Info - Compact */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <h3 className="font-semibold text-gray-800">{employee.name}</h3>
             <p className="text-sm text-gray-600">£{employee.dailyWage}/day</p>
           </div>
 
-          {/* Selected Days */}
+          {/* Total Amount - Prominent */}
+          <div className="bg-green-50 rounded-lg p-3">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-gray-800">Total Amount:</span>
+              <span className="text-xl font-bold text-green-600">£{totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Selected Days - Compact */}
           <div>
-            <h3 className="font-medium text-gray-700 mb-3">Selected Work Days ({selectedWorkDays.length})</h3>
-            <div className="space-y-2 max-h-24 sm:max-h-32 overflow-y-auto">
+            <h3 className="font-medium text-gray-700 mb-2">Selected Work Days ({selectedWorkDays.length})</h3>
+            <div className="space-y-1 max-h-16 overflow-y-auto">
               {selectedWorkDays.map((workDay, index) => (
-                <div key={workDay.id} className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+                <div key={workDay.id} className="flex items-center justify-between bg-blue-50 rounded p-2">
                   <span className="text-sm font-medium text-blue-800">{format(new Date(workDay.date), 'MMM d, yyyy')}</span>
                   <span className="text-sm font-bold text-blue-600">£{calculateWorkDayAmount(workDay).toFixed(2)}</span>
                 </div>
@@ -167,23 +175,13 @@ export default function PaymentModal({
             </div>
           </div>
 
-          {/* Total Amount */}
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-800">Total Amount:</span>
-              <span className="text-2xl font-bold text-green-600">£{totalAmount.toFixed(2)}</span>
-            </div>
-          </div>
-
           {/* Payment Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Type
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
             <select
               value={paymentType}
               onChange={(e) => setPaymentType(e.target.value as PaymentType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             >
               {PAYMENT_TYPES.map(type => (
                 <option key={type} value={type}>{type}</option>
@@ -193,50 +191,43 @@ export default function PaymentModal({
 
           {/* Payment Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Date
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
             <input
               type="date"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
               max={format(new Date(), 'yyyy-MM-dd')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Select the actual date when this payment was made
-            </p>
           </div>
 
-          {/* Notes */}
+          {/* Notes - Compact */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about this payment..."
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              placeholder="Add any notes..."
+              rows={1}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
             />
           </div>
         </div>
 
-        {/* Footer - Fixed */}
+        {/* Footer - Always Visible */}
         <div className="flex-shrink-0 border-t bg-white rounded-b-lg sm:rounded-b-lg shadow-lg">
-          <div className="flex space-x-3 p-4 sm:p-6">
+          <div className="flex space-x-3 p-3 sm:p-4">
             <button
               onClick={onClose}
               disabled={isProcessing}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium text-sm"
             >
               Cancel
             </button>
             <button
               onClick={handlePayment}
               disabled={isProcessing || selectedWorkDays.length === 0}
-              className="flex-1 px-4 py-3 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
             >
               {isProcessing ? 'Processing...' : `Save Payment £${totalAmount.toFixed(2)}`}
             </button>
