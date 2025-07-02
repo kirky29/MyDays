@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { firebaseService } from '../../lib/firebase'
 import { useAppStore } from '../../lib/store'
+import * as XLSX from 'xlsx'
 
 import AuthGuard from '../components/AuthGuard'
 import ReportModal from '../components/ReportModal'
@@ -813,6 +814,456 @@ export default function Settings() {
     }
   }
 
+  const exportToXLSX = async () => {
+    try {
+      // Only count work days that are in the past or today (not future)
+      const today = new Date()
+      today.setHours(23, 59, 59, 999) // End of today
+      
+      // Create a new workbook
+      const wb = XLSX.utils.book_new()
+      
+      // Helper function to get week number
+      const getWeekNumber = (date: Date) => {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+        const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
+      }
+      
+      // Helper function to calculate consecutive work days
+      const getConsecutiveWorkDays = (empWorkDays: WorkDay[], currentDate: string) => {
+        const sortedWorked = empWorkDays
+          .filter(wd => wd.worked && wd.date <= currentDate)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        
+        let consecutive = 0
+        let expectedDate = new Date(currentDate)
+        
+        for (const workDay of sortedWorked) {
+          const workDate = new Date(workDay.date)
+          if (workDate.toDateString() === expectedDate.toDateString()) {
+            consecutive++
+            expectedDate.setDate(expectedDate.getDate() - 1)
+          } else {
+            break
+          }
+        }
+        
+        return consecutive
+      }
+
+      // WORKSHEET 1: EXECUTIVE DASHBOARD
+      const dashboardData: any[][] = []
+      
+      // Calculate comprehensive business metrics first
+      const totalWorkedDays = workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length
+      const totalPaidDays = workDays.filter(wd => wd.paid && new Date(wd.date) <= today).length
+      const totalEarnedAllEmployees = employees.reduce((total, emp) => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id && wd.worked && new Date(wd.date) <= today)
+        return total + empWorkDays.reduce((empTotal, wd) => {
+          if (wd.customAmount !== undefined) return empTotal + wd.customAmount
+          if (emp.wageChangeDate && emp.previousWage && wd.date < emp.wageChangeDate) return empTotal + emp.previousWage
+          return empTotal + emp.dailyWage
+        }, 0)
+      }, 0)
+      const totalPaidAllEmployees = payments.reduce((sum, p) => sum + p.amount, 0)
+      const totalOutstandingAllEmployees = totalEarnedAllEmployees - totalPaidAllEmployees
+      const avgDailyWage = employees.length > 0 ? employees.reduce((sum, emp) => sum + emp.dailyWage, 0) / employees.length : 0
+      const workCompletionRate = totalWorkedDays > 0 && totalPaidDays > 0 ? (totalPaidDays / totalWorkedDays) * 100 : 0
+      
+      // Build Executive Dashboard
+      dashboardData.push(['MY DAYS WORK TRACKER - EXECUTIVE DASHBOARD', '', '', '', '', ''])
+      dashboardData.push(['Generated:', new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), '', '', '', ''])
+      dashboardData.push(['', '', '', '', '', ''])
+      
+      // Key Performance Indicators
+      dashboardData.push(['KEY PERFORMANCE INDICATORS', '', '', '', '', ''])
+      dashboardData.push(['', '', '', '', '', ''])
+      dashboardData.push(['METRIC', 'VALUE', 'TARGET', 'STATUS', 'TREND', 'NOTES'])
+      dashboardData.push(['Total Employees', employees.length, '>=5', employees.length >= 5 ? 'ON TARGET' : 'BELOW', '↗', 'Active workforce'])
+      dashboardData.push(['Work Completion Rate', `${workCompletionRate.toFixed(1)}%`, '>=95%', workCompletionRate >= 95 ? 'EXCELLENT' : workCompletionRate >= 80 ? 'GOOD' : 'NEEDS IMPROVEMENT', workCompletionRate >= 95 ? '↗' : '→', 'Percentage of work days paid'])
+      dashboardData.push(['Total Outstanding', totalOutstandingAllEmployees, '<=1000', totalOutstandingAllEmployees <= 1000 ? 'GOOD' : 'HIGH', totalOutstandingAllEmployees <= 1000 ? '↗' : '↑', 'Amount owed to employees'])
+      dashboardData.push(['Average Daily Wage', avgDailyWage, '>=100', avgDailyWage >= 100 ? 'COMPETITIVE' : 'REVIEW', '→', 'Market competitiveness'])
+      dashboardData.push(['', '', '', '', '', ''])
+      
+      // Financial Summary
+      dashboardData.push(['FINANCIAL SUMMARY', '', '', '', '', ''])
+      dashboardData.push(['', '', '', '', '', ''])
+      dashboardData.push(['CATEGORY', 'AMOUNT (£)', 'PERCENTAGE', 'NOTES', '', ''])
+      dashboardData.push(['Total Earned', totalEarnedAllEmployees, '100%', 'Total wages earned by all employees', '', ''])
+      dashboardData.push(['Total Paid', totalPaidAllEmployees, `${totalEarnedAllEmployees > 0 ? ((totalPaidAllEmployees / totalEarnedAllEmployees) * 100).toFixed(1) : 0}%`, 'Total payments made to employees', '', ''])
+      dashboardData.push(['Outstanding', totalOutstandingAllEmployees, `${totalEarnedAllEmployees > 0 ? ((totalOutstandingAllEmployees / totalEarnedAllEmployees) * 100).toFixed(1) : 0}%`, 'Amount still owed to employees', '', ''])
+      dashboardData.push(['', '', '', '', '', ''])
+      
+      // Workforce Analytics
+      dashboardData.push(['WORKFORCE ANALYTICS', '', '', '', '', ''])
+      dashboardData.push(['', '', '', '', '', ''])
+      dashboardData.push(['EMPLOYEE', 'DAYS WORKED', 'TOTAL EARNED', 'OUTSTANDING', 'PERFORMANCE', 'STATUS'])
+      employees.forEach(employee => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === employee.id && wd.worked && new Date(wd.date) <= today)
+        const empPayments = payments.filter(p => p.employeeId === employee.id)
+        let totalEarned = 0
+        for (const workDay of empWorkDays) {
+          if (workDay.customAmount !== undefined) {
+            totalEarned += workDay.customAmount
+          } else {
+            if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+              totalEarned += employee.previousWage
+            } else {
+              totalEarned += employee.dailyWage
+            }
+          }
+        }
+        const totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+        const outstanding = Math.max(0, totalEarned - totalPaid)
+        const performance = empWorkDays.length >= 20 ? 'HIGH' : empWorkDays.length >= 10 ? 'MEDIUM' : 'LOW'
+        const status = outstanding > 500 ? 'PRIORITY' : outstanding > 0 ? 'PENDING' : 'CURRENT'
+        
+        dashboardData.push([employee.name, empWorkDays.length, totalEarned, outstanding, performance, status])
+      })
+      
+      const wsDashboard = XLSX.utils.aoa_to_sheet(dashboardData)
+
+      // WORKSHEET 2: DETAILED WORK HISTORY
+      const workHistoryData: any[][] = []
+      
+      // Professional header row
+      workHistoryData.push([
+        'Employee Name', 'Contact Email', 'Phone Number', 'Employment Start', 'Current Wage (£)', 'Previous Wage (£)', 'Wage Change Date',
+        'Work Date', 'Day of Week', 'Week #', 'Month', 'Year', 'Worked?', 'Paid?', 'Custom Amount?',
+        'Amount Earned (£)', 'Payment Date', 'Payment Method', 'Payment Amount (£)', 'Payment Notes',
+        'Work Day Notes', 'Employee Notes', 'Days Since Start', 'Days Since Last Payment', 'Consecutive Work Days',
+        'Employee Total Earned (£)', 'Employee Total Paid (£)', 'Employee Outstanding (£)', 'Work Day ID', 'Payment ID'
+      ])
+      
+      // Process each employee's detailed work data
+      employees.forEach(employee => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === employee.id)
+        const empPayments = payments.filter(p => p.employeeId === employee.id).sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
+        
+        // Calculate employee totals
+        const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
+        let totalEarned = 0
+        
+        // Calculate total earned
+        for (const workDay of workedDays) {
+          if (workDay.customAmount !== undefined) {
+            totalEarned += workDay.customAmount
+          } else {
+            if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+              totalEarned += employee.previousWage
+            } else {
+              totalEarned += employee.dailyWage
+            }
+          }
+        }
+        
+        const totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+        
+        // Calculate days since start and last payment
+        const startDate = employee.startDate ? new Date(employee.startDate) : null
+        const daysSinceStart = startDate ? Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+        const lastPayment = empPayments[empPayments.length - 1]
+        const lastPaymentDate = lastPayment ? new Date(lastPayment.createdAt) : null
+        const daysSinceLastPayment = lastPaymentDate ? Math.floor((today.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+        
+        // Add detailed work day data
+        empWorkDays
+          .filter(wd => new Date(wd.date) <= today)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .forEach(workDay => {
+            const workDate = new Date(workDay.date)
+            const dayOfWeek = workDate.toLocaleDateString('en-US', { weekday: 'long' })
+            const weekNumber = getWeekNumber(workDate)
+            const month = workDate.toLocaleDateString('en-US', { month: 'long' })
+            const year = workDate.getFullYear()
+            
+            // Calculate amount for this day
+            let dayAmount = 0
+            if (workDay.worked) {
+              if (workDay.customAmount !== undefined) {
+                dayAmount = workDay.customAmount
+              } else {
+                if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+                  dayAmount = employee.previousWage
+                } else {
+                  dayAmount = employee.dailyWage
+                }
+              }
+            }
+            
+            // Find payment information
+            const relatedPayment = empPayments.find(p => p.workDayIds.includes(workDay.id))
+            const paymentDate = relatedPayment ? new Date(relatedPayment.date).toLocaleDateString() : ''
+            const paymentMethod = relatedPayment ? relatedPayment.paymentType : (workDay.paid ? 'Unknown' : 'Unpaid')
+            const paymentAmount = relatedPayment ? relatedPayment.amount : 0
+            const paymentNotes = relatedPayment ? (relatedPayment.notes || '') : ''
+            
+            // Calculate consecutive work days
+            const consecutiveDays = workDay.worked ? getConsecutiveWorkDays(empWorkDays, workDay.date) : 0
+            
+            workHistoryData.push([
+              employee.name,
+              employee.email || '',
+              employee.phone || '',
+              employee.startDate || '',
+              employee.dailyWage,
+              employee.previousWage || '',
+              employee.wageChangeDate || '',
+              workDay.date,
+              dayOfWeek,
+              weekNumber,
+              month,
+              year,
+              workDay.worked ? 'YES' : 'NO',
+              workDay.paid ? 'YES' : 'NO',
+              workDay.customAmount !== undefined ? 'YES' : 'NO',
+              dayAmount,
+              paymentDate,
+              paymentMethod,
+              paymentAmount,
+              paymentNotes,
+              workDay.notes || '',
+              employee.notes || '',
+              daysSinceStart || '',
+              daysSinceLastPayment || '',
+              consecutiveDays,
+              totalEarned,
+              totalPaid,
+              Math.max(0, totalEarned - totalPaid),
+              workDay.id,
+              relatedPayment ? relatedPayment.id : ''
+            ])
+          })
+      })
+      
+      const wsWorkHistory = XLSX.utils.aoa_to_sheet(workHistoryData)
+      
+      // WORKSHEET 3: EMPLOYEE PERFORMANCE SUMMARY
+      const employeeSummaryData: any[][] = []
+      employeeSummaryData.push(['EMPLOYEE PERFORMANCE & PAYROLL SUMMARY', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      employeeSummaryData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      employeeSummaryData.push([
+        'Employee Name', 'Email Address', 'Phone Number', 'Start Date', 'Current Wage (£)', 'Total Days Worked', 
+        'Total Days Paid', 'Total Earned (£)', 'Total Paid (£)', 'Outstanding (£)', 'Avg Daily Earnings (£)', 
+        'Payment Count', 'Avg Payment (£)', 'Last Payment Date', 'Days Since Last Payment', 'Performance Rating', 'Priority'
+      ])
+      
+      employees.forEach(employee => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === employee.id)
+        const empPayments = payments.filter(p => p.employeeId === employee.id)
+        const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
+        const paidDays = empWorkDays.filter(wd => wd.paid && new Date(wd.date) <= today)
+        
+        let totalEarned = 0
+        for (const workDay of workedDays) {
+          if (workDay.customAmount !== undefined) {
+            totalEarned += workDay.customAmount
+          } else {
+            if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+              totalEarned += employee.previousWage
+            } else {
+              totalEarned += employee.dailyWage
+            }
+          }
+        }
+        
+        const totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+        const outstanding = Math.max(0, totalEarned - totalPaid)
+        const avgDailyEarnings = workedDays.length > 0 ? totalEarned / workedDays.length : 0
+        const avgPaymentAmount = empPayments.length > 0 ? totalPaid / empPayments.length : 0
+        const lastPayment = empPayments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+        const lastPaymentDate = lastPayment ? new Date(lastPayment.createdAt).toLocaleDateString() : ''
+        const daysSinceLastPayment = lastPayment ? Math.floor((today.getTime() - new Date(lastPayment.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : ''
+        
+        // Performance and priority ratings
+        const performanceRating = workedDays.length >= 20 ? 'EXCELLENT' : workedDays.length >= 10 ? 'GOOD' : workedDays.length >= 5 ? 'AVERAGE' : 'LOW'
+        const priority = outstanding > 1000 ? 'HIGH' : outstanding > 500 ? 'MEDIUM' : outstanding > 0 ? 'LOW' : 'NONE'
+        
+        employeeSummaryData.push([
+          employee.name,
+          employee.email || '',
+          employee.phone || '',
+          employee.startDate || '',
+          employee.dailyWage,
+          workedDays.length,
+          paidDays.length,
+          totalEarned,
+          totalPaid,
+          outstanding,
+          avgDailyEarnings,
+          empPayments.length,
+          avgPaymentAmount,
+          lastPaymentDate,
+          daysSinceLastPayment,
+          performanceRating,
+          priority
+        ])
+      })
+      
+      // Add summary totals with formulas
+      employeeSummaryData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      employeeSummaryData.push(['TOTALS & AVERAGES', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      employeeSummaryData.push([
+        'TOTALS →',
+        `${employees.length} employees`,
+        '',
+        '',
+        `=AVERAGE(E4:E${3 + employees.length})`,
+        `=SUM(F4:F${3 + employees.length})`,
+        `=SUM(G4:G${3 + employees.length})`,
+        `=SUM(H4:H${3 + employees.length})`,
+        `=SUM(I4:I${3 + employees.length})`,
+        `=SUM(J4:J${3 + employees.length})`,
+        `=AVERAGE(K4:K${3 + employees.length})`,
+        `=SUM(L4:L${3 + employees.length})`,
+        `=AVERAGE(M4:M${3 + employees.length})`,
+        '',
+        `=AVERAGE(O4:O${3 + employees.length})`,
+        '',
+        ''
+      ])
+      
+      const wsEmployeeSummary = XLSX.utils.aoa_to_sheet(employeeSummaryData)
+      
+      // WORKSHEET 4: CALENDAR & DAY NOTES
+      const dayNotesData: any[][] = []
+      dayNotesData.push(['CALENDAR NOTES & IMPORTANT DATES', '', '', '', '', '', '', '', ''])
+      dayNotesData.push(['', '', '', '', '', '', '', '', ''])
+      dayNotesData.push(['Date', 'Day of Week', 'Week #', 'Month', 'Year', 'Note Content', 'Created At', 'Category', 'Note ID'])
+      
+      dayNotes
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .forEach(note => {
+          const noteDate = new Date(note.date)
+          const dayOfWeek = noteDate.toLocaleDateString('en-US', { weekday: 'long' })
+          const weekNumber = getWeekNumber(noteDate)
+          const month = noteDate.toLocaleDateString('en-US', { month: 'long' })
+          const year = noteDate.getFullYear()
+          const createdAt = new Date(note.createdAt).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          })
+          
+          // Categorize notes
+          const category = note.note.toLowerCase().includes('holiday') ? 'HOLIDAY' :
+                          note.note.toLowerCase().includes('meeting') ? 'MEETING' :
+                          note.note.toLowerCase().includes('payment') ? 'PAYMENT' :
+                          note.note.toLowerCase().includes('weather') ? 'WEATHER' : 'GENERAL'
+          
+          dayNotesData.push([
+            note.date, dayOfWeek, weekNumber, month, year, note.note, createdAt, category, note.id
+          ])
+        })
+      
+      // Add summary if no notes
+      if (dayNotes.length === 0) {
+        dayNotesData.push(['No calendar notes recorded', '', '', '', '', '', '', '', ''])
+      }
+      
+      const wsDayNotes = XLSX.utils.aoa_to_sheet(dayNotesData)
+      
+      // WORKSHEET 5: FINANCIAL CALCULATIONS & FORMULAS
+      const calculationsData: any[][] = []
+      
+      calculationsData.push(['FINANCIAL CALCULATIONS & BUSINESS INTELLIGENCE', '', '', '', ''])
+      calculationsData.push(['Automated Excel Formulas for Real-time Analysis', '', '', '', ''])
+      calculationsData.push(['', '', '', '', ''])
+      
+      calculationsData.push(['PAYROLL CALCULATIONS', 'FORMULA', 'RESULT', 'DESCRIPTION', ''])
+      calculationsData.push(['Total Employees', `=COUNTA('Employee Summary'!A4:A${3 + employees.length})-1`, employees.length, 'Count of active employees', ''])
+      calculationsData.push(['Total Work Days', `=COUNTIF('Work History'!M:M,"YES")`, totalWorkedDays, 'Days where work was completed', ''])
+      calculationsData.push(['Total Paid Days', `=COUNTIF('Work History'!N:N,"YES")`, totalPaidDays, 'Work days that have been paid', ''])
+      calculationsData.push(['Total Earnings', `=SUM('Work History'!P:P)`, totalEarnedAllEmployees, 'Total amount earned by all employees', ''])
+      calculationsData.push(['Total Payments', `=SUM('Work History'!S:S)`, totalPaidAllEmployees, 'Total amount paid to employees', ''])
+      calculationsData.push(['Total Outstanding', `=SUM('Employee Summary'!J:J)`, totalOutstandingAllEmployees, 'Total amount still owed', ''])
+      calculationsData.push(['', '', '', '', ''])
+      
+      calculationsData.push(['PERFORMANCE METRICS', 'FORMULA', 'RESULT', 'DESCRIPTION', ''])
+      calculationsData.push(['Average Daily Wage', `=AVERAGE('Employee Summary'!E:E)`, avgDailyWage.toFixed(2), 'Average wage across all employees', ''])
+      calculationsData.push(['Payment Completion Rate', `=(COUNTIF('Work History'!N:N,"YES")/COUNTIF('Work History'!M:M,"YES"))*100`, `${workCompletionRate.toFixed(1)}%`, 'Percentage of worked days that are paid', ''])
+      calculationsData.push(['Average Days Worked per Employee', `=AVERAGE('Employee Summary'!F:F)`, (totalWorkedDays / Math.max(employees.length, 1)).toFixed(1), 'Average productivity per employee', ''])
+      calculationsData.push(['Outstanding as % of Total Earned', `=(SUM('Employee Summary'!J:J)/SUM('Employee Summary'!H:H))*100`, totalEarnedAllEmployees > 0 ? `${((totalOutstandingAllEmployees / totalEarnedAllEmployees) * 100).toFixed(1)}%` : '0%', 'Outstanding debt percentage', ''])
+      calculationsData.push(['', '', '', '', ''])
+      
+      calculationsData.push(['TOP PERFORMERS', 'FORMULA', 'RESULT', 'DESCRIPTION', ''])
+      calculationsData.push(['Highest Earning Employee', `=INDEX('Employee Summary'!A:A,MATCH(MAX('Employee Summary'!H:H),'Employee Summary'!H:H,0))`, '', 'Employee with highest total earnings', ''])
+      calculationsData.push(['Most Active Employee', `=INDEX('Employee Summary'!A:A,MATCH(MAX('Employee Summary'!F:F),'Employee Summary'!F:F,0))`, '', 'Employee with most work days', ''])
+      calculationsData.push(['Highest Outstanding', `=INDEX('Employee Summary'!A:A,MATCH(MAX('Employee Summary'!J:J),'Employee Summary'!J:J,0))`, '', 'Employee with most outstanding payment', ''])
+      calculationsData.push(['Best Paid Employee', `=INDEX('Employee Summary'!A:A,MATCH(MAX('Employee Summary'!E:E),'Employee Summary'!E:E,0))`, '', 'Employee with highest daily wage', ''])
+      calculationsData.push(['', '', '', '', ''])
+      
+      calculationsData.push(['CASH FLOW ANALYSIS', 'FORMULA', 'RESULT', 'DESCRIPTION', ''])
+      calculationsData.push(['Weekly Payroll Estimate', `=SUM('Employee Summary'!E:E)*7`, (avgDailyWage * employees.length * 7).toFixed(2), 'Estimated weekly payroll cost', ''])
+      calculationsData.push(['Monthly Payroll Estimate', `=SUM('Employee Summary'!E:E)*30`, (avgDailyWage * employees.length * 30).toFixed(2), 'Estimated monthly payroll cost', ''])
+      calculationsData.push(['Current Cash Liability', `=SUM('Employee Summary'!J:J)`, totalOutstandingAllEmployees.toFixed(2), 'Immediate payment obligations', ''])
+      calculationsData.push(['', '', '', '', ''])
+      
+      calculationsData.push(['REPORT METADATA', '', '', '', ''])
+      calculationsData.push(['Export Date', '=TODAY()', new Date().toLocaleDateString(), 'Date this report was generated', ''])
+      calculationsData.push(['Export Time', '=NOW()', new Date().toLocaleString(), 'Time this report was generated', ''])
+      calculationsData.push(['Data Range', 'All dates to present', `Through ${today.toLocaleDateString()}`, 'Period covered by this report', ''])
+      calculationsData.push(['Total Records', `=COUNTA('Work History'!A:A)-1`, workHistoryData.length - 1, 'Number of work day records', ''])
+      
+      const wsCalculations = XLSX.utils.aoa_to_sheet(calculationsData)
+      
+      // Add all worksheets to workbook with professional names
+      XLSX.utils.book_append_sheet(wb, wsDashboard, 'Executive Dashboard')
+      XLSX.utils.book_append_sheet(wb, wsWorkHistory, 'Work History')
+      XLSX.utils.book_append_sheet(wb, wsEmployeeSummary, 'Employee Summary')
+      XLSX.utils.book_append_sheet(wb, wsDayNotes, 'Calendar Notes')
+      XLSX.utils.book_append_sheet(wb, wsCalculations, 'Calculations')
+      
+      // Apply professional formatting and column widths
+      // Dashboard formatting
+      if (!wsDashboard['!cols']) wsDashboard['!cols'] = []
+      wsDashboard['!cols'] = [
+        { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }
+      ]
+      
+      // Work History formatting
+      if (!wsWorkHistory['!cols']) wsWorkHistory['!cols'] = []
+      wsWorkHistory['!cols'] = Array(30).fill(null).map((_, i) => {
+        if (i === 0) return { wch: 18 } // Employee Name
+        if (i === 1 || i === 2) return { wch: 20 } // Email, Phone
+        if (i === 4 || i === 5) return { wch: 12 } // Wages
+        if (i === 15 || i === 18 || i === 25 || i === 26 || i === 27) return { wch: 15 } // Currency columns
+        return { wch: 12 }
+      })
+      
+      // Employee Summary formatting
+      if (!wsEmployeeSummary['!cols']) wsEmployeeSummary['!cols'] = []
+      wsEmployeeSummary['!cols'] = [
+        { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
+        { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 12 }
+      ]
+      
+      // Day Notes formatting
+      if (!wsDayNotes['!cols']) wsDayNotes['!cols'] = []
+      wsDayNotes['!cols'] = [
+        { wch: 12 }, { wch: 15 }, { wch: 8 }, { wch: 12 }, { wch: 8 }, 
+        { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 25 }
+      ]
+      
+      // Calculations formatting
+      if (!wsCalculations['!cols']) wsCalculations['!cols'] = []
+      wsCalculations['!cols'] = [
+        { wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 35 }, { wch: 5 }
+      ]
+      
+      // Generate and download the professionally formatted Excel file
+      const fileName = `MyDays-Business-Analytics-${new Date().toISOString().split('T')[0]}.xlsx`
+      XLSX.writeFile(wb, fileName)
+      
+      alert('🎉 Professional Excel Workbook Exported Successfully!\n\n📊 INCLUDES:\n• Executive Dashboard with KPIs\n• Detailed Work History (30 columns)\n• Employee Performance Summary\n• Calendar Notes & Categories\n• Financial Calculations & Formulas\n• Auto-sum calculations\n• Professional formatting\n• Built-in Excel analytics\n\n💼 Perfect for:\n• Executive reporting\n• Payroll management\n• Financial analysis\n• Performance tracking\n• Business intelligence')
+    } catch (error) {
+      console.error('XLSX export failed:', error)
+      alert('Excel export failed. Please try again.')
+    }
+  }
+
   const clearAllData = async () => {
     if (confirm('Are you sure you want to clear ALL data? This action cannot be undone.')) {
       if (confirm('This will delete ALL employees, work days, payments, and activity logs. Are you absolutely sure?')) {
@@ -1077,6 +1528,25 @@ export default function Settings() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
+
+            <button
+              onClick={exportToXLSX}
+              disabled={importing}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900">Export Professional Excel</h3>
+                  <p className="text-sm text-gray-600">Multi-sheet workbook with formulas & analytics</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -1318,4 +1788,4 @@ export default function Settings() {
     </div>
     </AuthGuard>
   )
-} 
+}
