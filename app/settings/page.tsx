@@ -163,6 +163,50 @@ export default function Settings() {
         }
       }
       
+      // Validate work days structure
+      for (const wd of importedWorkDays) {
+        if (!wd.id || !wd.employeeId || !wd.date || typeof wd.worked !== 'boolean' || typeof wd.paid !== 'boolean') {
+          throw new Error('Invalid work day data structure in backup file')
+        }
+      }
+      
+      // Validate payments structure
+      for (const payment of importedPayments) {
+        if (!payment.id || !payment.employeeId || !Array.isArray(payment.workDayIds) || typeof payment.amount !== 'number') {
+          throw new Error('Invalid payment data structure in backup file')
+        }
+      }
+      
+      // Validate day notes structure (if present)
+      for (const note of importedDayNotes) {
+        if (!note.id || !note.date || !note.note || !note.createdAt) {
+          throw new Error('Invalid day note data structure in backup file')
+        }
+      }
+      
+      // Validate data integrity and relationships
+      const employeeIds = new Set(importedEmployees.map(emp => emp.id))
+      
+      // Check that all work days reference valid employees
+      for (const wd of importedWorkDays) {
+        if (!employeeIds.has(wd.employeeId)) {
+          throw new Error(`Work day ${wd.id} references non-existent employee ${wd.employeeId}`)
+        }
+      }
+      
+      // Check that all payments reference valid employees and work days
+      const workDayIds = new Set(importedWorkDays.map(wd => wd.id))
+      for (const payment of importedPayments) {
+        if (!employeeIds.has(payment.employeeId)) {
+          throw new Error(`Payment ${payment.id} references non-existent employee ${payment.employeeId}`)
+        }
+        for (const wdId of payment.workDayIds) {
+          if (!workDayIds.has(wdId)) {
+            throw new Error(`Payment ${payment.id} references non-existent work day ${wdId}`)
+          }
+        }
+      }
+      
       // Confirm with user before clearing existing data
       const confirmMessage = `This will replace ALL your current data with the backup data.\n\nBackup contains:\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n• ${importedDayNotes.length} day notes\n\nYour current data will be permanently deleted. Continue?`
       
@@ -185,29 +229,51 @@ export default function Settings() {
         ...employees.map(employee => firebaseService.deleteWorkDaysForEmployee(employee.id)),
         // Delete all payments
         firebaseService.deleteAllPayments(),
-        // Delete all day notes
-        ...dayNotes.map(dayNote => firebaseService.deleteDayNote(dayNote.id))
+        // Delete all day notes (bulk delete for efficiency)
+        firebaseService.deleteAllDayNotes()
       ])
       
-      // Import new data
-      await Promise.all([
-        // Import employees
-        ...importedEmployees.map(employee => firebaseService.addEmployee(employee)),
+      // Import new data with detailed progress tracking
+      try {
+        console.log('Starting data import process...')
+        
+        // Import employees first
+        console.log(`Importing ${importedEmployees.length} employees...`)
+        await Promise.all(importedEmployees.map(employee => firebaseService.addEmployee(employee)))
+        
         // Import work days
-        ...importedWorkDays.map(workDay => firebaseService.addWorkDay(workDay)),
+        console.log(`Importing ${importedWorkDays.length} work days...`)
+        await Promise.all(importedWorkDays.map(workDay => firebaseService.addWorkDay(workDay)))
+        
         // Import payments
-        ...importedPayments.map(payment => firebaseService.addPayment(payment)),
+        console.log(`Importing ${importedPayments.length} payments...`)
+        await Promise.all(importedPayments.map(payment => firebaseService.addPayment(payment)))
+        
         // Import day notes
-        ...importedDayNotes.map(dayNote => firebaseService.addDayNote(dayNote))
-      ])
-      
-      // Update local state
-      setEmployees(importedEmployees)
-      setWorkDays(importedWorkDays)
-      setPayments(importedPayments)
-      setDayNotes(importedDayNotes)
-      
-      alert(`Data imported successfully!\n\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days\n• ${importedPayments.length} payments\n• ${importedDayNotes.length} day notes\n\nAll data has been restored from the backup.`)
+        if (importedDayNotes.length > 0) {
+          console.log(`Importing ${importedDayNotes.length} day notes...`)
+          await Promise.all(importedDayNotes.map(dayNote => firebaseService.addDayNote(dayNote)))
+        }
+        
+        console.log('Data import completed successfully')
+        
+        // Update local state
+        setEmployees(importedEmployees)
+        setWorkDays(importedWorkDays)
+        setPayments(importedPayments)
+        setDayNotes(importedDayNotes)
+        
+        // Calculate some quick stats for confirmation
+        const workedDays = importedWorkDays.filter(wd => wd.worked).length
+        const paidDays = importedWorkDays.filter(wd => wd.paid).length
+        const totalPaymentAmount = importedPayments.reduce((sum, p) => sum + p.amount, 0)
+        
+        alert(`✅ Data imported successfully!\n\nRESTORED DATA:\n• ${importedEmployees.length} employees\n• ${importedWorkDays.length} work days (${workedDays} worked, ${paidDays} paid)\n• ${importedPayments.length} payments (£${totalPaymentAmount.toFixed(2)} total)\n• ${importedDayNotes.length} calendar notes\n\n🎉 All data has been restored from the backup and is ready to use!`)
+        
+      } catch (importError: any) {
+        console.error('Import process failed:', importError)
+        throw new Error(`Failed to import data: ${importError.message}. Your existing data has been cleared, but the backup import failed. You may need to try importing again or restore from another backup.`)
+      }
       
     } catch (error: any) {
       console.error('Import failed:', error)
