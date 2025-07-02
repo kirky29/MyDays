@@ -439,7 +439,7 @@ function DayDetailModal({ isOpen, onClose, date, employees, workDays, payments, 
     } else {
       setShiftType('worked')
     }
-  }, [isFutureDate])
+  }, [date]) // Use date instead of calculated isFutureDate to avoid frequent re-renders
 
   // Navigation function
   const handleEmployeeClick = (employeeId: string) => {

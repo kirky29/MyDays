@@ -75,20 +75,28 @@ export default function MonthlyCalendar({ employee, workDays, payments, onDateCl
 
   // Get day info for a specific date
   const getDayInfo = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const today = format(new Date(), 'yyyy-MM-dd') // Use string comparison to avoid timezone issues
-    
-    // Only consider work days that are actually worked or scheduled (not removed/cancelled)
-    // Show work days if: worked=true OR (worked=false AND date is today or future - i.e., still scheduled)
-    const workDay = workDays.find(wd => {
-      if (wd.date !== dateStr) return false
-      if (wd.worked) return true // Always show if actually worked
-      return dateStr >= today // Show unworked if it's today or future (still scheduled)
-    })
+    try {
+      const dateStr = format(date, 'yyyy-MM-dd')
+      const today = format(new Date(), 'yyyy-MM-dd') // Use string comparison to avoid timezone issues
+      
+      // Only consider work days that are actually worked or scheduled (not removed/cancelled)
+      // Show work days if: worked=true OR (worked=false AND date is today or future - i.e., still scheduled)
+      const workDay = workDays.find(wd => {
+        if (wd.date !== dateStr) return false
+        if (wd.worked) return true // Always show if actually worked
+        return dateStr >= today // Show unworked if it's today or future (still scheduled)
+      })
 
-    return {
-      workDay,
-      dateStr
+      return {
+        workDay,
+        dateStr
+      }
+    } catch (error) {
+      console.error('Error getting day info:', error)
+      return {
+        workDay: undefined,
+        dateStr: ''
+      }
     }
   }
 

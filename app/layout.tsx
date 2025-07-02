@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import BottomNavigation from './components/BottomNavigation'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -97,10 +98,12 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50 pb-20">
-          {children}
-          <BottomNavigation />
-        </div>
+        <ErrorBoundary>
+          <div className="min-h-screen bg-gray-50 pb-20">
+            {children}
+            <BottomNavigation />
+          </div>
+        </ErrorBoundary>
       </body>
     </html>
   )
