@@ -9,7 +9,9 @@ import {
   isSameMonth, 
   addMonths,
   subMonths,
-  isToday
+  isToday,
+  startOfWeek,
+  endOfWeek
 } from 'date-fns'
 import { useAppStore } from '../../lib/store'
 
@@ -58,7 +60,11 @@ export default function AllEmployeesCalendar() {
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
-  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  
+  // Get the full week range to properly align days in the calendar grid
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 }) // 0 = Sunday
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
   // Helper function to get work day amount
   const getWorkDayAmount = (workDay: WorkDay, employee: Employee) => {
