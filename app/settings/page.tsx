@@ -238,25 +238,75 @@ export default function Settings() {
       // Create comprehensive work data for CSV
       const workData: any[] = []
       
-      // Add header row
+      // Add header row with enhanced columns
       workData.push([
         'Employee Name',
-        'Daily Wage',
-        'Date',
+        'Employee Email',
+        'Employee Phone',
+        'Employee Start Date',
+        'Current Daily Wage',
+        'Previous Wage',
+        'Wage Change Date',
+        'Work Date',
         'Day of Week',
-        'Worked',
-        'Paid',
-        'Amount Earned',
+        'Week Number',
+        'Month',
+        'Year',
+        'Worked (Yes/No)',
+        'Paid (Yes/No)',
+        'Custom Amount Used',
+        'Amount Earned This Day',
+        'Payment Date',
         'Payment Method',
-        'Work Notes',
+        'Payment Amount',
+        'Payment Notes',
+        'Work Day Notes',
         'Employee Notes',
-        'Outstanding Amount'
+        'Days Since Start',
+        'Days Since Last Payment',
+        'Consecutive Work Days',
+        'Employee Total Earned',
+        'Employee Total Paid',
+        'Employee Outstanding',
+        'Work Day ID',
+        'Payment ID'
       ])
       
-      // Process each employee's work days
+      // Helper function to get week number
+      const getWeekNumber = (date: Date) => {
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
+        const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
+      }
+      
+      // Helper function to calculate consecutive work days
+      const getConsecutiveWorkDays = (empWorkDays: WorkDay[], currentDate: string) => {
+        const sortedWorked = empWorkDays
+          .filter(wd => wd.worked && wd.date <= currentDate)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        
+        let consecutive = 0
+        let expectedDate = new Date(currentDate)
+        
+        for (const workDay of sortedWorked) {
+          const workDate = new Date(workDay.date)
+          if (workDate.toDateString() === expectedDate.toDateString()) {
+            consecutive++
+            expectedDate.setDate(expectedDate.getDate() - 1)
+          } else {
+            break
+          }
+        }
+        
+        return consecutive
+      }
+
+      // Process each employee's work days with enhanced data
       employees.forEach(employee => {
         const empWorkDays = workDays.filter(wd => wd.employeeId === employee.id)
-        const empPayments = payments.filter(p => p.employeeId === employee.id)
+        const empPayments = payments.filter(p => p.employeeId === employee.id).sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
         
         // Calculate totals for this employee
         const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
@@ -279,13 +329,25 @@ export default function Settings() {
         // Calculate total paid from payment records
         totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
         
-        // Add work days data
+        // Calculate days since start
+        const startDate = employee.startDate ? new Date(employee.startDate) : null
+        const daysSinceStart = startDate ? Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+        
+        // Find last payment date
+        const lastPayment = empPayments[empPayments.length - 1]
+        const lastPaymentDate = lastPayment ? new Date(lastPayment.createdAt) : null
+        const daysSinceLastPayment = lastPaymentDate ? Math.floor((today.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+        
+        // Add work days data with enhanced information
         empWorkDays
           .filter(wd => new Date(wd.date) <= today) // Only past/present days
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort by date
           .forEach(workDay => {
             const workDate = new Date(workDay.date)
             const dayOfWeek = workDate.toLocaleDateString('en-US', { weekday: 'long' })
+            const weekNumber = getWeekNumber(workDate)
+            const month = workDate.toLocaleDateString('en-US', { month: 'long' })
+            const year = workDate.getFullYear()
             
             // Calculate amount for this specific day
             let dayAmount = 0
@@ -301,56 +363,108 @@ export default function Settings() {
               }
             }
             
-            // Find payment method for this work day
+            // Find payment information for this work day
             const relatedPayment = empPayments.find(p => p.workDayIds.includes(workDay.id))
             const paymentMethod = relatedPayment ? relatedPayment.paymentType : (workDay.paid ? 'Unknown' : 'Unpaid')
+            const paymentDate = relatedPayment ? new Date(relatedPayment.date).toLocaleDateString('en-US') : ''
+            const paymentAmount = relatedPayment ? relatedPayment.amount : 0
+            const paymentNotes = relatedPayment ? (relatedPayment.notes || '') : ''
+            
+            // Calculate consecutive work days up to this date
+            const consecutiveDays = workDay.worked ? getConsecutiveWorkDays(empWorkDays, workDay.date) : 0
             
             workData.push([
               employee.name,
+              employee.email || '',
+              employee.phone || '',
+              employee.startDate || '',
               `£${employee.dailyWage}`,
+              employee.previousWage ? `£${employee.previousWage}` : '',
+              employee.wageChangeDate || '',
               workDay.date,
               dayOfWeek,
+              weekNumber,
+              month,
+              year,
               workDay.worked ? 'Yes' : 'No',
               workDay.paid ? 'Yes' : 'No',
+              workDay.customAmount !== undefined ? 'Yes' : 'No',
               workDay.worked ? `£${dayAmount.toFixed(2)}` : '£0.00',
+              paymentDate,
               paymentMethod,
+              relatedPayment ? `£${paymentAmount.toFixed(2)}` : '',
+              paymentNotes,
               workDay.notes || '',
               employee.notes || '',
-              `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`
+              daysSinceStart || '',
+              daysSinceLastPayment || '',
+              consecutiveDays,
+              `£${totalEarned.toFixed(2)}`,
+              `£${totalPaid.toFixed(2)}`,
+              `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`,
+              workDay.id,
+              relatedPayment ? relatedPayment.id : ''
             ])
           })
         
         // Add employee summary row if they have work days
         if (empWorkDays.length > 0) {
+          const paidDays = empWorkDays.filter(wd => wd.paid).length
+          const avgDailyEarnings = workedDays.length > 0 ? totalEarned / workedDays.length : 0
+          const paymentCount = empPayments.length
+          const avgPaymentAmount = paymentCount > 0 ? totalPaid / paymentCount : 0
+          
           workData.push([
-            `${employee.name} - SUMMARY`,
+            `${employee.name} - EMPLOYEE SUMMARY`,
+            employee.email || '',
+            employee.phone || '',
+            employee.startDate || '',
             `£${employee.dailyWage}`,
+            employee.previousWage ? `£${employee.previousWage}` : '',
+            employee.wageChangeDate || '',
             '',
             '',
-            `${workedDays.length} days`,
-            `${empWorkDays.filter(wd => wd.paid).length} days`,
+            '',
+            '',
+            '',
+            `${workedDays.length} days worked`,
+            `${paidDays} days paid`,
+            '',
+            `£${avgDailyEarnings.toFixed(2)} avg/day`,
+            '',
+            `${paymentCount} payments made`,
+            `£${avgPaymentAmount.toFixed(2)} avg payment`,
+            '',
+            '',
+            employee.notes || '',
+            daysSinceStart || '',
+            daysSinceLastPayment || '',
+            '',
             `£${totalEarned.toFixed(2)}`,
+            `£${totalPaid.toFixed(2)}`,
+            `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`,
             '',
-            '',
-            '',
-            `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`
+            ''
           ])
           
           // Add empty row for spacing
-          workData.push(['', '', '', '', '', '', '', '', '', '', ''])
+          workData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
         }
       })
       
       // Add day notes as a separate section
       if (dayNotes.length > 0) {
-        workData.push(['=== DAY NOTES ===', '', '', '', '', '', '', '', '', '', ''])
-        workData.push(['Date', 'Day Note', 'Created At', '', '', '', '', '', '', '', ''])
+        workData.push(['=== DAY NOTES SECTION ===', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+        workData.push(['Date', 'Day of Week', 'Day Note', 'Created At', 'Week Number', 'Month', 'Year', 'Note ID', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
         
         dayNotes
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
           .forEach(note => {
             const noteDate = new Date(note.date)
             const dayOfWeek = noteDate.toLocaleDateString('en-US', { weekday: 'long' })
+            const weekNumber = getWeekNumber(noteDate)
+            const month = noteDate.toLocaleDateString('en-US', { month: 'long' })
+            const year = noteDate.getFullYear()
             const createdAt = new Date(note.createdAt).toLocaleDateString('en-US', { 
               year: 'numeric', 
               month: 'short', 
@@ -360,22 +474,47 @@ export default function Settings() {
             })
             
             workData.push([
-              `${note.date} (${dayOfWeek})`,
+              note.date,
+              dayOfWeek,
               note.note,
               createdAt,
-              '', '', '', '', '', '', '', ''
+              weekNumber,
+              month,
+              year,
+              note.id,
+              '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
             ])
           })
       }
       
-      // Add summary statistics at the end
-      workData.push(['', '', '', '', '', '', '', '', '', '', ''])
-      workData.push(['=== BUSINESS SUMMARY ===', '', '', '', '', '', '', '', '', '', ''])
-      workData.push(['Total Employees', employees.length, '', '', '', '', '', '', '', '', ''])
-      workData.push(['Total Work Days Logged', workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length, '', '', '', '', '', '', '', '', ''])
-      workData.push(['Total Payments Made', payments.length, '', '', '', '', '', '', '', '', ''])
-      workData.push(['Total Amount Paid Out', `£${payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}`, '', '', '', '', '', '', '', '', ''])
-      workData.push(['Total Day Notes', dayNotes.length, '', '', '', '', '', '', '', '', ''])
+      // Add comprehensive business summary statistics
+      const totalWorkedDays = workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length
+      const totalPaidDays = workDays.filter(wd => wd.paid && new Date(wd.date) <= today).length
+      const totalEarnedAllEmployees = employees.reduce((total, emp) => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === emp.id && wd.worked && new Date(wd.date) <= today)
+        return total + empWorkDays.reduce((empTotal, wd) => {
+          if (wd.customAmount !== undefined) return empTotal + wd.customAmount
+          if (emp.wageChangeDate && emp.previousWage && wd.date < emp.wageChangeDate) return empTotal + emp.previousWage
+          return empTotal + emp.dailyWage
+        }, 0)
+      }, 0)
+      const totalPaidAllEmployees = payments.reduce((sum, p) => sum + p.amount, 0)
+      const totalOutstandingAllEmployees = totalEarnedAllEmployees - totalPaidAllEmployees
+      
+      workData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['=== COMPREHENSIVE BUSINESS SUMMARY ===', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Metric', 'Value', 'Details', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Employees', employees.length, 'All registered employees', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Work Days Logged', totalWorkedDays, 'Days where work was actually completed', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Days Paid', totalPaidDays, 'Work days that have been paid', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Payments Made', payments.length, 'Number of payment transactions', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Amount Earned', `£${totalEarnedAllEmployees.toFixed(2)}`, 'Total amount earned by all employees', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Amount Paid Out', `£${totalPaidAllEmployees.toFixed(2)}`, 'Total amount paid to all employees', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Outstanding Amount', `£${Math.max(0, totalOutstandingAllEmployees).toFixed(2)}`, 'Total amount still owed to employees', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Day Notes', dayNotes.length, 'Calendar notes and reminders', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Average Daily Wage', `£${employees.length > 0 ? (employees.reduce((sum, emp) => sum + emp.dailyWage, 0) / employees.length).toFixed(2) : '0.00'}`, 'Average wage across all employees', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Work Completion Rate', `${totalWorkedDays > 0 && totalPaidDays > 0 ? ((totalPaidDays / totalWorkedDays) * 100).toFixed(1) : '0'}%`, 'Percentage of worked days that are paid', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Export Generated', new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }), 'Date and time this report was generated', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''])
       
       // Convert to CSV string
       const csvContent = workData.map(row => 
@@ -400,7 +539,7 @@ export default function Settings() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      alert('CSV export completed successfully! Open the file in Excel, Google Sheets, or any spreadsheet application.')
+      alert('Enhanced CSV export completed successfully! \n\nIncludes:\n• Detailed work history with enhanced columns\n• Employee contact information and wage history\n• Payment tracking with dates and methods\n• Calendar day notes with timestamps\n• Comprehensive business analytics\n• Performance metrics and statistics\n\nOpen the file in Excel, Google Sheets, or any spreadsheet application for advanced analysis.')
     } catch (error) {
       console.error('CSV export failed:', error)
       alert('CSV export failed. Please try again.')
@@ -911,8 +1050,8 @@ export default function Settings() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900">Export to CSV</h3>
-                  <p className="text-sm text-gray-600">Download spreadsheet data (Excel, Google Sheets)</p>
+                  <h3 className="font-medium text-gray-900">Export Enhanced CSV</h3>
+                  <p className="text-sm text-gray-600">Detailed analytics spreadsheet (Excel, Google Sheets)</p>
                 </div>
               </div>
               <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
