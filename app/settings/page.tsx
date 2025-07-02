@@ -229,6 +229,184 @@ export default function Settings() {
     event.target.value = ''
   }
 
+  const exportToCSV = async () => {
+    try {
+      // Only count work days that are in the past or today (not future)
+      const today = new Date()
+      today.setHours(23, 59, 59, 999) // End of today
+      
+      // Create comprehensive work data for CSV
+      const workData: any[] = []
+      
+      // Add header row
+      workData.push([
+        'Employee Name',
+        'Daily Wage',
+        'Date',
+        'Day of Week',
+        'Worked',
+        'Paid',
+        'Amount Earned',
+        'Payment Method',
+        'Work Notes',
+        'Employee Notes',
+        'Outstanding Amount'
+      ])
+      
+      // Process each employee's work days
+      employees.forEach(employee => {
+        const empWorkDays = workDays.filter(wd => wd.employeeId === employee.id)
+        const empPayments = payments.filter(p => p.employeeId === employee.id)
+        
+        // Calculate totals for this employee
+        const workedDays = empWorkDays.filter(wd => wd.worked && new Date(wd.date) <= today)
+        let totalEarned = 0
+        let totalPaid = 0
+        
+        // Calculate total earned
+        for (const workDay of workedDays) {
+          if (workDay.customAmount !== undefined) {
+            totalEarned += workDay.customAmount
+          } else {
+            if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+              totalEarned += employee.previousWage
+            } else {
+              totalEarned += employee.dailyWage
+            }
+          }
+        }
+        
+        // Calculate total paid from payment records
+        totalPaid = empPayments.reduce((sum, payment) => sum + payment.amount, 0)
+        
+        // Add work days data
+        empWorkDays
+          .filter(wd => new Date(wd.date) <= today) // Only past/present days
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort by date
+          .forEach(workDay => {
+            const workDate = new Date(workDay.date)
+            const dayOfWeek = workDate.toLocaleDateString('en-US', { weekday: 'long' })
+            
+            // Calculate amount for this specific day
+            let dayAmount = 0
+            if (workDay.worked) {
+              if (workDay.customAmount !== undefined) {
+                dayAmount = workDay.customAmount
+              } else {
+                if (employee.wageChangeDate && employee.previousWage && workDay.date < employee.wageChangeDate) {
+                  dayAmount = employee.previousWage
+                } else {
+                  dayAmount = employee.dailyWage
+                }
+              }
+            }
+            
+            // Find payment method for this work day
+            const relatedPayment = empPayments.find(p => p.workDayIds.includes(workDay.id))
+            const paymentMethod = relatedPayment ? relatedPayment.paymentType : (workDay.paid ? 'Unknown' : 'Unpaid')
+            
+            workData.push([
+              employee.name,
+              `£${employee.dailyWage}`,
+              workDay.date,
+              dayOfWeek,
+              workDay.worked ? 'Yes' : 'No',
+              workDay.paid ? 'Yes' : 'No',
+              workDay.worked ? `£${dayAmount.toFixed(2)}` : '£0.00',
+              paymentMethod,
+              workDay.notes || '',
+              employee.notes || '',
+              `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`
+            ])
+          })
+        
+        // Add employee summary row if they have work days
+        if (empWorkDays.length > 0) {
+          workData.push([
+            `${employee.name} - SUMMARY`,
+            `£${employee.dailyWage}`,
+            '',
+            '',
+            `${workedDays.length} days`,
+            `${empWorkDays.filter(wd => wd.paid).length} days`,
+            `£${totalEarned.toFixed(2)}`,
+            '',
+            '',
+            '',
+            `£${Math.max(0, totalEarned - totalPaid).toFixed(2)}`
+          ])
+          
+          // Add empty row for spacing
+          workData.push(['', '', '', '', '', '', '', '', '', '', ''])
+        }
+      })
+      
+      // Add day notes as a separate section
+      if (dayNotes.length > 0) {
+        workData.push(['=== DAY NOTES ===', '', '', '', '', '', '', '', '', '', ''])
+        workData.push(['Date', 'Day Note', 'Created At', '', '', '', '', '', '', '', ''])
+        
+        dayNotes
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .forEach(note => {
+            const noteDate = new Date(note.date)
+            const dayOfWeek = noteDate.toLocaleDateString('en-US', { weekday: 'long' })
+            const createdAt = new Date(note.createdAt).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            
+            workData.push([
+              `${note.date} (${dayOfWeek})`,
+              note.note,
+              createdAt,
+              '', '', '', '', '', '', '', ''
+            ])
+          })
+      }
+      
+      // Add summary statistics at the end
+      workData.push(['', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['=== BUSINESS SUMMARY ===', '', '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Employees', employees.length, '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Work Days Logged', workDays.filter(wd => wd.worked && new Date(wd.date) <= today).length, '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Payments Made', payments.length, '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Amount Paid Out', `£${payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}`, '', '', '', '', '', '', '', '', ''])
+      workData.push(['Total Day Notes', dayNotes.length, '', '', '', '', '', '', '', '', ''])
+      
+      // Convert to CSV string
+      const csvContent = workData.map(row => 
+        row.map((cell: any) => {
+          // Escape quotes and wrap in quotes if contains comma, quote, or newline
+          const cellStr = String(cell || '')
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(',')
+      ).join('\n')
+      
+      // Create and download the CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `my-days-work-data-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      alert('CSV export completed successfully! Open the file in Excel, Google Sheets, or any spreadsheet application.')
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      alert('CSV export failed. Please try again.')
+    }
+  }
+
   const exportToPDF = async () => {
     try {
       // Only count work days that are in the past or today (not future)
@@ -722,6 +900,25 @@ export default function Settings() {
                 </div>
               </div>
             </div>
+
+            <button
+              onClick={exportToCSV}
+              disabled={importing}
+              className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900">Export to CSV</h3>
+                  <p className="text-sm text-gray-600">Download spreadsheet data (Excel, Google Sheets)</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
 
             <button
               onClick={exportToPDF}
