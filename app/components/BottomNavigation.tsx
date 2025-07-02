@@ -122,7 +122,7 @@ export default function BottomNavigation() {
     <div className="fixed bottom-0 left-0 right-0 z-50">
       {/* Main navigation container */}
       <div className="bg-white/98 backdrop-blur-xl border-t border-gray-100">
-        <div className="flex justify-around items-center px-2 py-1 max-w-md mx-auto">
+        <div className="flex justify-around items-center px-2 py-3 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.path
             
@@ -165,8 +165,8 @@ export default function BottomNavigation() {
           })}
         </div>
         
-        {/* Safe area padding for devices with home indicator */}
-        <div className="h-safe-area-inset-bottom bg-white/98" />
+        {/* Enhanced iOS safe area padding */}
+        <div className="pb-safe-bottom bg-white/98" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }} />
       </div>
     </div>
   )

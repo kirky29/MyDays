@@ -304,7 +304,7 @@ export default function AllEmployeesCalendar() {
                     title={`${shift.employee.name} - £${shift.amount.toFixed(0)} - ${shift.status.type}`}
                   >
                     <div className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${shift.status.bgColor} ${shift.status.textColor}`}>
-                      {shift.employee.name}
+                      {shift.employee.name.slice(0, 4)}
                     </div>
                   </div>
                 ))}

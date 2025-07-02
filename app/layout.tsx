@@ -99,7 +99,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <ErrorBoundary>
-          <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="min-h-screen bg-gray-50" style={{ paddingBottom: 'max(calc(80px + env(safe-area-inset-bottom)), 100px)' }}>
             {children}
             <BottomNavigation />
           </div>
